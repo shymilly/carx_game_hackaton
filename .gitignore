@@ -1,0 +1,10 @@
+/Binaries/
+/DerivedDataCache/
+/Intermediate/
+/Saved/
+/Builds/
+/SourceAssets/
+/Build/Windows/FileOpenOrder/
+/.vs/
+*.sln
+__pycache__/
