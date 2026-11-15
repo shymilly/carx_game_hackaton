@@ -5,7 +5,7 @@ public class Dostoevsky : ModuleRules
     {
         if (Target.bBuildEditor) PrivateDependencyModuleNames.AddRange(new[] { "UnrealEd", "BlueprintGraph", "RenderCore", "SlateNullRenderer" });
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-        PublicDependencyModuleNames.AddRange(new[] { "Core", "CoreUObject", "Engine", "UMG" });
-        PrivateDependencyModuleNames.AddRange(new[] { "Slate", "SlateCore", "MoviePlayer", "InputCore" });
+        PublicDependencyModuleNames.AddRange(new[] { "Core", "CoreUObject", "Engine", "UMG", "InputCore" });
+        PrivateDependencyModuleNames.AddRange(new[] { "Slate", "SlateCore", "MoviePlayer" });
     }
 }
