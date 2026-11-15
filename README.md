@@ -45,6 +45,7 @@ powershell -File Scripts/BuildEditor.ps1 -EngineRoot "D:\UE_5.8" -GenerateVSCode
 
 - [Спецификация интерфейса](Docs/DialogueStyle.md)
 - [Управление и значок журнала после вставания](Docs/ExplorationHUD.md)
+- [Журнал с выбором записей мышью](Docs/JournalUI.md)
 - [Подключение текста, озвучки и перехода на улицу](Docs/NarrativeIntegration.md)
 - [Постоянные правила разработки](AGENTS.md)
 
@@ -67,3 +68,5 @@ powershell -File Scripts/BuildEditor.ps1 -EngineRoot "D:\UE_5.8" -GenerateVSCode
 ## Совместная работа
 
 Работайте над задачами в отдельных ветках и согласовывайте правки одних и тех же `.uasset` / `.umap`: обычный текстовый merge к ним неприменим. Изменённые HUD и соответствующий C++-код передавайте одним коммитом. Движок, сборки, кэш, локальные резервные копии и IDE-файлы в репозиторий не входят.
+
+Сценарий квартиры Димы, реплики, звуки и условия звонка: [Docs/DimaApartmentScenario.md](Docs/DimaApartmentScenario.md).

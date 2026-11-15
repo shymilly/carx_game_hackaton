@@ -118,7 +118,7 @@ TSharedRef<SWidget> UDocumentWindow::RebuildWidget()
 
     // Anchors follow the supplied gameplay reference, measured against the viewport, not editor chrome.
     // All DocumentWindow subclasses use this shared design, including previously authored widget trees.
-    return SNew(SConstraintCanvas)
+    return SNew(SConstraintCanvas).Visibility(EVisibility::SelfHitTestInvisible)
         + SConstraintCanvas::Slot().Anchors(FAnchors(0.045f, 0.70f, 0.77f, 0.975f))
           .Offset(FMargin(0)).Alignment(FVector2D::ZeroVector)
         [ SNew(SDialoguePanel).Fill(PanelColor).Outline(AccentColor)
@@ -142,6 +142,8 @@ TSharedRef<SWidget> UDocumentWindow::RebuildWidget()
 
 void UDocumentWindow::RequestClose()
 {
+    const FSimpleDelegate Callback = OnCloseRequested;
+    if (Callback.IsBound()) { Callback.Execute(); return; }
     if (UGameInstance* GI = GetGameInstance()) GI->GetSubsystem<UNarrativeSubsystem>()->CloseDocument();
 }
 

@@ -10,6 +10,7 @@ class DOSTOEVSKY_API UDocumentWindow : public UUserWidget
 {
     GENERATED_BODY()
 public:
+    FSimpleDelegate OnCloseRequested;
     UPROPERTY(BlueprintReadOnly, Category="Document") TObjectPtr<UInteractionDocument> Document;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Style") FLinearColor PanelColor = FLinearColor::FromSRGBColor(FColor(255, 231, 157));
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Style") FLinearColor TextColor = FLinearColor::Black;

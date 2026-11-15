@@ -9,6 +9,7 @@ ENGINE = "/Script/Engine."
 MATH = "KismetMathLibrary"
 GAME = "GameplayStatics"
 STR = "KismetStringLibrary"
+STORY = "/Script/Dostoevsky.DimaApartmentStoryLibrary"
 TITLE = "ОТГОЛОСКИ ПРОШЛОГО"
 DIMAS_MAP = "/Game/Prologue/" + MAP_NAME
 FATHERS_MAP = "/Game/Prologue/L_Apartment"
@@ -40,6 +41,11 @@ INTRO_DOCUMENTS = (
     ("Newspaper", "Промышленный вестник", "Aegis объявила о новом контракте с правительством.\nЗавод на восточной окраине расширит ночную смену."),
 )
 DOCUMENTS = INTRO_DOCUMENTS + CLUES[:2]
+STORY_OBJECTS = (
+    ("Television", "Посмотреть новости", ""),
+    ("Wardrobe", "Осмотреть шкаф", ""),
+    ("Phone", "Ответить на звонок", ""),
+)
 ROOM_SWITCHES = {
     "LivingSwitch": "LivingRoomLight",
     "KitchenSwitch": "KitchenRoomLight",
@@ -57,17 +63,16 @@ FIXTURES = {
     "BathDoor": ("Открыть дверь ванной", "Закрыть дверь ванной"),
     "FridgeDoor": ("Открыть холодильник", "Закрыть холодильник"),
     "DeskLamp": ("Выключить лампу", "Включить лампу"),
-    "FloorLamp": ("Выключить торшер", "Включить торшер"),
+    "FloorLamp": ("Осмотреть торшер", "Осмотреть торшер"),
     "LivingSwitch": ("Выключить свет в комнате", "Включить свет в комнате"),
     "KitchenSwitch": ("Выключить свет на кухне", "Включить свет на кухне"),
     "BathSwitch": ("Выключить свет в ванной", "Включить свет в ванной"),
-    "Tap": ("Открыть кран", "Закрыть кран"),
+    "Tap": ("Умыться", "Умыться"),
     "KitchenTap": ("Открыть кран", "Закрыть кран"),
     "ShowerTap": ("Включить душ", "Выключить душ"),
     **{tag: (action, action) for tag, action in SEATS.items()},
     "Bed": ("Отдохнуть", "Отдохнуть"),
 }
-CONTROLS = "WASD — идти    Shift — бежать    Пробел — прыгать    J — журнал"
 
 
 def connect(a, b):
@@ -227,8 +232,8 @@ class Graph:
         self.column = 0
 
 
-def build_gameplay(root):
-    path = f"{root}/BP_PrologueApartmentHUD"
+def build_gameplay(root, asset_name="BP_PrologueApartmentHUD"):
+    path = f"{root}/{asset_name}"
     blueprint = BP.create_blueprint_asset_with_parent(path, ue.HUD.static_class())
     if not blueprint:
         raise RuntimeError(f"Could not create {path}")
@@ -267,7 +272,7 @@ def build_gameplay(root):
     j = g.pure("PlayerController", "WasInputKeyJustPressed", self=pc, Key="J")
     journal, active = g.branch(active, g.get("JournalOpen"))
     draw_journal(g, journal, pc, width, j)
-    opening, active = g.branch(active, j)
+    opening, active = g.branch(active, g.and_(j, g.not_(g.pure(STORY, "IsBusy"))))
     opening = g.set(opening, "Focus", "")
     opening = g.set(opening, "JournalOpen", "true")
     lock_controls(g, opening, pc, True)
@@ -329,14 +334,15 @@ def build_gameplay(root):
     switch_to_scene_camera(g, meet, pc, 0.55)
 
     g.line(28)
+    _, active = g.branch(active, g.pure(STORY, "IsBusy"))
     active = update_stamina(g, active, pc, player, now)
     active = draw_stamina(g, active, height)
     home_goal = "Осмотрите комнату или выйдите из квартиры."
     father_goal = g.string_choice("Вернитесь к входной двери.", "Найдите записку Фёдора.", g.equals(state, KEY))
-    active = g.draw(active, g.string_choice(home_goal, father_goal, at_dimas), "24", 1.12)
+    objective = g.pure(STORY, "Objective", Fallback=g.string_choice(home_goal, father_goal, at_dimas))
+    active = g.draw(active, objective, "24", 1.12)
     hint = g.string_choice(g.get("Hint"), "", g.pure(MATH, "Less_DoubleDouble", A=now, B=g.get("HintUntil")))
     active = g.draw(active, hint, g.offset(center_y, -95), 1.13)
-    active = g.draw(active, "E — осмотр     R — заново", footer)
     active = g.execute(active, "/Script/Dostoevsky.ExplorationHUDLibrary", "PresentExplorationHUD")
     g.line(31)
     cam = g.pure(GAME, "GetPlayerCameraManager", PlayerIndex="0")
@@ -389,6 +395,7 @@ def switch_to_scene_camera(g, previous, pc, blend):
 
 
 def initialize(g, previous, pc, now):
+    previous = g.execute(previous, STORY, "InitializeStory")
     level = g.call(GAME, "GetCurrentLevelName")
     connect(previous, BP.find_execute_pin(level))
     previous = BP.find_then_pin(level)
@@ -408,38 +415,15 @@ def initialize(g, previous, pc, now):
         found = g.pure(GAME, "HasOption", Options=options, InKey=tag)
         arrived = g.set(arrived, tag + "Found", found)
     arrived = g.set(arrived, "State", str(WALK))
-    show_hint(g, arrived, now, "Найдите записку Фёдора.  " + CONTROLS, 7)
+    show_hint(g, arrived, now, "Найдите записку Фёдора.", 7)
 
 
 def draw_journal(g, previous, pc, width, j):
     closing, browsing = g.branch(previous, j)
     closing = g.set(closing, "JournalOpen", "false")
     lock_controls(g, closing, pc, False)
-    browsing = g.panel(browsing, "0", width, 5000)
-    browsing = g.draw(browsing, "ЖУРНАЛ", "28", 1.8)
-    browsing = g.draw(browsing, "1–4 — открыть документ    J — закрыть", "69")
-    digit_keys = ("One", "Two", "Three", "Four")
-    for index, ((tag, title, _), digit_key) in enumerate(zip(DOCUMENTS, digit_keys), 1):
-        g.line(6 + index)
-        found = g.get(tag + "Found")
-        heading = g.string_choice(f"{index}.  {title}", "", found)
-        browsing = g.draw(browsing, heading, str(90 + index * 25), 1.13)
-        pressed = g.or_(
-            g.pure("PlayerController", "WasInputKeyJustPressed", self=pc, Key=digit_key),
-            g.pure("PlayerController", "WasInputKeyJustPressed", self=pc, Key=f"NumPad{digit_key}"),
-        )
-        page = g.pure(MATH, "SelectInt", A=str(index), B=g.get("JournalPage"), bPickA=g.and_(found, pressed))
-        browsing = g.set(browsing, "JournalPage", page)
-    empty = g.get(DOCUMENTS[0][0] + "Found")
-    for tag, _, _ in DOCUMENTS[1:]:
-        empty = g.or_(empty, g.get(tag + "Found"))
-    browsing = g.draw(browsing, g.string_choice("", "Осмотрите документ, чтобы добавить его в журнал.", empty), "118")
-    choose_page = g.and_(empty, g.equals(g.get("JournalPage"), 0))
-    browsing = g.draw(browsing, g.string_choice("Выберите документ по номеру.", "", choose_page), "230", 1.1)
-    for index, (_, title, body) in enumerate(DOCUMENTS, 1):
-        g.line(10 + index)
-        selected, browsing = g.branch(browsing, g.equals(g.get("JournalPage"), index))
-        g.document(selected, title, body, "[J]  Закрыть журнал")
+    # Cursor-driven list; its reader uses the approved common DocumentWindow.
+    g.execute(browsing, "/Script/Dostoevsky.JournalUILibrary", "PresentJournal")
 
 
 def update_stamina(g, previous, pc, player, now):
@@ -496,7 +480,7 @@ def draw_idle_reticle(g, previous, center_x, center_y):
 
 
 def render_focus(g, previous, hit, state, pc, key, now, center_x, center_y):
-    entries = INTRO_DOCUMENTS + CLUES + tuple((tag, "", "") for tag in FIXTURES) + (("Exit", "Выйти из квартиры", ""),)
+    entries = INTRO_DOCUMENTS + CLUES + STORY_OBJECTS + tuple((tag, "", "") for tag in FIXTURES) + (("Exit", "Выйти из квартиры", ""),)
     for index, (tag, title, body) in enumerate(entries):
         g.line(33 + index * 2)
         target = g.pure("Actor", "ActorHasTag", self=hit, Tag=tag)
@@ -512,6 +496,7 @@ def render_focus(g, previous, hit, state, pc, key, now, center_x, center_y):
             prompt = "[E]  " + action if tag == "Bed" or tag in SEATS else (
                 g.string_choice("[E]  " + reverse, "[E]  " + action, g.get(tag + "Toggled"))
             )
+        prompt = g.pure(STORY, "InteractionPrompt", Tag=tag, Fallback=prompt)
         focused = g.draw(focused, prompt, g.offset(center_y, -44), 1.15,
                          x=g.offset(center_x, -106))
         changed = g.pure(STR, "NotEqual_StrStr", A=g.get("Focus"), B=tag)
@@ -525,6 +510,9 @@ def render_focus(g, previous, hit, state, pc, key, now, center_x, center_y):
 
 
 def interact(g, previous, tag, title, body, pc):
+    story = g.call(STORY, "TryInteract", Tag=tag)
+    connect(previous, BP.find_execute_pin(story))
+    _, previous = g.branch(BP.find_then_pin(story), g.output(story))
     if tag in FIXTURES:
         g.invoke(previous, "Activate" + tag)
         return
@@ -592,7 +580,7 @@ def build_fixture_functions(blueprint):
     previous = g.execute(previous, "Controller", "SetControlRotation", self=pc, NewRotation=desk_view)
     previous = g.view(previous, pc, player, 0.65)
     previous = lock_controls(g, previous, pc, False)
-    show_hint(g, previous, g.pure(GAME, "GetTimeSeconds"), "Отчёт добавлен в журнал.  " + CONTROLS, 7)
+    show_hint(g, previous, g.pure(GAME, "GetTimeSeconds"), "Отчёт добавлен в журнал.", 7)
 
 
 def toggle_fixture_group(g, previous, tag, field):
