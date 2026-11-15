@@ -8,3 +8,11 @@
 /.vs/
 *.sln
 __pycache__/
+
+*.slnx
+/.vsconfig
+/Plugins/**/Binaries/
+/Plugins/**/Intermediate/
+.env
+.env.*
+!.env.example

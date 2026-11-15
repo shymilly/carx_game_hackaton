@@ -1,12 +1,40 @@
 {
-  "FileVersion": 3,
-  "EngineAssociation": "5.8",
-  "Category": "Games",
-  "Description": "Echoes of the Past - apartment prototype",
-  "Plugins": [
-    { "Name": "PythonScriptPlugin", "Enabled": true, "TargetAllowList": ["Editor"] },
-    { "Name": "EditorScriptingUtilities", "Enabled": true, "TargetAllowList": ["Editor"] },
-    { "Name": "LevelSequenceEditor", "Enabled": true, "TargetAllowList": ["Editor"] },
-    { "Name": "EnhancedInput", "Enabled": true }
-  ]
+	"FileVersion": 3,
+	"EngineAssociation": "5.8",
+	"Category": "Games",
+	"Description": "Echoes of the Past - apartment prototype",
+	"Modules": [
+		{
+			"Name": "Dostoevsky",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "PythonScriptPlugin",
+			"Enabled": true,
+			"TargetAllowList": [
+				"Editor"
+			]
+		},
+		{
+			"Name": "EditorScriptingUtilities",
+			"Enabled": true,
+			"TargetAllowList": [
+				"Editor"
+			]
+		},
+		{
+			"Name": "LevelSequenceEditor",
+			"Enabled": true,
+			"TargetAllowList": [
+				"Editor"
+			]
+		},
+		{
+			"Name": "EnhancedInput",
+			"Enabled": true
+		}
+	]
 }
