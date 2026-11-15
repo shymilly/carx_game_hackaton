@@ -50,7 +50,7 @@ public:
         const FWidgetStyle& Style, bool bEnabled) const override
     {
         FSlateDrawElement::MakeBox(Elements, Layer, Geometry.ToPaintGeometry(), FillBrush.Get(),
-            ESlateDrawEffect::None, Style.GetColorAndOpacityTint());
+            ESlateDrawEffect::None, FillBrush->GetTint(Style) * Style.GetColorAndOpacityTint());
 
         // Continuous distance around the rounded perimeter keeps dash spacing even at corners.
         const FVector2D Size = Geometry.GetLocalSize();
