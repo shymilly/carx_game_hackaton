@@ -23,6 +23,7 @@ class DOSTOEVSKY_API APrologueTimeOfDay : public AActor
     GENERATED_BODY()
 public:
     APrologueTimeOfDay();
+    double GetWorldHours() const { return WorldHours; }
 
     UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category="Time") float OpeningHour = 18.0f;
     UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category="Time", meta=(ClampMin="0")) float ClockRate = 8.0f;

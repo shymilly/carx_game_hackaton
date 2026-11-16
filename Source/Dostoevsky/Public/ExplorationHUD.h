@@ -40,6 +40,8 @@ class DOSTOEVSKY_API UExplorationHUDComponent : public UActorComponent
     GENERATED_BODY()
 public:
     UExplorationHUDComponent();
+    uint8 GetTravelMask() const { return Progress.UsedMask; }
+    void SetTravelMask(uint8 Mask) { Progress.UsedMask = Mask & FExplorationTutorialProgress::CompleteMask; }
     void ObserveHUD(bool bOfferControls);
     bool ShouldShowControls() const;
     bool HasUsed(int32 Index) const { return Progress.HasUsed(Index); }

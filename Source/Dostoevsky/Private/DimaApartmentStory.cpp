@@ -1,4 +1,6 @@
 #include "DimaApartmentStory.h"
+#include "LocationTravel.h"
+#include "Engine/Texture2D.h"
 #include "InteractionDocument.h"
 #include "NarrativeSubsystem.h"
 #include "PrologueTimeOfDay.h"
@@ -96,6 +98,13 @@ void UDimaApartmentStoryComponent::InitializeStory()
     const AHUD* HUD = Cast<AHUD>(GetOwner());
     Player = HUD ? HUD->GetOwningPlayerController() : nullptr;
     if (!Scenario || !Player.IsValid() || !Player->IsLocalController()) return;
+    const FString Level = UGameplayStatics::GetCurrentLevelName(this,true);
+    if (Level == TEXT("L_NeptuneStreet") || Level == TEXT("L_PolicePrecinct")) return;
+    if (Level == TEXT("L_DimaApartmentInterior"))
+    {
+        const ULocationTravelSubsystem* Travel = GetWorld()->GetGameInstance()->GetSubsystem<ULocationTravelSubsystem>();
+        if (Travel->bHasSnapshot) Progress = Travel->ApartmentProgress;
+    }
     bSharedStreet = UGameplayStatics::GetActorOfClass(this, APrologueTimeOfDay::StaticClass()) != nullptr;
     if (!bSharedStreet && UGameplayStatics::GetCurrentLevelName(this,true) != Scenario->ApartmentMap.ToString()) return;
     bActive = true;
@@ -254,7 +263,15 @@ bool UDimaApartmentStoryComponent::TryInteract(FName Tag)
     if (IsBusy()) return true;
     if (bSharedStreet && Tag == TEXT("StreetDoor"))
     {
-        if (Progress.Phase == EDimaApartmentPhase::ReadyToExit) return false;
+        if (Progress.Phase == EDimaApartmentPhase::ReadyToExit)
+        {
+            if (UGameplayStatics::GetCurrentLevelName(this,true) != TEXT("L_DimaApartmentInterior")) return false;
+            GetWorld()->GetGameInstance()->GetSubsystem<UNarrativeSubsystem>()->TravelToStreet(
+                TSoftObjectPtr<UWorld>(FSoftObjectPath(TEXT("/Game/Locations/L_NeptuneStreet.L_NeptuneStreet"))),
+                NSLOCTEXT("Dostoevsky","NeptuneDestination","Улица Нептун"),
+                LoadObject<UTexture2D>(nullptr,TEXT("/Game/Prologue/Street/Transitions/T_Transition_Neptune.T_Transition_Neptune")),TEXT("FromApartment"));
+            return true;
+        }
         Hint(FText::FromString(Objective(TEXT("Осмотрите квартиру"))));
         return true;
     }
@@ -288,6 +305,9 @@ bool UDimaApartmentStoryComponent::TryInteract(FName Tag)
 
 FString UDimaApartmentStoryComponent::Objective(const FString& Fallback) const
 {
+    const FString Level = UGameplayStatics::GetCurrentLevelName(this,true);
+    if (Level == TEXT("L_NeptuneStreet")) return TEXT("Исследуйте улицу Нептун.");
+    if (Level == TEXT("L_PolicePrecinct")) return TEXT("Осмотрите полицейский участок.");
     if (!bActive) return Fallback;
     if (Progress.Phase == EDimaApartmentPhase::ReadyToExit) return Scenario->ExitObjective.ToString();
     if (Progress.Phase == EDimaApartmentPhase::Ringing || Progress.Phase == EDimaApartmentPhase::Calling) return Scenario->PhoneObjective.ToString();
@@ -297,8 +317,8 @@ FString UDimaApartmentStoryComponent::Prompt(FName Tag,const FString& Fallback) 
 {
     if (!bActive) return Fallback;
     if (Tag == TEXT("Phone")) return Progress.Phase == EDimaApartmentPhase::Ringing ? TEXT("[E]  Ответить на звонок") : TEXT("Телефон");
-    if (bSharedStreet && Tag == TEXT("StreetDoor") && Progress.Phase != EDimaApartmentPhase::ReadyToExit)
-        return TEXT("[E]  Проверить входную дверь");
+    if (bSharedStreet && Tag == TEXT("StreetDoor"))
+        return TEXT("[E]  Выйти на улицу");
     if (Tag == TEXT("Exit")) return TEXT("[E]  Выйти на улицу");
     return Fallback;
 }

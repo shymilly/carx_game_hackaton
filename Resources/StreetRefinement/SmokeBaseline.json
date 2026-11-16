@@ -1,0 +1,113 @@
+{
+  "material_sha256": "d7f04ad7edc9375d89a21ac6ae56bae651564e339e1b889aa2a46b88af64dbca",
+  "actors": [
+    {
+      "label": "Animated factory stack plume 1",
+      "cls": "StaticMeshActor",
+      "folder": "Street/08 Industrial horizon",
+      "pos": [
+        5572.0,
+        -2680.1875,
+        3040.7890625
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        12.6,
+        11.6
+      ],
+      "origin": [
+        5572.0,
+        -2680.1875,
+        3040.7890625
+      ],
+      "extent": [
+        0.0,
+        630.0,
+        580.0
+      ],
+      "tags": [],
+      "mesh": "/Game/Prologue/Street/Meshes/SM_FactoryCard.SM_FactoryCard",
+      "materials": [
+        "/Game/Prologue/Street/Materials/M_AegisSmoke.M_AegisSmoke"
+      ],
+      "collision": "NoCollision"
+    },
+    {
+      "label": "Animated factory stack plume 2",
+      "cls": "StaticMeshActor",
+      "folder": "Street/08 Industrial horizon",
+      "pos": [
+        5570.0,
+        -1606.90625,
+        2798.875
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        10.1,
+        11.7
+      ],
+      "origin": [
+        5570.0,
+        -1606.90625,
+        2798.875
+      ],
+      "extent": [
+        0.0,
+        505.0,
+        585.0
+      ],
+      "tags": [],
+      "mesh": "/Game/Prologue/Street/Meshes/SM_FactoryCard.SM_FactoryCard",
+      "materials": [
+        "/Game/Prologue/Street/Materials/M_AegisSmoke.M_AegisSmoke"
+      ],
+      "collision": "NoCollision"
+    },
+    {
+      "label": "Animated factory stack plume 3",
+      "cls": "StaticMeshActor",
+      "folder": "Street/08 Industrial horizon",
+      "pos": [
+        5568.0,
+        268.421875,
+        2977.9765625
+      ],
+      "rot": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        11.8,
+        13.1
+      ],
+      "origin": [
+        5568.0,
+        268.421875,
+        2977.9765625
+      ],
+      "extent": [
+        0.0,
+        590.0,
+        655.0
+      ],
+      "tags": [],
+      "mesh": "/Game/Prologue/Street/Meshes/SM_FactoryCard.SM_FactoryCard",
+      "materials": [
+        "/Game/Prologue/Street/Materials/M_AegisSmoke.M_AegisSmoke"
+      ],
+      "collision": "NoCollision"
+    }
+  ]
+}

@@ -290,7 +290,9 @@ def build_gameplay(root, asset_name=None, *, street_door=None):
     initialize(g, starting, pc, now, map_name, street)
     restart = g.pure("PlayerController", "WasInputKeyJustPressed", self=pc, Key="R")
     reset, active = g.branch(active, restart)
-    g.execute(reset, GAME, "OpenLevel", LevelName=f"/Game/Prologue/{map_name}")
+    if street:
+        reset = g.execute(reset, "/Script/Dostoevsky.LocationTravelLibrary", "ResetSession")
+    g.execute(reset, GAME, "OpenLevel", LevelName="/Game/Locations/L_DimaApartmentInterior" if street else f"/Game/Prologue/{map_name}")
 
     g.line(4)
     j = (g.get("JournalPressed") if street else
@@ -435,10 +437,14 @@ def switch_to_scene_camera(g, previous, pc, blend):
 
 def initialize(g, previous, pc, now, map_name, street):
     previous = g.execute(previous, STORY, "InitializeStory")
+    if street:
+        restore = g.call("/Script/Dostoevsky.LocationTravelLibrary", "RestoreLocation")
+        connect(previous, BP.find_execute_pin(restore))
+        _, previous = g.branch(BP.find_then_pin(restore), g.output(restore))
     level = g.call(GAME, "GetCurrentLevelName")
     connect(previous, BP.find_execute_pin(level))
     previous = BP.find_then_pin(level)
-    at_home = g.pure(STR, "EqualEqual_StrStr", A=g.output(level), B=map_name)
+    at_home = g.pure(STR, "EqualEqual_StrStr", A=g.output(level), B="L_DimaApartmentInterior" if street else map_name)
     previous = g.set(previous, "AtDimas", at_home)
     seated, arrived = g.branch(previous, at_home)
     seated = g.set(seated, "State", str(REPORT))

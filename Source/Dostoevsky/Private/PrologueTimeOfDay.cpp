@@ -1,4 +1,6 @@
 #include "PrologueTimeOfDay.h"
+#include "LocationTravel.h"
+#include "Kismet/GameplayStatics.h"
 
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
@@ -87,6 +89,8 @@ void APrologueTimeOfDay::BeginPlay()
 {
     Super::BeginPlay();
     WorldHours = FMath::Clamp(OpeningHour, 0.f, 23.999f);
+    const ULocationTravelSubsystem* Travel = GetGameInstance()->GetSubsystem<ULocationTravelSubsystem>();
+    if (Travel->bHasSnapshot) WorldHours = Travel->ClockHours;
     if (SkyDome) SkyMaterial = SkyDome->GetStaticMeshComponent()->CreateDynamicMaterialInstance(0);
     if (HourHand) HourHandBase = HourHand->GetActorQuat();
     if (MinuteHand) MinuteHandBase = MinuteHand->GetActorQuat();
@@ -310,6 +314,9 @@ bool UPrologueWorldLibrary::ConsumeBedRest(AHUD* HUD)
 
 bool UPrologueWorldLibrary::IsOutsideApartment(AHUD* HUD)
 {
+    const FString Level = UGameplayStatics::GetCurrentLevelName(HUD, true);
+    if (Level == TEXT("L_DimaApartmentInterior")) return false;
+    if (Level == TEXT("L_NeptuneStreet") || Level == TEXT("L_PolicePrecinct")) return true;
     const APlayerController* Player = OwningPlayer(HUD);
     const APawn* Pawn = Player ? Player->GetPawn() : nullptr;
     if (!Pawn) return false;

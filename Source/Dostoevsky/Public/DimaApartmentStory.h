@@ -102,6 +102,7 @@ class DOSTOEVSKY_API UDimaApartmentStoryComponent : public UActorComponent
     GENERATED_BODY()
 public:
     UDimaApartmentStoryComponent();
+    FDimaApartmentProgress GetTravelProgress() const { return Progress; }
     UPROPERTY(EditAnywhere, BlueprintReadWrite) TSoftObjectPtr<UDimaApartmentScenario> ScenarioAsset;
     void InitializeStory();
     bool TryInteract(FName Tag);

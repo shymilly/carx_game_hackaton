@@ -64,10 +64,12 @@ powershell -File Scripts/BuildEditor.ps1 -EngineRoot "D:\UE_5.8" -GenerateVSCode
 & "D:\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" "$PWD\Dostoevsky.uproject" -run=pythonscript "-script=$PWD\Scripts\CheckDialoguePaint.py" -LiveCoding=false -unattended -nullrhi -nosplash -nosound
 ```
 
-Квартира и улица находятся на стартовой карте `L_DimaApartmentStreet`. Входная дверь открывается на тротуар. Игровое время, журнал и освещение продолжают работать при выходе из квартиры.
+Квартира, улица и полицейский участок находятся на отдельных картах в `Content/Locations`. Стартовая карта — `L_DimaApartmentInterior`. Нажатие E на выходной двери показывает загрузочный экран и загружает улицу; вход в участок работает так же. Время, журнал и прогресс сохраняются между загрузками. [Карты, двери и проверки](Docs/SeparateLocations.md).
 
 ## Совместная работа
 
 Работайте над задачами в отдельных ветках и согласовывайте правки одних и тех же `.uasset` / `.umap`: обычный текстовый merge к ним неприменим. Изменённые HUD и соответствующий C++-код передавайте одним коммитом. Движок, сборки, кэш, локальные резервные копии и IDE-файлы в репозиторий не входят.
 
 Сценарий квартиры Димы, реплики, звуки и условия звонка: [Docs/DimaApartmentScenario.md](Docs/DimaApartmentScenario.md).
+
+Доработка улицы, завода, кириллических вывесок, столкновений трафика и безопасных дверей: [Docs/StreetRefinement.md](Docs/StreetRefinement.md).

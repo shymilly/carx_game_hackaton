@@ -1,0 +1,54 @@
+{
+  "sidewalk_violations": [],
+  "building_count": 32,
+  "signs": [
+    {
+      "label": "Fascia lettering",
+      "text": "ПРОДУКТЫ",
+      "yaw": 0.0,
+      "positive_scale": true
+    },
+    {
+      "label": "Fascia lettering",
+      "text": "АПТЕКА",
+      "yaw": 0.0,
+      "positive_scale": true
+    },
+    {
+      "label": "Fascia lettering",
+      "text": "БАР «МАЯК»",
+      "yaw": 89.99999999999999,
+      "positive_scale": true
+    },
+    {
+      "label": "Вывеска БАРАХОЛКА",
+      "text": "БАРАХОЛКА",
+      "yaw": 89.99999999999999,
+      "positive_scale": true
+    },
+    {
+      "label": "Neptune Playground entrance plate",
+      "text": "ДЕТСКАЯ ПЛОЩАДКА",
+      "yaw": 180.0,
+      "positive_scale": true
+    },
+    {
+      "label": "60 Precinct fascia",
+      "text": "ПОЛИЦИЯ / УЧАСТОК 60",
+      "yaw": -90.00000000000001,
+      "positive_scale": true
+    },
+    {
+      "label": "Neptune avenue blade",
+      "text": "УЛ. НЕПТУН",
+      "yaw": 180.0,
+      "positive_scale": true
+    },
+    {
+      "label": "Neptune94 press lettering",
+      "text": "КНИГИ / ПРЕССА",
+      "yaw": 180.0,
+      "positive_scale": true
+    }
+  ]
+}

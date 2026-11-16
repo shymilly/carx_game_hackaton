@@ -1,3 +1,5 @@
+> Актуальное подключение карт: [SeparateLocations.md](SeparateLocations.md). Активный старт — `Locations/L_DimaApartmentInterior`, выход по E загружает `Locations/L_NeptuneStreet`. Приведённое ниже описание общей карты относится к прежней версии.
+
 # Сценарий квартиры Димы
 
 Стартовая карта `/Game/Prologue/L_DimaApartmentStreet` объединяет сценарий квартиры и улицу. Исходные расстановка и сценарные привязки находятся в `/Game/Prologue/L_DimaApartmentRefined`.

@@ -1,4 +1,6 @@
 #include "NarrativeSubsystem.h"
+#include "LocationTravel.h"
+#include "HAL/PlatformTime.h"
 #include "DocumentWindow.h"
 #include "InteractionDocument.h"
 #include "Components/AudioComponent.h"
@@ -47,11 +49,11 @@ public:
         }
         ChildSlot
         [
-            SNew(SBorder).BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
+            SNew(SBorder).Padding(0).BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
             .BorderBackgroundColor(FLinearColor(0.012f, 0.014f, 0.016f))[SNew(SOverlay)
                 + SOverlay::Slot()
                 [
-                    SNew(SScaleBox).Stretch(EStretch::ScaleToFit)
+                    SNew(SScaleBox).Stretch(EStretch::ScaleToFill)
                     [ SNew(SImage).Image(&Brush).Visibility(Photo.IsValid() ? EVisibility::Visible : EVisibility::Collapsed) ]
                 ]
                 + SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Bottom).Padding(42, 0, 42, 44)
@@ -88,6 +90,7 @@ void UNarrativeSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 
 void UNarrativeSubsystem::Deinitialize()
 {
+    if (UWorld* World = GetWorld()) World->GetTimerManager().ClearTimer(TravelBegin);
     FinishLocationCard();
     CloseDocument();
     StopAmbience(0);
@@ -178,13 +181,9 @@ bool UNarrativeSubsystem::ShowLocationCard(APlayerController* Player, FText Loca
 
     LocationPhoto = DestinationPhoto;
     LocationCard = SNew(SLocationCard).Photo(DestinationPhoto).Title(LocationTitle);
-    LocationPlayer = Player;
+    LockLocationPlayer(Player);
     LocationViewport = Viewport;
     LocationWorld = World;
-    Player->SetIgnoreMoveInput(true);
-    Player->SetIgnoreLookInput(true);
-    Player->StopMovement();
-    Player->FlushPressedKeys();
     Viewport->AddViewportWidgetContent(LocationCard.ToSharedRef(), 250);
 
     if (Arrival && !Pawn->TeleportTo(Arrival->GetActorLocation(), Arrival->GetActorRotation()))
@@ -197,6 +196,29 @@ bool UNarrativeSubsystem::ShowLocationCard(APlayerController* Player, FText Loca
     return true;
 }
 
+void UNarrativeSubsystem::LockLocationPlayer(APlayerController* Player)
+{
+    if (LocationPlayer.Get()!=Player)
+    {
+        if (bLocationInputLocked) if (APlayerController* Previous=LocationPlayer.Get())
+        {
+            Previous->SetIgnoreLookInput(false);
+            Previous->SetIgnoreMoveInput(false);
+            Previous->bShowMouseCursor=bLocationPreviousCursor;
+        }
+        bLocationInputLocked=false;
+        LocationPlayer=Player;
+    }
+    if (!Player || bLocationInputLocked) return;
+    bLocationPreviousCursor=Player->bShowMouseCursor;
+    Player->bShowMouseCursor=false;
+    Player->SetIgnoreMoveInput(true);
+    Player->SetIgnoreLookInput(true);
+    Player->StopMovement();
+    Player->FlushPressedKeys();
+    bLocationInputLocked=true;
+}
+
 void UNarrativeSubsystem::FinishLocationCard()
 {
     if (UWorld* World = LocationWorld.Get()) World->GetTimerManager().ClearTimer(LocationHold);
@@ -206,56 +228,126 @@ void UNarrativeSubsystem::FinishLocationCard()
             Viewport->RemoveViewportWidgetContent(LocationCard.ToSharedRef());
         LocationCard.Reset();
     }
-    if (APlayerController* Player = LocationPlayer.Get())
+    if (bLocationInputLocked) if (APlayerController* Player = LocationPlayer.Get())
     {
         Player->FlushPressedKeys();
         Player->SetIgnoreLookInput(false);
         Player->SetIgnoreMoveInput(false);
+        Player->bShowMouseCursor=bLocationPreviousCursor;
+        Player->SetInputMode(FInputModeGameOnly());
     }
+    bLocationInputLocked=false;
     LocationPhoto = nullptr;
     LocationViewport.Reset();
     LocationPlayer.Reset();
     LocationWorld.Reset();
 }
 
-bool UNarrativeSubsystem::TravelToStreet(TSoftObjectPtr<UWorld> Destination, FText LocationTitle, UTexture2D* DestinationPhoto)
+bool UNarrativeSubsystem::TravelToStreet(TSoftObjectPtr<UWorld> Destination, FText LocationTitle,
+    UTexture2D* DestinationPhoto, FName ArrivalTag)
 {
-    const FString Package = Destination.ToSoftObjectPath().GetLongPackageName();
-    if (IsLocationTransitionActive() || !GetWorld() || Package.IsEmpty() || !FPackageName::DoesPackageExist(Package))
+    // References to an already visited map can carry the PIE package prefix in editor play.
+    const FString Package = UWorld::RemovePIEPrefix(Destination.ToSoftObjectPath().GetLongPackageName());
+    UWorld* World = GetWorld();
+    APlayerController* Player = UGameplayStatics::GetPlayerController(World,0);
+    UGameViewportClient* Viewport = GetGameInstance()->GetGameViewportClient();
+    if (IsLocationTransitionActive() || !World || !Player || !Viewport || IsDocumentOpen() ||
+        Package.IsEmpty() || !FPackageName::DoesPackageExist(Package)) return false;
+    ULocationTravelSubsystem* Travel = GetGameInstance()->GetSubsystem<ULocationTravelSubsystem>();
+    Travel->Capture(Player->GetHUD());
+    // All known public entrances have a deterministic threshold even for legacy callers.
+    if (ArrivalTag.IsNone())
     {
-        UE_LOG(LogTemp, Warning, TEXT("Travel rejected: missing map or travel in progress: %s"), *Package);
-        return false;
+        if (Package.EndsWith(TEXT("/L_DimaApartmentInterior")) || Package.EndsWith(TEXT("/L_PolicePrecinct"))) ArrivalTag=TEXT("FromStreet");
+        else if (Package.EndsWith(TEXT("/L_NeptuneStreet")))
+            ArrivalTag=UGameplayStatics::GetCurrentLevelName(World,true)==TEXT("L_PolicePrecinct") ? TEXT("FromPrecinct") : TEXT("FromApartment");
     }
-    CloseDocument();
+    Travel->ArrivalTag = ArrivalTag;
+    Travel->bLastArrivalExact = ArrivalTag.IsNone();
     StopAmbience(0);
     bTravelling = true;
+    PendingDestination = FName(*Package);
+    TravelStartedAt = FPlatformTime::Seconds();
+    if (!DestinationPhoto)
+    {
+        const TCHAR* Asset=nullptr;
+        if (Package.EndsWith(TEXT("/L_DimaApartmentInterior"))) Asset=TEXT("/Game/Prologue/Street/Transitions/T_Transition_Apartment.T_Transition_Apartment");
+        else if (Package.EndsWith(TEXT("/L_NeptuneStreet"))) Asset=TEXT("/Game/Prologue/Street/Transitions/T_Transition_Neptune.T_Transition_Neptune");
+        else if (Package.EndsWith(TEXT("/L_PolicePrecinct"))) Asset=TEXT("/Game/Prologue/Street/Transitions/T_Transition_Precinct.T_Transition_Precinct");
+        if (Asset) DestinationPhoto=LoadObject<UTexture2D>(nullptr,Asset);
+    }
     LocationPhoto = DestinationPhoto;
+    LocationCard = SNew(SLocationCard).Photo(DestinationPhoto).Title(LocationTitle).Loading(true);
+    LockLocationPlayer(Player);
+    LocationViewport = Viewport;
+    LocationWorld = World;
+    Viewport->AddViewportWidgetContent(LocationCard.ToSharedRef(),250);
     if (!IsRunningDedicatedServer() && IsMoviePlayerEnabled() && GetMoviePlayer())
     {
         FLoadingScreenAttributes Screen;
         Screen.bAutoCompleteWhenLoadingCompletes = true;
-        Screen.MinimumLoadingScreenDisplayTime = 1.0f;
+        Screen.MinimumLoadingScreenDisplayTime = .35f;
         Screen.WidgetLoadingScreen = SNew(SLocationCard).Photo(DestinationPhoto).Title(LocationTitle).Loading(true);
         GetMoviePlayer()->SetupLoadingScreen(Screen);
     }
-    UGameplayStatics::OpenLevel(GetGameInstance(), FName(*Package));
+    // Draw the loading screen before blocking OpenLevel; PIE uses the viewport overlay too.
+    World->GetTimerManager().SetTimer(TravelBegin,this,&ThisClass::BeginMapTravel,.15f,false);
     return true;
+}
+
+void UNarrativeSubsystem::BeginMapTravel()
+{
+    UGameplayStatics::OpenLevel(GetGameInstance(),PendingDestination);
 }
 
 void UNarrativeSubsystem::MapLoaded(UWorld* World)
 {
-    if (World && World->GetGameInstance() == GetGameInstance())
+    if (!World || World->GetGameInstance() != GetGameInstance()) return;
+    if (!bTravelling) { FinishLocationCard(); CloseDocument(); return; }
+    LocationWorld = World;
+    LockLocationPlayer(UGameplayStatics::GetPlayerController(World,0));
+    ArrivalWaitStartedAt=FPlatformTime::Seconds();
+    GetGameInstance()->GetSubsystem<ULocationTravelSubsystem>()->ApplyArrival(World);
+    // Keep the overlay until the new world's pawn, ground and capsule placement have been validated.
+    World->GetTimerManager().SetTimer(LocationHold,this,&ThisClass::FinishMapTravel,.016f,false);
+}
+
+void UNarrativeSubsystem::FinishMapTravel()
+{
+    UWorld* World=LocationWorld.Get();
+    if (!World) return;
+    LockLocationPlayer(UGameplayStatics::GetPlayerController(World,0));
+    const bool bFallback=FPlatformTime::Seconds()-ArrivalWaitStartedAt>2.5;
+    ULocationTravelSubsystem* Travel=GetGameInstance()->GetSubsystem<ULocationTravelSubsystem>();
+    if (!Travel->ApplyArrival(World,bFallback))
     {
-        FinishLocationCard();
-        CloseDocument();
-        bTravelling = false;
+        if (bFallback)
+        {
+            TravelFailed(World,ETravelFailure::LoadMapFailure,TEXT("No safe door arrival or PlayerStart"));
+            return;
+        }
+        World->GetTimerManager().SetTimer(LocationHold,this,&ThisClass::FinishMapTravel,.05f,false);
+        return;
     }
+    const float Remaining=.35f-static_cast<float>(FPlatformTime::Seconds()-TravelStartedAt);
+    if (Remaining>0)
+    {
+        World->GetTimerManager().SetTimer(LocationHold,this,&ThisClass::FinishMapTravel,Remaining,false);
+        return;
+    }
+    FinishLocationCard();
+    bTravelling = false;
+    PendingDestination = NAME_None;
 }
 
 void UNarrativeSubsystem::TravelFailed(UWorld* World, ETravelFailure::Type Failure, const FString& Error)
 {
     if (!World || World->GetGameInstance() != GetGameInstance()) return;
+    if (GetWorld()) GetWorld()->GetTimerManager().ClearTimer(TravelBegin);
+    FinishLocationCard();
     bTravelling = false;
+    PendingDestination = NAME_None;
+    GetGameInstance()->GetSubsystem<ULocationTravelSubsystem>()->ArrivalTag = NAME_None;
     LocationPhoto = nullptr;
     if (GetMoviePlayer()) GetMoviePlayer()->StopMovie();
     UE_LOG(LogTemp, Error, TEXT("Street travel failed (%d): %s"), int32(Failure), *Error);

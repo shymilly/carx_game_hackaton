@@ -31,7 +31,7 @@ public:
     UFUNCTION(BlueprintCallable, Category="Narrative|Audio") void StopAmbience(float FadeSeconds = 1.f);
     // Destination is an asset reference, so renames and cooking can track it.
     UFUNCTION(BlueprintCallable, Category="Narrative|Travel")
-    bool TravelToStreet(TSoftObjectPtr<UWorld> Destination, FText LocationTitle, UTexture2D* DestinationPhoto = nullptr);
+    bool TravelToStreet(TSoftObjectPtr<UWorld> Destination, FText LocationTitle, UTexture2D* DestinationPhoto = nullptr, FName ArrivalTag = NAME_None);
     bool ShowLocationCard(APlayerController* Player, FText LocationTitle, UTexture2D* DestinationPhoto,
         const ATargetPoint* Arrival = nullptr);
     UFUNCTION(BlueprintPure, Category="Narrative|Travel") bool IsLocationTransitionActive() const
@@ -57,6 +57,15 @@ private:
     FDelegateHandle TravelFailureHandle;
     bool OpenDocument(APlayerController* Player, UInteractionDocument* Document,
         TSubclassOf<UDocumentWindow> WindowClass, TArray<FText> Choices, FDocumentChoice Selection);
+    FName PendingDestination;
+    FTimerHandle TravelBegin;
+    double TravelStartedAt = 0;
+    double ArrivalWaitStartedAt = 0;
+    bool bLocationInputLocked = false;
+    bool bLocationPreviousCursor = false;
+    void LockLocationPlayer(APlayerController* Player);
+    void BeginMapTravel();
+    void FinishMapTravel();
     void MapLoaded(UWorld* World);
     void TravelFailed(UWorld* World, ETravelFailure::Type Failure, const FString& Error);
     void FinishLocationCard();

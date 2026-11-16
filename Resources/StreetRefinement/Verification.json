@@ -1,0 +1,41 @@
+{
+  "verified_at": "2026-11-16T20:43:58.764493+00:00",
+  "engine": "UE 5.8.4",
+  "build": "DostoevskyEditor Win64 Development: Succeeded",
+  "checks": [
+    {
+      "test": "CheckTrafficSafetyPIE",
+      "mode": "NullRHI PIE",
+      "result": "[2026.11.16-19.58.12:971][663]LogPython: TRAFFIC_SAFETY_PIE_PASSED"
+    },
+    {
+      "test": "CheckSeparateLocationTravelPIE",
+      "mode": "NullRHI PIE, actual E",
+      "result": "[2026.11.16-20.01.05:058][248]LogPython: LEVEL_TRAVEL_PIE_PASSED"
+    },
+    {
+      "test": "CheckDoorArrivalSafetyPIE",
+      "mode": "D3D11 PIE",
+      "result": "[2026.11.16-20.42.02:409][ 21]LogPython: DOOR_ARRIVAL_SAFETY_PASSED"
+    },
+    {
+      "test": "CheckStreetRefinement",
+      "mode": "saved-map commandlet",
+      "result": "[2026.11.16-20.41.27:622][  0]LogPython: STREET_REFINEMENT_CHECK_PASSED {'sidewalk_violations': 0, 'architectural_groups': 32, 'signs': 8, 'factory_batches': 13, 'factory_instances': 844, 'smoke_unchanged': True, 'unique_photos': 3}"
+    },
+    {
+      "test": "FinalApplyRender",
+      "mode": "D3D11 SceneCapture2D",
+      "result": "[2026.11.16-20.40.25:901][100]LogPython: REFINE_RENDER_PASSED"
+    }
+  ],
+  "factory": {
+    "batches": 13,
+    "instances": 844,
+    "estimated_triangles": 17648,
+    "new_lights": 0,
+    "new_collision_shapes": 0,
+    "smoke_unchanged": true
+  },
+  "weak_pc_benchmark": false
+}
