@@ -11,9 +11,11 @@ GAME = "GameplayStatics"
 STR = "KismetStringLibrary"
 TITLE = "ОТГОЛОСКИ ПРОШЛОГО"
 DIMAS_MAP = "/Game/Prologue/" + MAP_NAME
+STREET_MAP = "L_DimaApartmentStreet"
 FATHERS_MAP = "/Game/Prologue/L_Apartment"
 FOCUS_SOUND = "/Game/Prologue/Audio/S_FocusClick.S_FocusClick"
 FOR_EACH_LOOP = "/Engine/EditorBlueprintResources/StandardMacros.StandardMacros:ForEachLoop"
+WORLD = "/Script/Dostoevsky.PrologueWorldLibrary"
 WALK_SPEED = "360"
 SPRINT_SPEED = "650"
 SPRINT_COST = "24"
@@ -227,8 +229,14 @@ class Graph:
         self.column = 0
 
 
-def build_gameplay(root):
-    path = f"{root}/BP_PrologueApartmentHUD"
+def build_gameplay(root, street_door=None):
+    street = street_door is not None
+    map_name = STREET_MAP if street else MAP_NAME
+    door_specs = {**DOORS, "StreetDoor": street_door} if street else DOORS
+    fixtures = {**FIXTURES, "Bed": ("Выбрать время сна", "Выбрать время сна"),
+                "StreetDoor": ("Открыть дверь на улицу", "Закрыть дверь")} if street else FIXTURES
+    documents = INTRO_DOCUMENTS if street else DOCUMENTS
+    path = f"{root}/" + ("BP_PrologueStreetHUD" if street else "BP_PrologueApartmentHUD")
     blueprint = BP.create_blueprint_asset_with_parent(path, ue.HUD.static_class())
     if not blueprint:
         raise RuntimeError(f"Could not create {path}")
@@ -239,13 +247,15 @@ def build_gameplay(root):
         ("AtDimas", "bool", "false"), ("Focus", "string", ""), ("JournalOpen", "bool", "false"),
         ("JournalPage", "int", "0"), ("HintUntil", "real", "0"), ("Hint", "string", ""),
     ]
-    variables.extend((tag + "Found", "bool", "false") for tag, _, _ in DOCUMENTS)
-    variables.extend((tag + "Toggled", "bool", "false") for tag in (*DOORS, *LIGHTS, *WATER))
-    variables.extend((tag + "Progress", "real", "0") for tag in DOORS)
+    if street:
+        variables.extend((("InteractHeld", "bool", "false"), ("InteractPressed", "bool", "false")))
+    variables.extend((tag + "Found", "bool", "false") for tag, _, _ in documents)
+    variables.extend((tag + "Toggled", "bool", "false") for tag in (*door_specs, *LIGHTS, *WATER))
+    variables.extend((tag + "Progress", "real", "0") for tag in door_specs)
     for name, type_name, initial in variables:
         if not g.graph.add_member_variable(name, BP.get_basic_type_by_name(type_name), initial):
             raise RuntimeError(f"Cannot create {name}")
-    build_fixture_functions(blueprint)
+    build_fixture_functions(blueprint, fixtures, door_specs, street)
 
     event = BP.add_event_override(blueprint, "ReceiveDrawHUD", ue.IntPoint(-350, 0))
     start = BP.find_then_pin(event)
@@ -254,32 +264,41 @@ def build_gameplay(root):
     pc = g.pure(GAME, "GetPlayerController", PlayerIndex="0")
     player = g.pure(GAME, "GetPlayerCharacter", PlayerIndex="0")
     active, _ = g.branch(start, g.pure("KismetSystemLibrary", "IsValid", Object=player))
+    if street:
+        held = g.pure("PlayerController", "IsInputKeyDown", self=pc, Key="E")
+        pressed = g.and_(held, g.not_(g.get("InteractHeld")))
+        active = g.set(active, "InteractPressed", pressed)
+        active = g.set(active, "InteractHeld", held)
+        _, active = g.branch(active, g.pure(WORLD, "IsWorldInteractionModal"))
+        active = g.invoke(active, "RecoverAfterSleep")
     state = g.get("State")
     at_dimas = g.get("AtDimas")
     now = g.pure(GAME, "GetTimeSeconds")
     starting, active = g.branch(active, g.equals(state, START))
-    initialize(g, starting, pc, now)
+    initialize(g, starting, pc, now, map_name, street)
     restart = g.pure("PlayerController", "WasInputKeyJustPressed", self=pc, Key="R")
     reset, active = g.branch(active, restart)
-    g.execute(reset, GAME, "OpenLevel", LevelName=DIMAS_MAP)
+    g.execute(reset, GAME, "OpenLevel", LevelName=f"{root}/{map_name}")
 
     g.line(4)
     j = g.pure("PlayerController", "WasInputKeyJustPressed", self=pc, Key="J")
     journal, active = g.branch(active, g.get("JournalOpen"))
-    draw_journal(g, journal, pc, width, j)
+    draw_journal(g, journal, pc, width, j, documents)
     opening, active = g.branch(active, j)
     opening = g.set(opening, "Focus", "")
     opening = g.set(opening, "JournalOpen", "true")
     lock_controls(g, opening, pc, True)
 
-    g.line(14)
-    finish, active = g.branch(active, g.equals(state, END))
-    finish = g.panel(finish, "0", width, 5000)
-    finish = g.draw(finish, TITLE, "104", 2)
-    finish = g.draw(finish, "У подъезда кто-то говорит в рацию. У Димы в кармане ключ от склада.", "166", 1.2)
-    g.draw(finish, "Конец тестового эпизода   •   J — журнал   •   R — начать заново", "218")
+    if not street:
+        g.line(14)
+        finish, active = g.branch(active, g.equals(state, END))
+        finish = g.panel(finish, "0", width, 5000)
+        finish = g.draw(finish, TITLE, "104", 2)
+        finish = g.draw(finish, "У подъезда кто-то говорит в рацию. У Димы в кармане ключ от склада.", "166", 1.2)
+        g.draw(finish, "Конец тестового эпизода   •   J — журнал   •   R — начать заново", "218")
 
-    key = g.pure("PlayerController", "WasInputKeyJustPressed", self=pc, Key="E")
+    key = (g.get("InteractPressed") if street else
+           g.pure("PlayerController", "WasInputKeyJustPressed", self=pc, Key="E"))
     width_double = g.pure(MATH, "Conv_IntToDouble", InInt=width)
     height_double = g.pure(MATH, "Conv_IntToDouble", InInt=height)
     center_x = g.arithmetic("Multiply", width_double, "0.5")
@@ -302,17 +321,18 @@ def build_gameplay(root):
     stand, _ = g.branch(sitting, key)
     g.invoke(stand, "StandUp")
 
-    for i, (speaker, dialogue) in enumerate(DIALOGUE, IVAN):
-        g.line(16 + i)
-        current, active = g.branch(active, g.equals(state, i))
-        current = g.document(current, speaker, dialogue,
-                             "[E]  Получить ключ" if i == KEY - 1 else "[E]  Продолжить")
-        advance, _ = g.branch(current, key)
-        advance = g.set(advance, "State", str(i + 1))
-        if i == KEY - 1:
-            advance = g.view(advance, pc, player, 0.55)
-            advance = lock_controls(g, advance, pc, False)
-            show_hint(g, advance, now, "Ключ получен. Вернитесь к входной двери.", 7)
+    if not street:
+        for i, (speaker, dialogue) in enumerate(DIALOGUE, IVAN):
+            g.line(16 + i)
+            current, active = g.branch(active, g.equals(state, i))
+            current = g.document(current, speaker, dialogue,
+                                 "[E]  Получить ключ" if i == KEY - 1 else "[E]  Продолжить")
+            advance, _ = g.branch(current, key)
+            advance = g.set(advance, "State", str(i + 1))
+            if i == KEY - 1:
+                advance = g.view(advance, pc, player, 0.55)
+                advance = lock_controls(g, advance, pc, False)
+                show_hint(g, advance, now, "Ключ получен. Вернитесь к входной двери.", 7)
 
     g.line(24)
     inspecting, active = g.branch(active, g.equals(state, INSPECT))
@@ -320,20 +340,25 @@ def build_gameplay(root):
     close, _ = g.branch(inspecting, key)
     g.set(close, "State", str(WALK))
 
-    g.line(25)
-    letter, active = g.branch(active, g.equals(state, LETTER))
-    letter = g.document(letter, CLUES[0][1], CLUES[0][2], "[E]  Обернуться на голос    [J]  Журнал")
-    meet, _ = g.branch(letter, key)
-    meet = g.set(meet, "State", str(IVAN))
-    meet = lock_controls(g, meet, pc, True)
-    switch_to_scene_camera(g, meet, pc, 0.55)
+    if not street:
+        g.line(25)
+        letter, active = g.branch(active, g.equals(state, LETTER))
+        letter = g.document(letter, CLUES[0][1], CLUES[0][2], "[E]  Обернуться на голос    [J]  Журнал")
+        meet, _ = g.branch(letter, key)
+        meet = g.set(meet, "State", str(IVAN))
+        meet = lock_controls(g, meet, pc, True)
+        switch_to_scene_camera(g, meet, pc, 0.55)
 
     g.line(28)
     active = update_stamina(g, active, pc, player, now)
     active = draw_stamina(g, active, height)
-    home_goal = "Осмотрите комнату или выйдите из квартиры."
-    father_goal = g.string_choice("Вернитесь к входной двери.", "Найдите записку Фёдора.", g.equals(state, KEY))
-    active = g.draw(active, g.string_choice(home_goal, father_goal, at_dimas), "24", 1.12)
+    if street:
+        goal = g.string_choice("Американский квартал   /   1994", "Выйдите на улицу.",
+                               g.pure(WORLD, "IsOutsideApartment"))
+    else:
+        father_goal = g.string_choice("Вернитесь к входной двери.", "Найдите записку Фёдора.", g.equals(state, KEY))
+        goal = g.string_choice("Осмотрите комнату или выйдите из квартиры.", father_goal, at_dimas)
+    active = g.draw(active, goal, "24", 1.12)
     hint = g.string_choice(g.get("Hint"), "", g.pure(MATH, "Less_DoubleDouble", A=now, B=g.get("HintUntil")))
     active = g.draw(active, hint, g.offset(center_y, -95), 1.13)
     active = g.draw(active, "E — осмотр     R — заново", footer)
@@ -352,9 +377,9 @@ def build_gameplay(root):
     pointing, empty = g.branch(BP.find_then_pin(trace), g.pure("KismetSystemLibrary", "IsValid", Object=hit))
     empty = draw_idle_reticle(g, empty, center_x, center_y)
     g.set(empty, "Focus", "")
-    render_focus(g, pointing, hit, state, pc, key, now, center_x, center_y)
+    render_focus(g, pointing, hit, state, pc, key, center_x, center_y, fixtures, documents, street)
 
-    build_door_tick(g, blueprint, player)
+    build_door_tick(g, blueprint, player, door_specs)
 
     if not BP.compile_blueprint(blueprint):
         raise RuntimeError("Apartment HUD Blueprint failed to compile.")
@@ -363,12 +388,18 @@ def build_gameplay(root):
         raise RuntimeError(f"Could not save {path}.")
 
     mode = ue.load_asset("/Game/FirstPerson/Blueprints/BP_FirstPersonGameMode")
+    if street:
+        mode_path = f"{root}/BP_PrologueStreetGameMode"
+        mode = ue.load_asset(mode_path) if assets.does_asset_exist(mode_path) else assets.duplicate_loaded_asset(mode, mode_path)
+        if not mode:
+            raise RuntimeError("Could not create the street game mode.")
     defaults = ue.get_default_object(BP.generated_class(mode))
     hud_class = BP.generated_class(blueprint)
     if defaults.get_editor_property("hud_class") != hud_class:
         defaults.set_editor_property("hud_class", hud_class)
         if not assets.save_loaded_asset(mode):
             raise RuntimeError("Could not set the template game mode's HUD.")
+    return BP.generated_class(mode)
 
 
 def lock_controls(g, previous, pc, locked):
@@ -388,11 +419,11 @@ def switch_to_scene_camera(g, previous, pc, blend):
     return g.view(BP.find_then_pin(camera), pc, g.output(camera), blend)
 
 
-def initialize(g, previous, pc, now):
+def initialize(g, previous, pc, now, map_name, street):
     level = g.call(GAME, "GetCurrentLevelName")
     connect(previous, BP.find_execute_pin(level))
     previous = BP.find_then_pin(level)
-    at_home = g.pure(STR, "EqualEqual_StrStr", A=g.output(level), B=MAP_NAME)
+    at_home = g.pure(STR, "EqualEqual_StrStr", A=g.output(level), B=map_name)
     previous = g.set(previous, "AtDimas", at_home)
     seated, arrived = g.branch(previous, at_home)
     seated = g.set(seated, "State", str(REPORT))
@@ -401,6 +432,9 @@ def initialize(g, previous, pc, now):
     camera_found, camera_missing = g.branch(seated, g.pure("KismetSystemLibrary", "IsValid", Object=camera))
     g.view(camera_found, pc, camera, 0)
     switch_to_scene_camera(g, camera_missing, pc, 0)
+    if street:
+        g.set(arrived, "State", str(WALK))
+        return
     g.line(2)
     mode = g.pure(GAME, "GetGameMode")
     options = g.get("OptionsString", "GameModeBase", mode)
@@ -411,15 +445,15 @@ def initialize(g, previous, pc, now):
     show_hint(g, arrived, now, "Найдите записку Фёдора.  " + CONTROLS, 7)
 
 
-def draw_journal(g, previous, pc, width, j):
+def draw_journal(g, previous, pc, width, j, documents):
     closing, browsing = g.branch(previous, j)
     closing = g.set(closing, "JournalOpen", "false")
     lock_controls(g, closing, pc, False)
     browsing = g.panel(browsing, "0", width, 5000)
     browsing = g.draw(browsing, "ЖУРНАЛ", "28", 1.8)
-    browsing = g.draw(browsing, "1–4 — открыть документ    J — закрыть", "69")
+    browsing = g.draw(browsing, f"1–{len(documents)} — открыть документ    J — закрыть", "69")
     digit_keys = ("One", "Two", "Three", "Four")
-    for index, ((tag, title, _), digit_key) in enumerate(zip(DOCUMENTS, digit_keys), 1):
+    for index, ((tag, title, _), digit_key) in enumerate(zip(documents, digit_keys), 1):
         g.line(6 + index)
         found = g.get(tag + "Found")
         heading = g.string_choice(f"{index}.  {title}", "", found)
@@ -430,13 +464,13 @@ def draw_journal(g, previous, pc, width, j):
         )
         page = g.pure(MATH, "SelectInt", A=str(index), B=g.get("JournalPage"), bPickA=g.and_(found, pressed))
         browsing = g.set(browsing, "JournalPage", page)
-    empty = g.get(DOCUMENTS[0][0] + "Found")
-    for tag, _, _ in DOCUMENTS[1:]:
+    empty = g.get(documents[0][0] + "Found")
+    for tag, _, _ in documents[1:]:
         empty = g.or_(empty, g.get(tag + "Found"))
     browsing = g.draw(browsing, g.string_choice("", "Осмотрите документ, чтобы добавить его в журнал.", empty), "118")
     choose_page = g.and_(empty, g.equals(g.get("JournalPage"), 0))
     browsing = g.draw(browsing, g.string_choice("Выберите документ по номеру.", "", choose_page), "230", 1.1)
-    for index, (_, title, body) in enumerate(DOCUMENTS, 1):
+    for index, (_, title, body) in enumerate(documents, 1):
         g.line(10 + index)
         selected, browsing = g.branch(browsing, g.equals(g.get("JournalPage"), index))
         g.document(selected, title, body, "[J]  Закрыть журнал")
@@ -495,8 +529,10 @@ def draw_idle_reticle(g, previous, center_x, center_y):
     return g.draw(previous, "+", g.offset(center_y, -7), 1, x=g.offset(center_x, -4))
 
 
-def render_focus(g, previous, hit, state, pc, key, now, center_x, center_y):
-    entries = INTRO_DOCUMENTS + CLUES + tuple((tag, "", "") for tag in FIXTURES) + (("Exit", "Выйти из квартиры", ""),)
+def render_focus(g, previous, hit, state, pc, key, center_x, center_y, fixtures, documents, street):
+    entries = INTRO_DOCUMENTS + tuple((tag, "", "") for tag in fixtures)
+    if not street:
+        entries += CLUES + (("Exit", "Выйти из квартиры", ""),)
     for index, (tag, title, body) in enumerate(entries):
         g.line(33 + index * 2)
         target = g.pure("Actor", "ActorHasTag", self=hit, Tag=tag)
@@ -507,8 +543,8 @@ def render_focus(g, previous, hit, state, pc, key, now, center_x, center_y):
         focused = g.draw(focused, "◆", g.offset(center_y, -11), 1.1,
                          color="(R=1,G=0.67,B=0.28,A=1)", x=g.offset(center_x, -6))
         prompt = "[E]  " + title
-        if tag in FIXTURES:
-            action, reverse = FIXTURES[tag]
+        if tag in fixtures:
+            action, reverse = fixtures[tag]
             prompt = "[E]  " + action if tag == "Bed" or tag in SEATS else (
                 g.string_choice("[E]  " + reverse, "[E]  " + action, g.get(tag + "Toggled"))
             )
@@ -520,12 +556,12 @@ def render_focus(g, previous, hit, state, pc, key, now, center_x, center_y):
         first_frame = g.execute(first_frame, GAME, "PlaySound2D", Sound=FOCUS_SOUND, VolumeMultiplier="0.65")
         for path in (first_frame, steady):
             use, _ = g.branch(path, key)
-            interact(g, use, tag, title, body, pc)
+            interact(g, use, tag, title, body, pc, fixtures, documents)
     g.set(draw_idle_reticle(g, previous, center_x, center_y), "Focus", "")
 
 
-def interact(g, previous, tag, title, body, pc):
-    if tag in FIXTURES:
+def interact(g, previous, tag, title, body, pc, fixtures, documents):
+    if tag in fixtures:
         g.invoke(previous, "Activate" + tag)
         return
     if tag == "Exit":
@@ -535,7 +571,7 @@ def interact(g, previous, tag, title, body, pc):
         end = g.set(end, "State", str(END))
         lock_controls(g, end, pc, True)
         return
-    if any(tag == document[0] for document in DOCUMENTS):
+    if any(tag == document[0] for document in documents):
         previous = g.set(previous, tag + "Found", "true")
     if tag == "Note":
         g.set(previous, "State", str(LETTER))
@@ -556,21 +592,30 @@ def make_vector(g, values):
     return g.pure(MATH, "MakeVector", **dict(zip(("X", "Y", "Z"), map(str, values))))
 
 
-def build_fixture_functions(blueprint):
-    for tag in FIXTURES:
+def build_fixture_functions(blueprint, fixtures, door_specs, street):
+    for tag in fixtures:
         g = Graph(blueprint, "Activate" + tag)
         previous = g.graph.find_graph_entry_pin()
         field = tag + "Toggled"
-        if tag in DOORS:
+        if tag in door_specs:
             g.set(previous, field, g.not_(g.get(field)))
         elif tag in LIGHTS or tag in WATER:
             toggle_fixture_group(g, previous, tag, field)
         elif tag in SEATS:
             sit_down(g, previous, tag)
         elif tag == "Bed":
-            previous = g.set(previous, "Stamina", "100")
-            previous = g.set(previous, "Exhausted", "false")
-            show_hint(g, previous, g.pure(GAME, "GetTimeSeconds"), "Выносливость восстановлена.", 3)
+            if street:
+                valid, _ = g.branch(previous, g.equals(g.get("State"), WALK))
+                g.execute(valid, WORLD, "OpenBedMenu")
+            else:
+                recover_stamina(g, previous)
+
+    if street:
+        g = Graph(blueprint, "RecoverAfterSleep")
+        rest = g.call(WORLD, "ConsumeBedRest")
+        connect(g.graph.find_graph_entry_pin(), BP.find_execute_pin(rest))
+        rested, _ = g.branch(BP.find_then_pin(rest), g.output(rest))
+        recover_stamina(g, rested)
 
     g = Graph(blueprint, "StandUp")
     previous, _ = g.branch(g.graph.find_graph_entry_pin(), g.equals(g.get("State"), SITTING))
@@ -593,6 +638,12 @@ def build_fixture_functions(blueprint):
     previous = g.view(previous, pc, player, 0.65)
     previous = lock_controls(g, previous, pc, False)
     show_hint(g, previous, g.pure(GAME, "GetTimeSeconds"), "Отчёт добавлен в журнал.  " + CONTROLS, 7)
+
+
+def recover_stamina(g, previous):
+    previous = g.set(previous, "Stamina", "100")
+    previous = g.set(previous, "Exhausted", "false")
+    show_hint(g, previous, g.pure(GAME, "GetTimeSeconds"), "Выносливость восстановлена.", 3)
 
 
 def toggle_fixture_group(g, previous, tag, field):
@@ -645,7 +696,7 @@ def sit_down(g, previous, tag):
     g.view(previous, pc, camera, 0.36)
 
 
-def build_door_tick(g, blueprint, player):
+def build_door_tick(g, blueprint, player, door_specs):
     g.line(83)
     event = BP.add_event_override(blueprint, "ReceiveTick", ue.IntPoint(-350, 83 * 360))
     active, _ = g.branch(BP.find_then_pin(event), g.get("AtDimas"))
@@ -659,16 +710,17 @@ def build_door_tick(g, blueprint, player):
     if not PIN.is_valid(execute):
         raise RuntimeError("Door update sequence has no execution input.")
     connect(active, execute)
-    if not g.graph.add_node_pin(sequence):
-        raise RuntimeError("Cannot add a third door update output.")
+    for _ in range(len(door_specs) - 2):
+        if not g.graph.add_node_pin(sequence):
+            raise RuntimeError("Cannot add a door update output.")
     delta = g.output(event, "DeltaSeconds")
-    for i, tag in enumerate(DOORS):
+    for i, (tag, door) in enumerate(door_specs.items()):
         g.line(85 + 3 * i)
-        update_door(g, g.output(sequence, f"then_{i}"), tag, delta, player)
+        update_door(g, g.output(sequence, f"then_{i}"), tag, door, delta, player)
 
 
-def update_door(g, previous, tag, delta, player):
-    closed, hinge, closed_yaw, swing = DOORS[tag]
+def update_door(g, previous, tag, door, delta, player):
+    closed, hinge, closed_yaw, swing = door
     opening = g.get(tag + "Toggled")
     field = tag + "Progress"
     progress = g.get(field)
@@ -698,7 +750,7 @@ def update_door(g, previous, tag, delta, player):
     capsule = g.get("CapsuleComponent", "Character", player)
     radius = g.pure("CapsuleComponent", "GetScaledCapsuleRadius", self=capsule)
     clearance = []
-    for axis_name, size in zip(("X", "Y"), DOOR_FOOTPRINTS[tag]):
+    for axis_name, size in zip(("X", "Y"), DOOR_FOOTPRINTS.get(tag, (15, 109))):
         distance = g.pure(MATH, "Abs", A=g.output(position, axis_name))
         clearance.append(g.pure(MATH, "Greater_DoubleDouble", A=distance, B=g.offset(radius, size / 2 + 1)))
     move, blocked = g.branch(moving, g.or_(*clearance))

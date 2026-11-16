@@ -59,7 +59,7 @@ def transmissive_material(name, color, roughness, face_opacity, edge_opacity, fl
         library.connect_material_expressions(travel, "", phase, "A")
         library.connect_material_expressions(frequency, "", phase, "B")
         ripples = library.create_material_expression(material, ue.MaterialExpressionSine, -360, 240)
-        library.connect_material_expressions(phase, "", ripples, "Input")
+        library.connect_material_expressions(phase, "", ripples, "")
         gain = library.create_material_expression(material, ue.MaterialExpressionMultiply, -160, 200)
         gain.set_editor_property("const_b", .09)
         library.connect_material_expressions(ripples, "", gain, "A")

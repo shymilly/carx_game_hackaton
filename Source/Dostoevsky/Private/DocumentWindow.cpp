@@ -116,6 +116,26 @@ TSharedRef<SWidget> UDocumentWindow::RebuildWidget()
     const FText Close = Document && !Document->CloseLabel.IsEmpty()
         ? Document->CloseLabel : NSLOCTEXT("Dostoevsky", "DialogueClose", "Закрыть · Esc");
 
+    TSharedRef<SScrollBox> Contents = SNew(SScrollBox);
+    if (!Body.IsEmpty())
+        Contents->AddSlot()[SNew(STextBlock).Text(Body).AutoWrapText(true).ColorAndOpacity(TextColor)
+            .Font(DialogueFont(TEXT("CascadiaCode-Light.otf"), 18))];
+    for (int32 First = 0; First < Choices.Num(); First += 2)
+    {
+        TSharedRef<SHorizontalBox> Row = SNew(SHorizontalBox);
+        for (int32 Index = First; Index < FMath::Min(First + 2, Choices.Num()); ++Index)
+        {
+            Row->AddSlot().FillWidth(1).Padding(0, 2, 10, 2)
+                [ SNew(SButton).ButtonStyle(&FCoreStyle::Get().GetWidgetStyle<FButtonStyle>("NoBorder"))
+                    .ButtonColorAndOpacity(FLinearColor::White).ContentPadding(FMargin(8, 3))
+                    .OnClicked_Lambda([this, Index]() { ChooseOption(Index); return FReply::Handled(); })
+                    [ SNew(STextBlock).Text(FText::Format(NSLOCTEXT("Dostoevsky", "DocumentOption", "{0}. {1}"),
+                        FText::AsNumber(Index + 1), Choices[Index])).ColorAndOpacity(TextColor)
+                        .Font(DialogueFont(TEXT("CascadiaCode-Light.otf"), 14)) ] ];
+        }
+        Contents->AddSlot()[Row];
+    }
+
     // Anchors follow the supplied gameplay reference, measured against the viewport, not editor chrome.
     // All DocumentWindow subclasses use this shared design, including previously authored widget trees.
     return SNew(SConstraintCanvas)
@@ -126,10 +146,7 @@ TSharedRef<SWidget> UDocumentWindow::RebuildWidget()
             + SVerticalBox::Slot().AutoHeight().Padding(0,0,0,16)
               [ SNew(STextBlock).Text(Heading).AutoWrapText(true).ColorAndOpacity(TextColor)
                   .Font(DialogueFont(TEXT("SOUTHGHETTO.ttf"), 25)) ]
-            + SVerticalBox::Slot().FillHeight(1)
-              [ SNew(SScrollBox) + SScrollBox::Slot()
-                [ SNew(STextBlock).Text(Body).AutoWrapText(true).ColorAndOpacity(TextColor)
-                    .Font(DialogueFont(TEXT("CascadiaCode-Light.otf"), 18)) ] ]
+            + SVerticalBox::Slot().FillHeight(1)[Contents]
             + SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right).Padding(0,6,0,0)
               [ SNew(SButton).ButtonStyle(&FCoreStyle::Get().GetWidgetStyle<FButtonStyle>("NoBorder"))
                   .ContentPadding(FMargin(6,2))
@@ -140,6 +157,20 @@ TSharedRef<SWidget> UDocumentWindow::RebuildWidget()
         ];
 }
 
+void UDocumentWindow::SetChoices(TArray<FText> InChoices, FDocumentChoice InChoice)
+{
+    Choices = MoveTemp(InChoices);
+    OnChoice = MoveTemp(InChoice);
+}
+
+bool UDocumentWindow::ChooseOption(int32 Index)
+{
+    if (!Choices.IsValidIndex(Index) || !OnChoice.IsBound()) return false;
+    FDocumentChoice Choice = OnChoice;
+    Choice.Execute(Index);
+    return true;
+}
+
 void UDocumentWindow::RequestClose()
 {
     if (UGameInstance* GI = GetGameInstance()) GI->GetSubsystem<UNarrativeSubsystem>()->CloseDocument();
@@ -148,6 +179,14 @@ void UDocumentWindow::RequestClose()
 FReply UDocumentWindow::NativeOnKeyDown(const FGeometry& Geometry, const FKeyEvent& Event)
 {
     if (Event.GetKey() == EKeys::Escape) { RequestClose(); return FReply::Handled(); }
+    if (!Event.IsRepeat() && !Choices.IsEmpty())
+    {
+        const FKey Digits[] = {EKeys::One, EKeys::Two, EKeys::Three, EKeys::Four};
+        const FKey Numpad[] = {EKeys::NumPadOne, EKeys::NumPadTwo, EKeys::NumPadThree, EKeys::NumPadFour};
+        for (int32 Index = 0; Index < UE_ARRAY_COUNT(Digits); ++Index)
+            if ((Event.GetKey() == Digits[Index] || Event.GetKey() == Numpad[Index]) && ChooseOption(Index))
+                return FReply::Handled();
+    }
     return Super::NativeOnKeyDown(Geometry, Event);
 }
 

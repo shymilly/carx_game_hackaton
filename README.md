@@ -1,6 +1,6 @@
 # Dostoevsky — Echoes of the Past
 
-Сюжетная игра от первого лица на Unreal Engine 5.8. Текущий прототип — квартира Димы. Репозиторий содержит сцены, ресурсы, Blueprint и C++-модуль `Dostoevsky`.
+Сюжетная игра от первого лица на Unreal Engine 5.8. Текущий прототип включает квартиру Димы и соседний квартал в 1994 году. Маршрут и управление описаны в [инструкции к тестовой сборке](TEST-BUILD.md).
 
 ## Получение проекта
 
@@ -45,7 +45,7 @@ powershell -File Scripts/BuildEditor.ps1 -EngineRoot "D:\UE_5.8" -GenerateVSCode
 
 - [Спецификация интерфейса](Docs/DialogueStyle.md)
 - [Управление и значок журнала после вставания](Docs/ExplorationHUD.md)
-- [Подключение текста, озвучки и перехода на улицу](Docs/NarrativeIntegration.md)
+- [Подключение текста, озвучки и переходов между картами](Docs/NarrativeIntegration.md)
 - [Постоянные правила разработки](AGENTS.md)
 
 Для новых взаимодействий создавайте Data Asset `InteractionDocument`, назначайте его в `NarrativeInteractionComponent` и вызывайте `ActivateInteraction`. Общий `DocumentWindow` покажет текст в утверждённом стиле.
@@ -62,7 +62,7 @@ powershell -File Scripts/BuildEditor.ps1 -EngineRoot "D:\UE_5.8" -GenerateVSCode
 & "D:\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" "$PWD\Dostoevsky.uproject" -run=pythonscript "-script=$PWD\Scripts\CheckDialoguePaint.py" -LiveCoding=false -unattended -nullrhi -nosplash -nosound
 ```
 
-Упакованная сборка и полный игровой проход ещё не проверены. Для звуков нужно назначить реальные assets. Карта улицы Американского квартала пока отсутствует: компонент перехода готов, но ему нужна существующая StreetMap, включённая в список карт упаковки.
+Квартира и улица находятся на стартовой карте `L_DimaApartmentStreet`. Входная дверь открывается на тротуар. Игровое время, журнал и освещение продолжают работать при выходе из квартиры.
 
 ## Совместная работа
 

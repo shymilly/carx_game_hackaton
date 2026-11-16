@@ -34,12 +34,25 @@ void UNarrativeSubsystem::Deinitialize()
 
 bool UNarrativeSubsystem::ShowDocument(APlayerController* Player, UInteractionDocument* Document, TSubclassOf<UDocumentWindow> WindowClass)
 {
+    return OpenDocument(Player, Document, WindowClass, {}, {});
+}
+
+bool UNarrativeSubsystem::ShowChoices(APlayerController* Player, UInteractionDocument* Document,
+    TArray<FText> Choices, FDocumentChoice Selection)
+{
+    return OpenDocument(Player, Document, UDocumentWindow::StaticClass(), MoveTemp(Choices), MoveTemp(Selection));
+}
+
+bool UNarrativeSubsystem::OpenDocument(APlayerController* Player, UInteractionDocument* Document,
+    TSubclassOf<UDocumentWindow> WindowClass, TArray<FText> Choices, FDocumentChoice Selection)
+{
     if (!Player || !Player->IsLocalController() || !Document || bTravelling) return false;
     CloseDocument();
     Window = CreateWidget<UDocumentWindow>(Player, WindowClass.Get() ? WindowClass.Get() : UDocumentWindow::StaticClass());
     if (!Window) return false;
     CurrentDocument = Document;
     Window->Document = Document;
+    Window->SetChoices(MoveTemp(Choices), MoveTemp(Selection));
     Window->AddToViewport(50);
     ModalPlayer = Player;
     bPreviousCursor = Player->bShowMouseCursor;
@@ -64,6 +77,7 @@ void UNarrativeSubsystem::CloseDocument()
         ModalPlayer->SetIgnoreMoveInput(false);
         ModalPlayer->SetIgnoreLookInput(false);
         ModalPlayer->bShowMouseCursor = bPreviousCursor;
+        ModalPlayer->FlushPressedKeys();
         ModalPlayer->SetInputMode(FInputModeGameOnly());
         if (CurrentDocument && CurrentDocument->CloseSound)
             UGameplayStatics::PlaySound2D(ModalPlayer, CurrentDocument->CloseSound);

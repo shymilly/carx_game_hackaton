@@ -2,6 +2,7 @@
 #include "CoreMinimal.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "Engine/EngineBaseTypes.h"
+#include "DocumentWindow.h"
 #include "NarrativeSubsystem.generated.h"
 class UInteractionDocument;
 class UDocumentWindow;
@@ -18,6 +19,7 @@ public:
     virtual void Deinitialize() override;
     UFUNCTION(BlueprintCallable, Category="Narrative")
     bool ShowDocument(APlayerController* Player, UInteractionDocument* Document, TSubclassOf<UDocumentWindow> WindowClass);
+    bool ShowChoices(APlayerController* Player, UInteractionDocument* Document, TArray<FText> Choices, FDocumentChoice Selection);
     UFUNCTION(BlueprintCallable, Category="Narrative") void CloseDocument();
     UFUNCTION(BlueprintPure, Category="Narrative") bool IsDocumentOpen() const { return Window != nullptr; }
     UFUNCTION(BlueprintCallable, Category="Narrative|Audio") void StartAmbience(USoundBase* Sound, float Volume = 0.5f);
@@ -35,6 +37,8 @@ private:
     bool bTravelling = false;
     FDelegateHandle MapLoadedHandle;
     FDelegateHandle TravelFailureHandle;
+    bool OpenDocument(APlayerController* Player, UInteractionDocument* Document,
+        TSubclassOf<UDocumentWindow> WindowClass, TArray<FText> Choices, FDocumentChoice Selection);
     void MapLoaded(UWorld* World);
     void TravelFailed(UWorld* World, ETravelFailure::Type Failure, const FString& Error);
 };
