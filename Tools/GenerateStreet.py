@@ -1,4 +1,4 @@
-"""Add the 1994 street to a copy of the furnished apartment in Unreal Editor."""
+"""Update the 1994 neighborhood around the furnished apartment in Unreal Editor."""
 from pathlib import Path
 import sys
 
@@ -36,7 +36,8 @@ def generate():
     assets = ue.get_editor_subsystem(ue.EditorAssetSubsystem)
     levels = ue.get_editor_subsystem(ue.LevelEditorSubsystem)
     actors = ue.get_editor_subsystem(ue.EditorActorSubsystem)
-    opened = (levels.load_level(TARGET) if assets.does_asset_exist(TARGET)
+    existing = assets.does_asset_exist(TARGET)
+    opened = (levels.load_level(TARGET) if existing
               else levels.new_level_from_template(TARGET, DIMAS_MAP))
     if not opened:
         raise RuntimeError(f"Could not open {TARGET}.")
@@ -45,20 +46,24 @@ def generate():
     door = next(actor for actor in placed if actor.get_actor_label() == "Front door")
     bed = next(actor for actor in placed if actor.actor_has_tag("Bed"))
     door_spec = prepare_door(door)
-    rebuild = "--rebuild-street" in sys.argv
+    rebuild = "--rebuild-street" in sys.argv or not any(isinstance(actor, ue.StreetTrafficFlow) for actor in placed)
+    time = next((actor for actor in placed if isinstance(actor, ue.PrologueTimeOfDay)), None)
+    keep = {"Street/06 Sky and time", "Street/07 Interior additions"}
     reimport = BLENDER_MESHES if "--reimport-street" in sys.argv else ()
     obsolete = [actor for actor in placed if str(actor.get_folder_path()) == "05 Exterior"
                 or actor.get_actor_label() in ("Curtains_Double", "Curtains_Double2")
-                or (rebuild and str(actor.get_folder_path()).startswith("Street/"))]
+                or (rebuild and str(actor.get_folder_path()).startswith("Street/")
+                    and str(actor.get_folder_path()) not in keep)]
     if obsolete and not actors.destroy_actors(obsolete):
         raise RuntimeError("Could not remove the temporary exterior.")
-    if rebuild or not any(isinstance(actor, ue.PrologueTimeOfDay) for actor in placed):
-        build_street(bed, reimport)
+    if rebuild:
+        build_street(bed, reimport, time)
     elif reimport:
         street_models(reimport)
 
-    add_door_hardware({**DOORS, "StreetDoor": door_spec})
-    tune_street_apartment_props()
+    if not existing:
+        add_door_hardware({**DOORS, "StreetDoor": door_spec})
+        tune_street_apartment_props()
     mode = (ue.BlueprintEditorLibrary.generated_class(ue.load_asset(GAME_MODE))
             if assets.does_asset_exist(HUD) and assets.does_asset_exist(GAME_MODE)
             else build_gameplay(ROOT, street_door=door_spec))

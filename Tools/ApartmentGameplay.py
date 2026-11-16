@@ -10,6 +10,7 @@ MATH = "KismetMathLibrary"
 GAME = "GameplayStatics"
 STR = "KismetStringLibrary"
 STORY = "/Script/Dostoevsky.DimaApartmentStoryLibrary"
+NAVIGATION = "/Script/Dostoevsky.StreetNavigationLibrary"
 TITLE = "ОТГОЛОСКИ ПРОШЛОГО"
 DIMAS_MAP = "/Game/Prologue/" + MAP_NAME
 STREET_MAP = "L_DimaApartmentStreet"
@@ -522,7 +523,9 @@ def draw_idle_reticle(g, previous, center_x, center_y):
 
 def render_focus(g, previous, hit, state, pc, key, center_x, center_y, fixtures, documents, street):
     entries = INTRO_DOCUMENTS + STORY_OBJECTS + tuple((tag, "", "") for tag in fixtures)
-    if not street:
+    if street:
+        entries += (("StreetPortal", "", ""),)
+    else:
         entries += CLUES + (("Exit", "Выйти из квартиры", ""),)
     for index, (tag, title, body) in enumerate(entries):
         g.line(33 + index * 2)
@@ -539,6 +542,8 @@ def render_focus(g, previous, hit, state, pc, key, center_x, center_y, fixtures,
             prompt = "[E]  " + action if tag == "Bed" or tag in SEATS else (
                 g.string_choice("[E]  " + reverse, "[E]  " + action, g.get(tag + "Toggled"))
             )
+        if tag == "StreetPortal":
+            prompt = g.pure(NAVIGATION, "PortalPrompt", Hit=hit)
         prompt = g.pure(STORY, "InteractionPrompt", Tag=tag, Fallback=prompt)
         focused = g.draw(focused, prompt, g.offset(center_y, -44), 1.15,
                          x=g.offset(center_x, -106))
@@ -548,7 +553,10 @@ def render_focus(g, previous, hit, state, pc, key, center_x, center_y, fixtures,
         first_frame = g.execute(first_frame, GAME, "PlaySound2D", Sound=FOCUS_SOUND, VolumeMultiplier="0.65")
         for path in (first_frame, steady):
             use, _ = g.branch(path, key)
-            interact(g, use, tag, title, body, pc, fixtures, documents)
+            if tag == "StreetPortal":
+                g.execute(use, NAVIGATION, "EnterPortal", Hit=hit)
+            else:
+                interact(g, use, tag, title, body, pc, fixtures, documents)
     g.set(draw_idle_reticle(g, previous, center_x, center_y), "Focus", "")
 
 

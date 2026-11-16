@@ -152,7 +152,12 @@ void APrologueTimeOfDay::ApplyTime()
         if (ALight* Light = StreetLights[Index])
             Light->GetLightComponent()->SetIntensity(StreetLightIntensity[Index] * WindowGlow);
     if (StreetLightParameters)
-        GetWorld()->GetParameterCollectionInstance(StreetLightParameters)->SetScalarParameterValue(TEXT("StreetGlow"), WindowGlow);
+    {
+        UMaterialParameterCollectionInstance* Parameters = GetWorld()->GetParameterCollectionInstance(StreetLightParameters);
+        Parameters->SetScalarParameterValue(TEXT("StreetGlow"), WindowGlow);
+        Parameters->SetScalarParameterValue(TEXT("FactoryExposure"), FMath::Lerp(.085f, .85f, FMath::Clamp(
+            (FMath::Lerp(A.SkyIntensity, B.SkyIntensity, Weight) - .28f) / .68f, 0.f, 1.f)));
+    }
 
     if (HourHand) HourHand->SetActorRotation(FQuat(FVector::YAxisVector, -Hour / 12.0 * UE_TWO_PI) * HourHandBase);
     if (MinuteHand) MinuteHand->SetActorRotation(FQuat(FVector::YAxisVector, -FMath::Frac(Hour) * UE_TWO_PI) * MinuteHandBase);
@@ -291,7 +296,8 @@ void UPrologueWorldLibrary::OpenBedMenu(AHUD* HUD)
 
 bool UPrologueWorldLibrary::IsWorldInteractionModal(AHUD* HUD)
 {
-    if (const UNarrativeSubsystem* UI = Narrative(OwningPlayer(HUD)); UI && UI->IsDocumentOpen()) return true;
+    if (const UNarrativeSubsystem* UI = Narrative(OwningPlayer(HUD)); UI &&
+        (UI->IsDocumentOpen() || UI->IsLocationTransitionActive())) return true;
     const APrologueTimeOfDay* Time = TimeController(HUD);
     return Time && Time->IsAsleep();
 }

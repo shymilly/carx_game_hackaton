@@ -1,7 +1,7 @@
 """Build the 1994 street around the apartment without loading a second world."""
-from math import atan2, degrees, hypot
+from contextlib import contextmanager
 from pathlib import Path
-from random import Random
+import re
 
 import unreal as ue
 
@@ -17,10 +17,10 @@ STAGE = PROJECT / "Saved" / "Street" / "Import"
 V, R = ue.Vector, ue.Rotator
 SIDEWALK_Z = -12
 ROAD_Z = -28
-MAIN_ROAD_NORTH = -756
-MAIN_ROAD_SOUTH = -1544
 BLENDER_MESHES = ("SM_BookKiosk", "SM_WallClock", "SM_ClockHour", "SM_ClockMinute", "SM_Sedan94",
-                  "SM_SignDeli", "SM_SignPharmacy", "SM_SignAegis", "SM_SignStreet")
+                  "SM_SignStreet", "SM_NeighborhoodGrocery", "SM_NeighborhoodPharmacy", "SM_NeighborhoodPrecinct",
+                  "SM_NeighborhoodFlea", "SM_NeighborhoodBar", "SM_NeighborhoodPark", "SM_PressBundles",
+                  "SM_FactoryCard", "SM_CourtyardBirch", "SM_CourtyardShrub")
 
 
 def normalized_obj(name):
@@ -80,7 +80,8 @@ def street_models(reimport=()):
                 else:
                     library = ue.MaterialEditingLibrary
                     roughness = {"CarPaint": .32, "CarGlass": .24, "Chrome": .27, "Steel": .48}.get(key, .76)
-                    material = make_material(ROOT, "Prop_" + key, palette[key], roughness)
+                    material_name = re.sub(r"[^a-zA-Z0-9_]", "_", key)
+                    material = make_material(ROOT, "Prop_" + material_name, palette[key], roughness)
                     base = library.get_material_property_input_node(material, ue.MaterialProperty.MP_BASE_COLOR)
                     base.set_editor_property("constant", ue.LinearColor(*palette[key], 1))
                     if key in ("Chrome", "Steel") and not library.get_material_property_input_node(
@@ -109,11 +110,26 @@ class StreetBuilder:
         self.shapes = {shape: ue.load_asset(f"/Engine/BasicShapes/{shape}") for shape in ("Cube", "Sphere", "Cylinder")}
         self.batches = {}
         self.lights = []
-        self.rng = Random(1994)
         self.folder = "Street/01 Pavement"
+        self.turn = 0
+
+    @contextmanager
+    def rotated(self, yaw):
+        previous, self.turn = self.turn, yaw
+        try:
+            yield
+        finally:
+            self.turn = previous
+
+    def world_pose(self, pos, rotation):
+        if self.turn == 90:
+            x, y, z = pos
+            return (-y, x, z), (rotation[0], rotation[1], rotation[2] + 90)
+        return pos, rotation
 
     def spawn(self, actor_class, label, pos=(0, 0, 0), rotation=(0, 0, 0), tag=None):
-        actor = self.actors.spawn_actor_from_class(actor_class, V(*pos), R(*rotation))
+        position, angles = self.world_pose(pos, rotation)
+        actor = self.actors.spawn_actor_from_class(actor_class, V(*position), R(*angles))
         if not actor:
             raise RuntimeError(f"Could not place {label}")
         actor.set_actor_label(label)
@@ -138,17 +154,29 @@ class StreetBuilder:
         actor.set_actor_scale3d(V(*(entry / 100 for entry in dimensions)))
         return actor
 
-    def detail(self, pos, dimensions, material, rotation=(0, 0, 0), shape="Cube"):
-        key = (self.folder, material, shape)
+    def detail(self, pos, dimensions, material, rotation=(0, 0, 0), shape="Cube", *, facade=False):
+        position, angles = self.world_pose(pos, rotation)
+        cell = (int(position[0]//2400), int(position[1]//2400))
+        if facade:
+            cull_distances = (14800, 18600)
+        elif max(dimensions) <= 170 and self.folder != "Street/07 Interior additions":
+            cull_distances = (5700, 7600)
+        else:
+            cull_distances = (0, 0)
+        key = (self.folder, material, shape, cell, cull_distances)
         if key not in self.batches:
-            actor = self.spawn(ue.StreetMeshInstances, f"Detail instances · {material} · {shape}")
+            actor = self.spawn(ue.StreetMeshInstances, f"Detail instances · {material} · {shape} · {cell}")
+            actor.set_actor_location(V(cell[0] * 2400, cell[1] * 2400, 0), False, False)
+            actor.set_actor_rotation(R(), False)
             component = actor.get_editor_property("instances")
             component.set_static_mesh(self.shapes[shape])
             component.set_material(0, self.materials[material])
+            if cull_distances[1]:
+                component.set_cull_distances(*cull_distances)
             self.batches[key] = component
-        transform = ue.Transform(location=V(*pos), rotation=R(*rotation),
+        transform = ue.Transform(location=V(*position), rotation=R(*angles),
                                  scale=V(*(entry / 100 for entry in dimensions)))
-        self.batches[key].add_instance(transform)
+        self.batches[key].add_instance(transform, True)
 
     def between(self, first, second, thickness, material):
         start, end = V(*first), V(*second)
@@ -168,50 +196,6 @@ class StreetBuilder:
         actor.get_component_by_class(ue.CameraComponent).set_field_of_view(fov)
         return actor
 
-    def pavement(self):
-        self.folder = "Street/01 Pavement"
-        self.slab("World foundation", -3930, 4050, -3520, 2940, -31, 120, "asphalt")
-        self.slab("Neptune Avenue roadway", -3490, 3690, MAIN_ROAD_SOUTH, MAIN_ROAD_NORTH, ROAD_Z, 9, "asphalt")
-        self.slab("Alley from side street", -2360, -1530, -2900, 1990, ROAD_Z, 9, "asphalt")
-        self.slab("Near sidewalk", -1550, 3490, MAIN_ROAD_NORTH, -452, SIDEWALK_Z, 24, "concrete")
-        self.slab("Far sidewalk", -1550, 3490, -1830, MAIN_ROAD_SOUTH, SIDEWALK_Z, 24, "concrete")
-        self.slab("Kitchen courtyard", -1490, -392, -451, 39, SIDEWALK_Z, 26, "concrete")
-        self.slab("Side passage paving", -1490, -769, 39, 1074, SIDEWALK_Z, 24, "concrete")
-        self.slab("Rear service lane paving", -770, 2860, 451, 1250, SIDEWALK_Z, 24, "concrete")
-        self.slab("Eastern sidewalk", 804, 2880, -451, 451, SIDEWALK_Z, 24, "concrete")
-        self.slab("Door landing", -270, -117, -512, -440, -.4, 16, "stone")
-        self.slab("West sidewalk north of junction", -3400, -2360, -750, 1720, SIDEWALK_Z, 23, "concrete")
-        self.slab("West sidewalk south of junction", -3400, -2360, -2970, -1550, SIDEWALK_Z, 23, "concrete")
-        # Road paint sits well below the curb and does not participate in collision.
-        for y in (-1159, -1144):
-            for left, right in ((-1395, 3350), (-3390, -2465)):
-                self.detail(((left + right) / 2, y, ROAD_Z + .17), (right - left, 8, .25), "yellow_line")
-        for index in range(12):
-            self.detail((-1440, -1506 + index * 64, ROAD_Z + .25), (206, 31, .3), "white_line")
-        for x in range(-1315, 3280, 385):
-            for y in (-843, -1453):
-                self.detail((x, y, ROAD_Z + .17), (127, 4.1, .27), "white_line")
-        for x in range(-1440, 3430, 90):
-            for y in (MAIN_ROAD_NORTH + 1, MAIN_ROAD_SOUTH - 1):
-                if x < -1310:
-                    continue
-                self.detail((x, y, SIDEWALK_Z - 6), (86.6, 14, 13), "stone")
-        for x, y in ((-344, -905), (1087, -1220), (-1321, -1466), (2262, -790)):
-            self.detail((x, y, ROAD_Z + .22), (54, 54, .55), "steel", shape="Cylinder")
-            for j in (-12, 0, 12):
-                self.detail((x, y + j, ROAD_Z + .5), (23, 3, .2), "frame")
-        for start, end in (((-1530,-1544),(-2400,-1500)), ((-3500,-1530),(-3500,-785)), ((3450,-1550),(3450,-755)),
-                           ((-2290,1580),(-1490,1580))):
-            # Loading docks and retaining walls close the playable ends of the block.
-            dx, dy = end[0]-start[0], end[1]-start[1]
-            self.block("Masonry end of block", ((start[0]+end[0])/2, (start[1]+end[1])/2, 86),
-                       (hypot(dx, dy), 32, 228), "brick", rotation=(0, 0, degrees(atan2(dy, dx))))
-        for pos, size in (((-3650, -375, 250), (25, 4350, 550)), ((3580, -375, 250), (25, 4350, 550)),
-                          ((-35, -2550, 250), (7260, 25, 550)), ((-35, 1800, 250), (7260, 25, 550))):
-            boundary = self.block("Playable block boundary", pos, size, "frame")
-            boundary.set_actor_hidden_in_game(True)
-            boundary.get_component_by_class(ue.StaticMeshComponent).set_editor_property("cast_shadow", False)
-
     def facade_strip(self, label, axis, fixed, first, last, bottom, top, material="brick"):
         mid, z = (first + last) / 2, (bottom + top) / 2
         if axis == "x":
@@ -229,12 +213,12 @@ class StreetBuilder:
 
     def window(self, x, y, z, face, width=108, height=136, lit=False):
         self.detail((x, y, z), (width + 18, 15, height + 17), "stone")
-        self.detail((x, y + face * 8, z), (width, 3.3, height), "lit_window" if lit else "dark_glass")
+        self.detail((x, y + face * 8, z), (width, 3.3, height), "lit_window" if lit else "dark_glass", facade=True)
         for dx in (-width/2, 0, width/2):
-            self.detail((x + dx, y + face * 11, z), (4.7, 5, height), "frame")
+            self.detail((x + dx, y + face * 11, z), (4.7, 5, height), "frame", facade=True)
         for dz in (-height/2, -14, height/2):
-            self.detail((x, y + face * 11, z + dz), (width + 5, 5, 4.8), "frame")
-        self.detail((x, y + face * 13, z - height/2 - 7), (width + 25, 21, 11), "stone")
+            self.detail((x, y + face * 11, z + dz), (width + 5, 5, 4.8), "frame", facade=True)
+        self.detail((x, y + face * 13, z - height/2 - 7), (width + 25, 21, 11), "stone", facade=True)
         if lit:
             self.detail((x - width * .31, y + face * 10, z + 9), (width * .21, 2, height * .82), "curtain")
 
@@ -299,9 +283,16 @@ class StreetBuilder:
         for dx in (-.33, -.17, 0, .17, .33):
             self.detail((x + width * dx, y + face * 26, 123), (5, 11, 175), "frame")
         self.detail((x, y + face * 29, 106), (width - 85, 9, 6), "frame")
-        self.detail((x, y + face * 25, 242), (width - 34, 35, 54), shade)
-        self.model("Fascia lettering", self.meshes[sign], (x, y + face * 44, 243),
-                   180 if face > 0 else 0, False)
+        board = {"SM_NeighborhoodGrocery": "warning_paint", "SM_NeighborhoodPharmacy": "precinct_green",
+                 "SM_NeighborhoodBar": "frame"}[sign]
+        self.detail((x, y + face * 25, 242), (width - 34, 35, 54), board)
+        lettering = self.model("Fascia lettering", self.meshes[sign], (x, y + face * 45, 243),
+                               180 if face > 0 else 0, False)
+        lettering.set_actor_scale3d(V(2.25, 1, 1.55))
+        if sign == "SM_NeighborhoodPharmacy":
+            for offset in (-.38, .38):
+                for length, height in ((34, 10), (10, 34)):
+                    self.detail((x + width*offset, y + face*44, 243), (length, 3, height), "faded_white")
         for index in range(15):
             stripe_width = (width - 47) / 15
             self.detail((x + stripe_width * (index-7), y + face * 69, 200),
@@ -311,56 +302,6 @@ class StreetBuilder:
             self.detail((x + width*dx, y + face*29, 113), (88, 2.1, 49), "paper")
             for dz in (-16, 0, 16):
                 self.detail((x + width*dx, y + face*31, 113+dz), (71, 1, 2.1), shade)
-
-    def blockfronts(self):
-        self.folder = "Street/03 Retail and walk-ups"
-        self.building("Baltic Deli walk-up", -367, -1811, 1, 677, 491, 791, "ochre_brick", ("SM_SignDeli", "awning"))
-        self.building("Apothecary walk-up", 346, -1811, 1, 673, 495, 880, "brick", ("SM_SignPharmacy", "teal"))
-        self.building("West tenement", -1092, -1822, 1, 734, 534, 777, "brick")
-        self.building("Brownstone terrace", 1099, -1822, 1, 810, 549, 1040, "ochre_brick")
-        self.building("East corner warehouses", 1998, -1829, 1, 972, 775, 710, "brick")
-        self.building("Elevated rear buildings", 3030, -1825, 1, 1040, 660, 1280, "ochre_brick")
-        self.building("North corner tenement", 1245, -461, -1, 668, 529, 937, "ochre_brick")
-        self.building("Laundry tenement", 2051, -462, -1, 910, 706, 1097, "brick")
-        self.building("North block terminal", 2940, -462, -1, 858, 608, 722, "brick")
-        self.building("West corner rowhome", -2850, -757, -1, 865, 742, 945, "ochre_brick")
-        self.building("West corner shops", -2911, -1546, 1, 1080, 525, 773, "brick")
-        for x, z, w, d in ((-1180, 997, 820, 850), (2780, 1210, 1146, 800), (1650, 1475, 676, 535)):
-            self.block("Distant upper block", (x, -2650, z/2 + SIDEWALK_Z), (w, d, z), "brick")
-
-    def industrial_yard(self):
-        self.folder = "Street/04 Aegis freight yard"
-        self.building("Aegis freight building", 283, 1330, -1, 1640, 793, 568, "brick")
-        self.building("Boiler house", -1025, 1486, -1, 810, 693, 721, "ochre_brick")
-        self.building("Loading warehouse", 1542, 1380, -1, 932, 658, 501, "ochre_brick")
-        self.detail((245, 1309, 293), (626, 26, 58), "frame")
-        self.model("Freight sign", self.meshes["SM_SignAegis"], (245, 1294, 290), collision=False)
-        for x in (-265, 770):
-            self.detail((x, 1318, 118), (247, 23, 249), "frame")
-            self.detail((x, 1304, 104), (219, 9, 212), "dark_stone")
-            for z in range(16, 206, 13):
-                self.detail((x, 1299, z), (211, 3, 3.3), "steel")
-        for x, y, h, diameter in ((-1160, 1490, 1490, 122), (-926, 1596, 1215, 95), (889, 1773, 1050, 78)):
-            self.block("Factory smokestack", (x, y, h/2+SIDEWALK_Z), (diameter, diameter, h), "brick", shape="Cylinder")
-            for offset, width in ((-15, 1.23), (-86, 1.07), (215-h, 1.1)):
-                self.detail((x, y, h + offset), (diameter*width, diameter*width, 19), "dark_stone", shape="Cylinder")
-        self.fence(-1310, 1995, 1132)
-        for x in (1150, 1266, 1382):
-            self.block("Freight pallet crate", (x, 1019, 37), (108, 94, 99), "wood")
-            for z in (7, 66):
-                self.detail((x, 970, z), (111, 5, 13), "dark_stone")
-
-    def fence(self, lo, hi, y):
-        for x in range(lo, hi + 1, 215):
-            self.detail((x, y, 92), (9, 9, 208), "galvanized", shape="Cylinder")
-        for z in (28, 106, 184):
-            self.detail(((lo+hi)/2, y, z), (hi-lo, 4, 4), "galvanized")
-        # Repeat diamond-shaped runs in a plane. A thin rail defines the yard's physical boundary.
-        for x in range(lo + 35, hi - 34, 26):
-            for shift in (-19, 19):
-                self.between((x, y, 22), (x + shift, y, 183), 1.5, "steel")
-        guard = self.block("Freight fence collision", ((lo+hi)/2, y, 85), (hi-lo, 7, 197), "frame")
-        guard.set_actor_hidden_in_game(True)
 
     def lamp(self, x, y, facing):
         self.detail((x, y, 19), (31, 31, 61), "dark_stone", shape="Cylinder")
@@ -381,50 +322,6 @@ class StreetBuilder:
         light.set_attenuation_radius(radius)
         light.set_outer_cone_angle(58)
         self.lights.append(lamp)
-
-    def details(self):
-        self.folder = "Street/05 Fixtures and vehicles"
-        self.model("Киоск КНИГИ / ПРЕССА", self.meshes["SM_BookKiosk"], (-700, -426, SIDEWALK_Z))
-        for x, y, yaw, paint in ((-115, -901, 0, "sedan_burgundy"), (1039, -1416, 180, "sedan_cream"),
-                                  (2104,-892,0,None), (-1302,-1388,180,"sedan_cream")):
-            actor = self.model("Parked early-1990s sedan", self.meshes["SM_Sedan94"], (x, y, ROAD_Z), yaw)
-            if paint:
-                component = actor.get_component_by_class(ue.StaticMeshComponent)
-                for index, slot in enumerate(self.meshes["SM_Sedan94"].get_editor_property("static_materials")):
-                    if str(slot.get_editor_property("imported_material_slot_name")) == "CarPaint":
-                        component.set_material(index, self.materials[paint])
-        for x, y, facing in ((-1045,-721,-1), (535,-719,-1), (1815,-724,-1), (-775,-1581,1), (1142,-1581,1),
-                             (-1290,874,1)):
-            self.lamp(x, y, facing)
-        self.spot("Entrance hood light", (-194, -493, 217), (0, -76, 0), 2.3, 330, (1, .72, .42), True)
-        self.detail((-700, -541, 230), (88, 5, 5), "lamp_glass")
-        self.spot("Book display light", (-700, -542, 228), (0, -49, 90), 1.0, 274, (1, .81, .57))
-        for x, y in ((-394,-719), (398,-721), (923,-1578), (-888,-1585)):
-            self.detail((x, y, 48), (6.3, 6.3, 119), "steel", shape="Cylinder")
-            self.detail((x, y, 111), (18, 12, 25), "steel")
-            self.detail((x, y+6.3, 116), (11, 1.5, 13), "dark_glass")
-            self.detail((x, y+6.8, 108), (4, 1.5, 2.3), "frame")
-        for x, y in ((-1005,-497), (545,-1699), (-1292,872), (1190,-576)):
-            self.block("Corrugated metal trash can", (x, y, 28), (42, 42, 79), "steel", shape="Cylinder")
-            self.detail((x, y, 69), (47, 47, 8), "galvanized", shape="Cylinder")
-            self.detail((x, y, 75), (13, 4, 4), "steel")
-        self.detail((-1325,-698,137), (8,8,294), "galvanized", shape="Cylinder")
-        self.detail((-1325,-698,264), (110,5,28), "teal")
-        self.model("Neptune Avenue letters", self.meshes["SM_SignStreet"], (-1325,-701,266), collision=False)
-        for x, y in ((-1290,-576), (109,-1692), (1602,-618), (2705,-1697), (-1105,590)):
-            self.slab("Street tree pit", x-59, x+59, y-47, y+47, SIDEWALK_Z + .6, 2, "soil", False)
-            self.block("Street tree trunk", (x,y,141), (28,29,304), "wood", shape="Cylinder")
-            for dx, dy, z, size in ((0,1,325,222), (57,27,279,163), (-51,-25,284,172), (18,-22,382,146)):
-                self.detail((x+dx,y+dy,z), (size, size*.88,size*1.26), "leaf_a" if dx > 0 else "leaf_b",
-                            shape="Sphere")
-        for x in (-1435, -430, 560, 1940):
-            for y in (-541, -1775):
-                length = self.rng.uniform(14, 29)
-                self.detail((x+self.rng.uniform(-40,40), y, SIDEWALK_Z+.3), (length, length*.7, .28), "paper",
-                            (0,0,self.rng.uniform(-165,165)))
-        for side in (-1, 1):
-            self.between((-1335,-533,464+side*15), (-386, -536, 424+side*15), 2.05, "frame")
-            self.between((-386,-536,424+side*15), (675,-538,468+side*15), 2.05, "frame")
 
     def atmosphere(self, collection, hour, minute, pillow):
         self.folder = "Street/06 Sky and time"
@@ -487,23 +384,21 @@ class StreetBuilder:
             else:
                 self.between((x-half, y, 245), (x+half, y, 245), 2.4, "steel")
 
-    def review_views(self):
-        self.folder = "Street/08 Review cameras"
-        self.camera("Street overview", "StreetReview", (-756,-1388,170), (-178,-438,248), 89)
-        self.camera("View through desk window", "WindowReview", (-48,228,156), (8,454,170), 73)
-        self.camera("Book kiosk detail", "KioskReview", (-803,-850,149), (-701,-508,128), 64)
+def build_street(bed, reimport=(), time=None):
+    from StreetArtwork import add_street_art
+    from StreetNeighborhood import assemble_neighborhood
 
-
-def build_street(bed, reimport=()):
     materials, collection = create_street_materials(STAGE)
+    add_street_art(materials, collection, STAGE)
     builder = StreetBuilder(materials, street_models(reimport))
-    builder.pavement()
-    builder.apartment_facade()
-    builder.blockfronts()
-    builder.industrial_yard()
-    builder.details()
-    hour, minute, pillow = builder.interior(bed)
-    time = builder.atmosphere(collection, hour, minute, pillow)
-    builder.review_views()
+    assemble_neighborhood(builder)
+    if time:
+        time.modify()
+        time.set_editor_properties({"street_lights": builder.lights, "street_light_parameters": collection})
+    else:
+        hour, minute, pillow = builder.interior(bed)
+        time = builder.atmosphere(collection, hour, minute, pillow)
+    ambient = time.get_editor_property("ambient_sky").get_component_by_class(ue.SkyLightComponent)
+    ambient.set_editor_property("cubemap_resolution", 64)
     ue.log(f"STREET_GEOMETRY_OK {len(builder.batches)} detail batches, {len(builder.lights)} street light actors")
     return time

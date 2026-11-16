@@ -196,6 +196,54 @@ def sign(label, message, width):
     text(label, message, (0, 0, 0), .28, "Cream", width)
 
 
+def press_bundles():
+    rng = Random(491)
+    for column, center in enumerate((-.47, -.17, .15, .46)):
+        height = .035 + column % 3 * .016
+        angle = rng.uniform(-.06, .06)
+        box("Folded newspaper stack", (center, 0, height / 2), (.27, .33, height), "PrintPaper", .001,
+            (0, 0, angle))
+        for j in range(3):
+            box("Uneven folded edges", (center, -.164, .009 + j * .008), (.266, .003, .0018), "Oxide")
+        box("Newspaper masthead block", (center, .098, height + .0008), (.218, .045, .002), "FadedRed")
+        box("Halftone photo", (center + .052, -.01, height + .0008), (.092, .091, .002), "PaperBlue")
+        for row in range(8):
+            box("Printed columns", (center - .067, .047 - row * .02, height + .0008), (.07, .004, .002), "Ink")
+        tab = box("Folded cardboard price ticket", (center, -.13, height + .014), (.099, .07, .004), "Cream")
+        tab.rotation_euler.x = .34
+
+
+def backdrop_card():
+    panel = mesh("Single two-triangle billboard", [(0, .5, -.5), (0, -.5, -.5), (0, -.5, .5), (0, .5, .5)],
+                 [(0, 1, 2, 3)], "ScreenFrame")
+    uvs = panel.data.uv_layers.new(name="Card")
+    for corner, coordinate in zip(uvs.data, ((0, 0), (1, 0), (1, 1), (0, 1))):
+        corner.uv = coordinate
+
+
+def nature(model, base):
+    source = Path.home() / "Desktop" / "assets" / "nature" / "OBJ" / (model + ".obj")
+    if not source.is_file():
+        base()
+        return
+    bpy.ops.wm.obj_import(filepath=str(source), forward_axis="NEGATIVE_Z", up_axis="Y")
+    subjects = tuple(bpy.context.selected_objects)
+    vertices = [obj.matrix_world @ Vector(corner) for obj in subjects for corner in obj.bound_box]
+    bottom, top = min(v.z for v in vertices), max(v.z for v in vertices)
+    height = 1 / max(.01, top - bottom)
+    for obj in subjects:
+        obj.location *= height
+        obj.location.z -= bottom * height
+        obj.scale *= height
+
+
+def simple_tree():
+    box("Trunk", (0, 0, .32), (.065, .065, .64), "Wood")
+    for x, y, z, size in ((0, 0, .74, .36), (.10, 0, .70, .24), (-.09, .04, .83, .24)):
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=size / 2, location=(x,y,z))
+        assign(bpy.context.object, "Leaf crown", "PaperGreen")
+
+
 def export(name, create):
     previous = set(bpy.data.objects)
     create()
@@ -221,7 +269,17 @@ features = (("SM_BookKiosk", kiosk, (0, 0, 0)), ("SM_WallClock", clock, (-3.8, 0
             ("SM_SignDeli", lambda: sign("Deli", "BALTIC DELI  /  ПРОДУКТЫ", 4.6), (-.8, 4, 1)),
             ("SM_SignPharmacy", lambda: sign("Pharmacy", "PHARMACY   /   АПТЕКА", 4.6), (4.7, 4, 1)),
             ("SM_SignAegis", lambda: sign("Factory", "AEGIS  •  SHIPPING", 5.8), (0, 4, 2)),
-            ("SM_SignStreet", lambda: sign("Street", "NEPTUNE AV", .95), (0, 4, .5)))
+            ("SM_SignStreet", lambda: sign("Street", "NEPTUNE AV", .95), (0, 4, .5)),
+            ("SM_NeighborhoodGrocery", lambda: sign("Grocery", "ПРОДУКТЫ", 4.8), (-6, 4, 1)),
+            ("SM_NeighborhoodPharmacy", lambda: sign("Pharmacy", "АПТЕКА", 4), (-1, 4, 1)),
+            ("SM_NeighborhoodPrecinct", lambda: sign("Precinct", "POLICE   •   60 PRECINCT", 6), (5, 4, 1)),
+            ("SM_NeighborhoodFlea", lambda: sign("Market", "БАРАХОЛКА", 3.8), (-5, 6, 1)),
+            ("SM_NeighborhoodBar", lambda: sign("Bar", "БАР   МАЯК", 4.2), (1, 6, 1)),
+            ("SM_NeighborhoodPark", lambda: sign("Park", "NEPTUNE PLAYGROUND", 2.7), (5, 6, 1)),
+            ("SM_PressBundles", press_bundles, (0, 0, 1.03)),
+            ("SM_FactoryCard", backdrop_card, (0, 8, 1)),
+            ("SM_CourtyardBirch", lambda: nature("BirchTree_2", simple_tree), (3, 8, 0)),
+            ("SM_CourtyardShrub", lambda: nature("Bush_2", simple_tree), (5, 8, 0)))
 for name, create, display in features:
     for obj in export(name, create).objects:
         obj.location += Vector(display)
