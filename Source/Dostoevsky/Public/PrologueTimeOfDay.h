@@ -55,6 +55,8 @@ private:
     TWeakObjectPtr<APawn> SleepPawn;
     FTransform StartView;
     FTransform EndView;
+    float StartFov = 90.f;
+    float EndFov = 75.f;
     FQuat HourHandBase;
     FQuat MinuteHandBase;
     double WorldHours = 18.0;
@@ -81,6 +83,10 @@ public:
     UFUNCTION(BlueprintPure, Category="Time", meta=(DefaultToSelf="HUD", HidePin="HUD")) static bool IsWorldInteractionModal(AHUD* HUD);
     UFUNCTION(BlueprintCallable, Category="Time", meta=(DefaultToSelf="HUD", HidePin="HUD")) static bool ConsumeBedRest(AHUD* HUD);
     UFUNCTION(BlueprintPure, Category="Time", meta=(DefaultToSelf="HUD", HidePin="HUD")) static bool IsOutsideApartment(AHUD* HUD);
+    UFUNCTION(BlueprintCallable, Category="Apartment|Doors")
+    static double StepDoor(double Progress, double Velocity, double DeltaSeconds, bool bOpen, double& NewVelocity);
+    UFUNCTION(BlueprintPure, Category="Apartment|Doors")
+    static double DoorAngle(double Progress, double OpenAngle);
 };
 
 UCLASS()

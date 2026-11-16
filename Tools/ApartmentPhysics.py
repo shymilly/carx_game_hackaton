@@ -107,3 +107,78 @@ def configure_floor_lamp(component, source_mesh, physical_material):
     component.set_mass_override_in_kg(ue.Name(), 7.5)
     component.set_simulate_physics(True)
     component.set_center_of_mass(ue.Vector(0, 0, -34))
+
+
+def stabilize_lamp(component):
+    mesh = component.static_mesh
+    setup = mesh.get_editor_property("body_setup")
+    geometry = setup.get_editor_property("agg_geom")
+    parts = []
+    # Local dimensions from the Light_Floor2 mesh: foot, pedestal, stem, and shade.
+    for center, width, depth, height in ((1.45, 11.2, 11.2, 2.9), (6.4, 28.4, 28.4, 7.6),
+                                         (25.3, 6.0, 6.0, 36.2), (59.2, 28.0, 30.4, 32.0)):
+        box = ue.KBoxElem()
+        box.set_editor_properties({"center": ue.Vector(0, 0, center), "x": width, "y": depth, "z": height})
+        parts.append(box)
+    component.set_simulate_physics(False)
+    for name in ("sphere_elems", "sphyl_elems", "convex_elems"):
+        geometry.set_editor_property(name, [])
+    geometry.set_editor_property("box_elems", parts)
+    setup.set_editor_property("agg_geom", geometry)
+    setup.set_editor_property("collision_trace_flag", ue.CollisionTraceFlag.CTF_USE_SIMPLE_AS_COMPLEX)
+    if not ue.get_editor_subsystem(ue.EditorAssetSubsystem).save_loaded_asset(mesh, False):
+        raise RuntimeError("Could not save the lamp's compound collision.")
+    component.set_linear_damping(.65)
+    component.set_angular_damping(2.0)
+    body = component.get_editor_property("body_instance")
+    body.set_editor_properties({"start_awake": False, "use_ccd": True})
+    component.set_mass_override_in_kg(ue.Name(), 7.5)
+    component.set_simulate_physics(True)
+    component.set_center_of_mass(ue.Vector(0, 0, -34))
+
+
+def tune_street_apartment_props():
+    actors = ue.get_editor_subsystem(ue.EditorActorSubsystem)
+    placed = {actor.get_actor_label(): actor for actor in actors.get_all_level_actors()}
+    lamp = placed["Floor lamp"]
+    stabilize_lamp(lamp.get_component_by_class(ue.StaticMeshComponent))
+
+    chair = placed.get("Chair_2")
+    duplicate = placed.get("Chair_3")
+    if chair and duplicate and (chair.get_actor_location() - duplicate.get_actor_location()).length() < .02:
+        primary = chair.get_component_by_class(ue.StaticMeshComponent)
+        secondary = duplicate.get_component_by_class(ue.StaticMeshComponent)
+        if primary.static_mesh == secondary.static_mesh:
+            if not actors.destroy_actor(duplicate):
+                raise RuntimeError("Could not remove the overlapping chair duplicate.")
+            ue.log("APARTMENT_DUPLICATE_CHAIR_REMOVED")
+    if chair:
+        tags = list(chair.tags)
+        if ue.Name("DeskSeat") not in tags:
+            chair.set_editor_property("tags", tags + [ue.Name("DeskSeat")])
+
+    for tag, seat, table, height in (("DeskSeatView", chair, placed["Writing desk"], 121),
+                                     ("KitchenSeatView", placed["Kitchen chair"], placed["Kitchen table"], 117)):
+        if not seat:
+            continue
+        camera = next(actor for actor in placed.values() if ue.SystemLibrary.is_valid(actor) and actor.actor_has_tag(ue.Name(tag)))
+        foot = seat.get_actor_location()
+        center, extent = table.get_actor_bounds(False)
+        eye = ue.Vector(foot.x, foot.y, height)
+        tabletop = ue.Vector(center.x, center.y, center.z + extent.z)
+        camera.set_actor_location(eye, False, False)
+        camera.set_actor_rotation(ue.MathLibrary.find_look_at_rotation(eye, tabletop), False)
+
+    desk_lamp = placed["Desk lamp"]
+    desk_bulb = placed["Desk lamp bulb"]
+    transform = desk_lamp.get_actor_transform()
+    emitter = ue.MathLibrary.transform_location(transform, ue.Vector(0, -24, 39))
+    aim = ue.MathLibrary.transform_location(transform, ue.Vector(0, -45, 3))
+    desk_bulb.set_actor_location(emitter, False, False)
+    desk_bulb.set_actor_rotation(ue.MathLibrary.find_look_at_rotation(emitter, aim), False)
+    keep = ue.AttachmentRule.KEEP_WORLD
+    if desk_bulb.get_attach_parent_actor() != desk_lamp and not desk_bulb.attach_to_actor(
+        desk_lamp, ue.Name(), keep, keep, keep, False
+    ):
+        raise RuntimeError("Could not attach the desk light to its lamp.")
+    ue.log("APARTMENT_PROP_PHYSICS_OK compound floor lamp, chair fit and lamp attachment")

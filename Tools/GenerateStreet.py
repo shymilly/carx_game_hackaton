@@ -6,6 +6,9 @@ import unreal as ue
 
 sys.path.insert(0, str(Path(__file__).parent))
 from ApartmentGameplay import DIMAS_MAP, STREET_MAP, build_gameplay
+from ApartmentDoorHardware import add_door_hardware
+from ApartmentPhysics import tune_street_apartment_props
+from PlanApartment import DOORS
 from StreetScene import BLENDER_MESHES, build_street, street_models
 
 
@@ -54,6 +57,8 @@ def generate():
     elif reimport:
         street_models(reimport)
 
+    add_door_hardware({**DOORS, "StreetDoor": door_spec})
+    tune_street_apartment_props()
     mode = (ue.BlueprintEditorLibrary.generated_class(ue.load_asset(GAME_MODE))
             if assets.does_asset_exist(HUD) and assets.does_asset_exist(GAME_MODE)
             else build_gameplay(ROOT, street_door=door_spec))

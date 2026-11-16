@@ -9,6 +9,7 @@ ENGINE = "/Script/Engine."
 MATH = "KismetMathLibrary"
 GAME = "GameplayStatics"
 STR = "KismetStringLibrary"
+STORY = "/Script/Dostoevsky.DimaApartmentStoryLibrary"
 TITLE = "ОТГОЛОСКИ ПРОШЛОГО"
 DIMAS_MAP = "/Game/Prologue/" + MAP_NAME
 STREET_MAP = "L_DimaApartmentStreet"
@@ -42,6 +43,11 @@ INTRO_DOCUMENTS = (
     ("Newspaper", "Промышленный вестник", "Aegis объявила о новом контракте с правительством.\nЗавод на восточной окраине расширит ночную смену."),
 )
 DOCUMENTS = INTRO_DOCUMENTS + CLUES[:2]
+STORY_OBJECTS = (
+    ("Television", "Посмотреть новости", ""),
+    ("Wardrobe", "Осмотреть шкаф", ""),
+    ("Phone", "Ответить на звонок", ""),
+)
 ROOM_SWITCHES = {
     "LivingSwitch": "LivingRoomLight",
     "KitchenSwitch": "KitchenRoomLight",
@@ -59,17 +65,16 @@ FIXTURES = {
     "BathDoor": ("Открыть дверь ванной", "Закрыть дверь ванной"),
     "FridgeDoor": ("Открыть холодильник", "Закрыть холодильник"),
     "DeskLamp": ("Выключить лампу", "Включить лампу"),
-    "FloorLamp": ("Выключить торшер", "Включить торшер"),
+    "FloorLamp": ("Осмотреть торшер", "Осмотреть торшер"),
     "LivingSwitch": ("Выключить свет в комнате", "Включить свет в комнате"),
     "KitchenSwitch": ("Выключить свет на кухне", "Включить свет на кухне"),
     "BathSwitch": ("Выключить свет в ванной", "Включить свет в ванной"),
-    "Tap": ("Открыть кран", "Закрыть кран"),
+    "Tap": ("Умыться", "Умыться"),
     "KitchenTap": ("Открыть кран", "Закрыть кран"),
     "ShowerTap": ("Включить душ", "Выключить душ"),
     **{tag: (action, action) for tag, action in SEATS.items()},
     "Bed": ("Отдохнуть", "Отдохнуть"),
 }
-CONTROLS = "WASD — идти    Shift — бежать    Пробел — прыгать    J — журнал"
 
 
 def connect(a, b):
@@ -192,7 +197,8 @@ class Graph:
 
     def view(self, previous, pc, target, blend):
         return self.execute(previous, "PlayerController", "SetViewTargetWithBlend", self=pc,
-                            NewViewTarget=target, BlendTime=str(blend))
+                            NewViewTarget=target, BlendTime=str(blend), BlendFunc="VTBlend_EaseInOut",
+                            BlendExp="2.3", bLockOutgoing="true")
 
     def equals(self, left, value):
         return self.pure(MATH, "EqualEqual_IntInt", A=left, B=str(value))
@@ -229,14 +235,15 @@ class Graph:
         self.column = 0
 
 
-def build_gameplay(root, street_door=None):
+def build_gameplay(root, asset_name=None, *, street_door=None):
     street = street_door is not None
     map_name = STREET_MAP if street else MAP_NAME
     door_specs = {**DOORS, "StreetDoor": street_door} if street else DOORS
     fixtures = {**FIXTURES, "Bed": ("Выбрать время сна", "Выбрать время сна"),
                 "StreetDoor": ("Открыть дверь на улицу", "Закрыть дверь")} if street else FIXTURES
     documents = INTRO_DOCUMENTS if street else DOCUMENTS
-    path = f"{root}/" + ("BP_PrologueStreetHUD" if street else "BP_PrologueApartmentHUD")
+    asset_name = asset_name or ("BP_PrologueStreetHUD" if street else "BP_PrologueApartmentHUD")
+    path = f"{root}/{asset_name}"
     blueprint = BP.create_blueprint_asset_with_parent(path, ue.HUD.static_class())
     if not blueprint:
         raise RuntimeError(f"Could not create {path}")
@@ -245,13 +252,16 @@ def build_gameplay(root, street_door=None):
         ("State", "int", str(START)), ("ClueTitle", "string", ""), ("ClueText", "string", ""),
         ("Stamina", "real", "100"), ("RecoverAt", "real", "0"), ("Exhausted", "bool", "false"),
         ("AtDimas", "bool", "false"), ("Focus", "string", ""), ("JournalOpen", "bool", "false"),
-        ("JournalPage", "int", "0"), ("HintUntil", "real", "0"), ("Hint", "string", ""),
+        ("HintUntil", "real", "0"), ("Hint", "string", ""),
     ]
     if street:
-        variables.extend((("InteractHeld", "bool", "false"), ("InteractPressed", "bool", "false")))
-    variables.extend((tag + "Found", "bool", "false") for tag, _, _ in documents)
+        for action in ("Interact", "Journal"):
+            variables.extend(((action + "Held", "bool", "false"), (action + "Pressed", "bool", "false")))
+    # The shared journal catalog reads these flags on every map.
+    variables.extend((tag + "Found", "bool", "false") for tag, _, _ in DOCUMENTS)
     variables.extend((tag + "Toggled", "bool", "false") for tag in (*door_specs, *LIGHTS, *WATER))
     variables.extend((tag + "Progress", "real", "0") for tag in door_specs)
+    variables.extend((tag + "Velocity", "real", "0") for tag in door_specs)
     for name, type_name, initial in variables:
         if not g.graph.add_member_variable(name, BP.get_basic_type_by_name(type_name), initial):
             raise RuntimeError(f"Cannot create {name}")
@@ -265,10 +275,11 @@ def build_gameplay(root, street_door=None):
     player = g.pure(GAME, "GetPlayerCharacter", PlayerIndex="0")
     active, _ = g.branch(start, g.pure("KismetSystemLibrary", "IsValid", Object=player))
     if street:
-        held = g.pure("PlayerController", "IsInputKeyDown", self=pc, Key="E")
-        pressed = g.and_(held, g.not_(g.get("InteractHeld")))
-        active = g.set(active, "InteractPressed", pressed)
-        active = g.set(active, "InteractHeld", held)
+        for action, key_name in (("Interact", "E"), ("Journal", "J")):
+            held = g.pure("PlayerController", "IsInputKeyDown", self=pc, Key=key_name)
+            pressed = g.and_(held, g.not_(g.get(action + "Held")))
+            active = g.set(active, action + "Pressed", pressed)
+            active = g.set(active, action + "Held", held)
         _, active = g.branch(active, g.pure(WORLD, "IsWorldInteractionModal"))
         active = g.invoke(active, "RecoverAfterSleep")
     state = g.get("State")
@@ -278,13 +289,14 @@ def build_gameplay(root, street_door=None):
     initialize(g, starting, pc, now, map_name, street)
     restart = g.pure("PlayerController", "WasInputKeyJustPressed", self=pc, Key="R")
     reset, active = g.branch(active, restart)
-    g.execute(reset, GAME, "OpenLevel", LevelName=f"{root}/{map_name}")
+    g.execute(reset, GAME, "OpenLevel", LevelName=f"/Game/Prologue/{map_name}")
 
     g.line(4)
-    j = g.pure("PlayerController", "WasInputKeyJustPressed", self=pc, Key="J")
+    j = (g.get("JournalPressed") if street else
+         g.pure("PlayerController", "WasInputKeyJustPressed", self=pc, Key="J"))
     journal, active = g.branch(active, g.get("JournalOpen"))
-    draw_journal(g, journal, pc, width, j, documents)
-    opening, active = g.branch(active, j)
+    draw_journal(g, journal, pc, j)
+    opening, active = g.branch(active, g.and_(j, g.not_(g.pure(STORY, "IsBusy"))))
     opening = g.set(opening, "Focus", "")
     opening = g.set(opening, "JournalOpen", "true")
     lock_controls(g, opening, pc, True)
@@ -350,18 +362,19 @@ def build_gameplay(root, street_door=None):
         switch_to_scene_camera(g, meet, pc, 0.55)
 
     g.line(28)
+    _, active = g.branch(active, g.pure(STORY, "IsBusy"))
     active = update_stamina(g, active, pc, player, now)
     active = draw_stamina(g, active, height)
     if street:
-        goal = g.string_choice("Американский квартал   /   1994", "Выйдите на улицу.",
-                               g.pure(WORLD, "IsOutsideApartment"))
+        goal = g.pure(STORY, "Objective", Fallback="Выйдите на улицу.")
+        goal = g.string_choice("Американский квартал   /   1994", goal, g.pure(WORLD, "IsOutsideApartment"))
     else:
         father_goal = g.string_choice("Вернитесь к входной двери.", "Найдите записку Фёдора.", g.equals(state, KEY))
-        goal = g.string_choice("Осмотрите комнату или выйдите из квартиры.", father_goal, at_dimas)
+        goal = g.pure(STORY, "Objective",
+                      Fallback=g.string_choice("Осмотрите комнату или выйдите из квартиры.", father_goal, at_dimas))
     active = g.draw(active, goal, "24", 1.12)
     hint = g.string_choice(g.get("Hint"), "", g.pure(MATH, "Less_DoubleDouble", A=now, B=g.get("HintUntil")))
     active = g.draw(active, hint, g.offset(center_y, -95), 1.13)
-    active = g.draw(active, "E — осмотр     R — заново", footer)
     active = g.execute(active, "/Script/Dostoevsky.ExplorationHUDLibrary", "PresentExplorationHUD")
     g.line(31)
     cam = g.pure(GAME, "GetPlayerCameraManager", PlayerIndex="0")
@@ -420,6 +433,7 @@ def switch_to_scene_camera(g, previous, pc, blend):
 
 
 def initialize(g, previous, pc, now, map_name, street):
+    previous = g.execute(previous, STORY, "InitializeStory")
     level = g.call(GAME, "GetCurrentLevelName")
     connect(previous, BP.find_execute_pin(level))
     previous = BP.find_then_pin(level)
@@ -442,38 +456,15 @@ def initialize(g, previous, pc, now, map_name, street):
         found = g.pure(GAME, "HasOption", Options=options, InKey=tag)
         arrived = g.set(arrived, tag + "Found", found)
     arrived = g.set(arrived, "State", str(WALK))
-    show_hint(g, arrived, now, "Найдите записку Фёдора.  " + CONTROLS, 7)
+    show_hint(g, arrived, now, "Найдите записку Фёдора.", 7)
 
 
-def draw_journal(g, previous, pc, width, j, documents):
+def draw_journal(g, previous, pc, j):
     closing, browsing = g.branch(previous, j)
     closing = g.set(closing, "JournalOpen", "false")
     lock_controls(g, closing, pc, False)
-    browsing = g.panel(browsing, "0", width, 5000)
-    browsing = g.draw(browsing, "ЖУРНАЛ", "28", 1.8)
-    browsing = g.draw(browsing, f"1–{len(documents)} — открыть документ    J — закрыть", "69")
-    digit_keys = ("One", "Two", "Three", "Four")
-    for index, ((tag, title, _), digit_key) in enumerate(zip(documents, digit_keys), 1):
-        g.line(6 + index)
-        found = g.get(tag + "Found")
-        heading = g.string_choice(f"{index}.  {title}", "", found)
-        browsing = g.draw(browsing, heading, str(90 + index * 25), 1.13)
-        pressed = g.or_(
-            g.pure("PlayerController", "WasInputKeyJustPressed", self=pc, Key=digit_key),
-            g.pure("PlayerController", "WasInputKeyJustPressed", self=pc, Key=f"NumPad{digit_key}"),
-        )
-        page = g.pure(MATH, "SelectInt", A=str(index), B=g.get("JournalPage"), bPickA=g.and_(found, pressed))
-        browsing = g.set(browsing, "JournalPage", page)
-    empty = g.get(documents[0][0] + "Found")
-    for tag, _, _ in documents[1:]:
-        empty = g.or_(empty, g.get(tag + "Found"))
-    browsing = g.draw(browsing, g.string_choice("", "Осмотрите документ, чтобы добавить его в журнал.", empty), "118")
-    choose_page = g.and_(empty, g.equals(g.get("JournalPage"), 0))
-    browsing = g.draw(browsing, g.string_choice("Выберите документ по номеру.", "", choose_page), "230", 1.1)
-    for index, (_, title, body) in enumerate(documents, 1):
-        g.line(10 + index)
-        selected, browsing = g.branch(browsing, g.equals(g.get("JournalPage"), index))
-        g.document(selected, title, body, "[J]  Закрыть журнал")
+    # Cursor-driven list; its reader uses the approved common DocumentWindow.
+    g.execute(browsing, "/Script/Dostoevsky.JournalUILibrary", "PresentJournal")
 
 
 def update_stamina(g, previous, pc, player, now):
@@ -530,7 +521,7 @@ def draw_idle_reticle(g, previous, center_x, center_y):
 
 
 def render_focus(g, previous, hit, state, pc, key, center_x, center_y, fixtures, documents, street):
-    entries = INTRO_DOCUMENTS + tuple((tag, "", "") for tag in fixtures)
+    entries = INTRO_DOCUMENTS + STORY_OBJECTS + tuple((tag, "", "") for tag in fixtures)
     if not street:
         entries += CLUES + (("Exit", "Выйти из квартиры", ""),)
     for index, (tag, title, body) in enumerate(entries):
@@ -548,6 +539,7 @@ def render_focus(g, previous, hit, state, pc, key, center_x, center_y, fixtures,
             prompt = "[E]  " + action if tag == "Bed" or tag in SEATS else (
                 g.string_choice("[E]  " + reverse, "[E]  " + action, g.get(tag + "Toggled"))
             )
+        prompt = g.pure(STORY, "InteractionPrompt", Tag=tag, Fallback=prompt)
         focused = g.draw(focused, prompt, g.offset(center_y, -44), 1.15,
                          x=g.offset(center_x, -106))
         changed = g.pure(STR, "NotEqual_StrStr", A=g.get("Focus"), B=tag)
@@ -561,8 +553,13 @@ def render_focus(g, previous, hit, state, pc, key, center_x, center_y, fixtures,
 
 
 def interact(g, previous, tag, title, body, pc, fixtures, documents):
+    story = g.call(STORY, "TryInteract", Tag=tag)
+    connect(previous, BP.find_execute_pin(story))
+    _, previous = g.branch(BP.find_then_pin(story), g.output(story))
     if tag in fixtures:
         g.invoke(previous, "Activate" + tag)
+        return
+    if tag in {entry[0] for entry in STORY_OBJECTS}:
         return
     if tag == "Exit":
         home, end = g.branch(previous, g.get("AtDimas"))
@@ -637,7 +634,7 @@ def build_fixture_functions(blueprint, fixtures, door_specs, street):
     previous = g.execute(previous, "Controller", "SetControlRotation", self=pc, NewRotation=desk_view)
     previous = g.view(previous, pc, player, 0.65)
     previous = lock_controls(g, previous, pc, False)
-    show_hint(g, previous, g.pure(GAME, "GetTimeSeconds"), "Отчёт добавлен в журнал.  " + CONTROLS, 7)
+    show_hint(g, previous, g.pure(GAME, "GetTimeSeconds"), "Отчёт добавлен в журнал.", 7)
 
 
 def recover_stamina(g, previous):
@@ -729,11 +726,11 @@ def update_door(g, previous, tag, door, delta, player):
     moving, _ = g.branch(previous, changing)
     moving, slab = find_tagged_actor(g, moving, tag)
     moving, _ = g.branch(moving, g.pure("KismetSystemLibrary", "IsValid", Object=slab))
-    # Cap each step so a slow frame cannot sweep past the player's capsule.
-    dt = g.pure(MATH, "FClamp", Value=delta, Min="0", Max="0.025")
-    step = g.arithmetic("Multiply", dt, g.choose("1.55", "-1.55", opening))
-    proposed = g.pure(MATH, "FClamp", Value=g.arithmetic("Add", progress, step), Min="0", Max="1")
-    angle = g.pure(MATH, "FInterpEaseInOut", A="0", B=str(swing), Alpha=proposed, Exponent="1.8")
+    velocity = tag + "Velocity"
+    step = g.call(WORLD, "StepDoor", Progress=progress, Velocity=g.get(velocity), DeltaSeconds=delta, bOpen=opening)
+    connect(moving, BP.find_execute_pin(step))
+    proposed = g.output(step)
+    angle = g.pure(WORLD, "DoorAngle", Progress=proposed, OpenAngle=str(swing))
     axis = make_vector(g, (0, 0, 1))
     arm = make_vector(g, tuple(center - pivot for center, pivot in zip(closed, hinge)))
     rotated_arm = g.pure(MATH, "RotateAngleAxis", InVect=arm, AngleDeg=angle, Axis=axis)
@@ -753,8 +750,10 @@ def update_door(g, previous, tag, door, delta, player):
     for axis_name, size in zip(("X", "Y"), DOOR_FOOTPRINTS.get(tag, (15, 109))):
         distance = g.pure(MATH, "Abs", A=g.output(position, axis_name))
         clearance.append(g.pure(MATH, "Greater_DoubleDouble", A=distance, B=g.offset(radius, size / 2 + 1)))
-    move, blocked = g.branch(moving, g.or_(*clearance))
+    move, blocked = g.branch(BP.find_then_pin(step), g.or_(*clearance))
+    blocked = g.set(blocked, velocity, "0")
     show_hint(g, blocked, g.pure(GAME, "GetTimeSeconds"), "Отойдите от дверцы.", 0.5)
     move = g.execute(move, "Actor", "K2_SetActorLocationAndRotation", self=slab,
                      NewLocation=location, NewRotation=rotation)
+    move = g.set(move, velocity, g.output(step, "NewVelocity"))
     g.set(move, field, proposed)

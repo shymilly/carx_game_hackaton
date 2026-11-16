@@ -30,6 +30,12 @@ constexpr float WakeAt = 2.19f;
 constexpr float RiseSeconds = 1.24f;
 constexpr float SleepHours[] = {6, 12, 18, 0};
 
+double EaseMotion(double Position)
+{
+    const double T = FMath::Clamp(Position, 0.0, 1.0);
+    return T * T * T * (T * (6.0 * T - 15.0) + 10.0);
+}
+
 struct FStreetLightKey
 {
     FLinearColor Horizon;
@@ -193,7 +199,9 @@ void APrologueTimeOfDay::BeginSleep(int32 Choice)
     Parameters.ObjectFlags |= RF_Transient;
     SleepCamera = GetWorld()->SpawnActor<ACameraActor>(ACameraActor::StaticClass(), StartView, Parameters);
     if (!SleepCamera) return;
-    SleepCamera->GetCameraComponent()->SetFieldOfView(View->GetFOVAngle());
+    StartFov = View->GetFOVAngle();
+    EndFov = PillowView->GetCameraComponent()->FieldOfView;
+    SleepCamera->GetCameraComponent()->SetFieldOfView(StartFov);
     SleepPawn = Pawn;
     SleepPlayer = Player;
     bPawnWasHidden = Pawn->IsHidden();
@@ -238,10 +246,11 @@ void APrologueTimeOfDay::AdvanceSleep(float DeltaSeconds)
         bWokeUp = true;
     }
     const float LinearAlpha = bWokeUp ? 1.f - (SleepElapsed - WakeAt) / RiseSeconds : SleepElapsed / LieSeconds;
-    const float Alpha = FMath::SmoothStep(0.f, 1.f, FMath::Clamp(LinearAlpha, 0.f, 1.f));
-    const FVector CurveLift(0, 0, 23.f * FMath::Sin(PI * Alpha));
+    const double Alpha = EaseMotion(LinearAlpha);
+    const FVector CurveLift(0, 0, 92.0 * Alpha * (1.0 - Alpha));
     SleepCamera->SetActorLocationAndRotation(FMath::Lerp(StartView.GetLocation(), EndView.GetLocation(), Alpha) + CurveLift,
         FQuat::Slerp(StartView.GetRotation(), EndView.GetRotation(), Alpha));
+    SleepCamera->GetCameraComponent()->SetFieldOfView(FMath::Lerp(StartFov, EndFov, static_cast<float>(Alpha)));
 }
 
 void APrologueTimeOfDay::FinishSleep(bool bRestored)
@@ -301,6 +310,22 @@ bool UPrologueWorldLibrary::IsOutsideApartment(AHUD* HUD)
     const FVector Location = Pawn->GetActorLocation();
     return Location.Y < -460 || Location.Y > 457 || Location.X < -772 || Location.X > 807 ||
         (Location.X < -397 && Location.Y < 33) || (Location.X > 397 && Location.Y > 117);
+}
+
+double UPrologueWorldLibrary::StepDoor(double Progress, double Velocity, double DeltaSeconds, bool bOpen, double& NewVelocity)
+{
+    // Bound angular travel per update so an overloaded frame cannot step across the player's capsule.
+    const double Step = FMath::Clamp(DeltaSeconds, 0.0, .025);
+    const double TargetSpeed = bOpen ? 1.58 : -1.34;
+    NewVelocity = Velocity + FMath::Clamp(TargetSpeed - Velocity, -10.0 * Step, 10.0 * Step);
+    const double Next = FMath::Clamp(Progress + NewVelocity * Step, 0.0, 1.0);
+    if (Next == (bOpen ? 1.0 : 0.0)) NewVelocity = 0.0;
+    return Next;
+}
+
+double UPrologueWorldLibrary::DoorAngle(double Progress, double OpenAngle)
+{
+    return EaseMotion(Progress) * OpenAngle;
 }
 
 AStreetMeshInstances::AStreetMeshInstances()
