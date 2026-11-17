@@ -26,7 +26,7 @@ public:
     UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category="Location") TSoftObjectPtr<UWorld> DestinationMap;
     UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category="Location") TObjectPtr<UInteractionDocument> ClosedNotice;
     UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category="Location") FName DestinationSpawn;
-    bool Use(APlayerController* Player) const;
+    virtual bool Use(APlayerController* Player) const;
 };
 
 UCLASS()

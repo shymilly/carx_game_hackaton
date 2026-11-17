@@ -1,4 +1,5 @@
 #include "LocationTravel.h"
+#include "ActOne.h"
 #include "PrologueTimeOfDay.h"
 #include "ExplorationHUD.h"
 #include "Engine/GameInstance.h"
@@ -140,7 +141,9 @@ bool ULocationTravelSubsystem::Restore(AHUD* HUD)
 {
     if (!HUD) return false;
     const FString Level=UGameplayStatics::GetCurrentLevelName(HUD,true);
-    if (Level!=TEXT("L_DimaApartmentInterior") && Level!=TEXT("L_NeptuneStreet") && Level!=TEXT("L_PolicePrecinct")) return false;
+    const UActOneSubsystem* Act=UActOneSubsystem::Find(HUD);
+    if (Level!=TEXT("L_DimaApartmentInterior") && Level!=TEXT("L_NeptuneStreet") && Level!=TEXT("L_PolicePrecinct") &&
+        !(Act && Act->IsActive())) return false;
     if (Level==TEXT("L_DimaApartmentInterior") && !bHasSnapshot) return false;
     for (const auto& Entry:Found) SetFlag(HUD,Entry.Key,Entry.Value);
     SetNumber(HUD,TEXT("State"),0);
@@ -162,6 +165,7 @@ bool ULocationTravelSubsystem::Restore(AHUD* HUD)
 }
 void ULocationTravelSubsystem::ResetSession()
 {
+    if (UGameInstance* GI=GetGameInstance()) GI->GetSubsystem<UActOneSubsystem>()->Reset();
     bHasSnapshot=false;
     bLastArrivalExact=true;
     LastArrivalLocation=FVector::ZeroVector;

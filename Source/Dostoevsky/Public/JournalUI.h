@@ -57,8 +57,8 @@ public:
     UJournalPresenterComponent();
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Journal") TSoftObjectPtr<UJournalCatalog> CatalogAsset;
     void Present();
-    void SelectEntry(int32 CatalogIndex);
-    TArray<int32> VisibleEntries() const;
+    UFUNCTION(BlueprintCallable, Category="Journal") void SelectEntry(int32 CatalogIndex);
+    UFUNCTION(BlueprintPure, Category="Journal") TArray<int32> VisibleEntries() const;
     UInteractionDocument* GetEntry(int32 CatalogIndex) const;
     UFUNCTION(BlueprintCallable, Category="Journal") void CloseJournal();
     virtual void TickComponent(float Delta, ELevelTick TickType, FActorComponentTickFunction* TickFunction) override;

@@ -1,4 +1,4 @@
-"""Full PIE travel test. Keep no UObjects between ticks so OpenLevel can collect the old world."""
+"""Apartment/street round trip with character state. CheckActOnePIE covers the gated precinct."""
 import time,traceback
 import unreal as ue
 levels=ue.get_editor_subsystem(ue.LevelEditorSubsystem)
@@ -6,8 +6,7 @@ editor=ue.get_editor_subsystem(ue.UnrealEditorSubsystem)
 assert levels.load_level('/Game/Locations/L_DimaApartmentInterior')
 ue.EditorPythonScripting.set_keep_python_script_alive(True)
 s=dict(step='report',deadline=time.monotonic()+65,page=0,route=0)
-routes=[('L_NeptuneStreet',(-194,-552,101)),('L_PolicePrecinct',(1602,-2725,101)),
-        ('L_NeptuneStreet',(1730,-2725,101)),('L_DimaApartmentInterior',(-194,-330,98))]
+routes=[('L_NeptuneStreet',(-194,-552,101)),('L_DimaApartmentInterior',(-194,-330,98))]
 
 def document(world):
     return ue.WidgetLibrary.get_all_widgets_of_class(world,ue.DimaStoryDialogueWindow,True)[0]
@@ -136,14 +135,12 @@ def tick(delta):
             assert ue.GameplayStatics.get_player_pawn(pc,0).get_actor_location().distance(ue.Vector(*pos))<110
             ue.log('LEVEL_TRAVEL_OK '+s['source']+' -> '+level+' journal/time/stamina preserved')
             s['route']+=1
-            if s['route']==4:
+            if s['route']==len(routes):
                 assert story.get_phase()==ue.DimaApartmentPhase.READY_TO_EXIT
                 assert not story.is_busy()
                 end(True)
                 return
-            if s['route']==1: place(pc,(1730,-2725,101),180)
-            elif s['route']==2: place(pc,(1602,-2725,101),0)
-            else: place(pc,(-194,-560,101),90)
+            place(pc,(-194,-560,101),90)
             s['wait']=time.monotonic()+.3
             s['step']='door'
     except Exception:

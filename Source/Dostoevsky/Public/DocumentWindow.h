@@ -1,10 +1,13 @@
 #pragma once
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Styling/SlateBrush.h"
 #include "DocumentWindow.generated.h"
 class UInteractionDocument;
+struct FKey;
 
 DECLARE_DELEGATE_OneParam(FDocumentChoice, int32);
+DECLARE_DELEGATE_RetVal_TwoParams(bool,FDocumentKeyInput,const FKey&,bool);
 
 // Approved shared dialogue UI. Preserve this design for all future interactions; see Docs/DialogueStyle.md.
 UCLASS(Blueprintable)
@@ -13,6 +16,8 @@ class DOSTOEVSKY_API UDocumentWindow : public UUserWidget
     GENERATED_BODY()
 public:
     FSimpleDelegate OnCloseRequested;
+    FDocumentKeyInput OnKeyInput;
+    bool bRequireChoice = false;
     UPROPERTY(BlueprintReadOnly, Category="Document") TObjectPtr<UInteractionDocument> Document;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Style") FLinearColor PanelColor = FLinearColor::FromSRGBColor(FColor(255, 231, 157));
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Style") FLinearColor TextColor = FLinearColor::Black;
@@ -27,4 +32,7 @@ protected:
 private:
     TArray<FText> Choices;
     FDocumentChoice OnChoice;
+    FSlateBrush IllustrationBrush;
+    TSharedRef<SWidget> BuildNewspaper(const FText& Close);
+    TSharedRef<SWidget> BuildCredits();
 };

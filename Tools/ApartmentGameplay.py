@@ -370,7 +370,6 @@ def build_gameplay(root, asset_name=None, *, street_door=None):
     active = draw_stamina(g, active, height)
     if street:
         goal = g.pure(STORY, "Objective", Fallback="Выйдите на улицу.")
-        goal = g.string_choice("Американский квартал   /   1994", goal, g.pure(WORLD, "IsOutsideApartment"))
     else:
         father_goal = g.string_choice("Вернитесь к входной двери.", "Найдите записку Фёдора.", g.equals(state, KEY))
         goal = g.pure(STORY, "Objective",

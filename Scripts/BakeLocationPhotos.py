@@ -1,5 +1,5 @@
 """Render the actual final maps and sign fronts; no image postprocessing or smoke edits."""
-import time,traceback
+import os,time,traceback
 from pathlib import Path
 import unreal as ue
 root=Path(ue.Paths.convert_relative_path_to_full(ue.Paths.project_dir()))
@@ -14,13 +14,40 @@ shots=[
  ('L_NeptuneStreet','Factory',(3000,-1425,3000),(5750,-1425,1380),105,reviews),
  ('L_NeptuneStreet','StreetOverview',(400,-550,220),(2300,-1450,280),84,reviews),
 ]
+street_signs_only=os.getenv('DOSTOEVSKY_REVIEW_STREET_SIGNS')=='1'
+if street_signs_only:
+    shots=[shot for shot in shots if shot[1]=='T_Transition_Neptune']
+    shots.extend([
+        ('L_NeptuneStreet','Shops',(-1320,-935,173),(-1095,-2200,206),90,reviews),
+        ('L_NeptuneStreet','PressAndPlayground',(-1990,-1160,174),(-1300,-475,212),74,reviews),
+    ])
 state=dict(deadline=time.monotonic()+210,index=0,stage='choose',signs_added=False,at=0,map=None)
 ue.EditorPythonScripting.set_keep_python_script_alive(True)
 
 def finish(ok):
+    restore_daylight()
     ue.unregister_slate_post_tick_callback(state['handle'])
     ue.EditorPythonScripting.set_keep_python_script_alive(False)
     if ok:ue.log('REFINE_RENDER_PASSED')
+
+def street_daylight():
+    clock=next(a for a in actors.get_all_level_actors() if isinstance(a,ue.PrologueTimeOfDay))
+    sun=clock.get_editor_property('sun')
+    key=sun.get_component_by_class(ue.DirectionalLightComponent)
+    sky=clock.get_editor_property('ambient_sky').get_component_by_class(ue.SkyLightComponent)
+    state['street_light']=(sun,sun.get_actor_rotation(),key,key.get_editor_property('intensity'),
+                           sky,sky.get_editor_property('intensity'))
+    sun.set_actor_rotation(ue.Rotator(pitch=-46,yaw=316,roll=0),False)
+    key.set_intensity(3.5)
+    sky.set_intensity(1.2)
+
+def restore_daylight():
+    original=state.pop('street_light',None)
+    if original:
+        sun,rotation,key,key_intensity,sky,sky_intensity=original
+        sun.set_actor_rotation(rotation,False)
+        key.set_intensity(key_intensity)
+        sky.set_intensity(sky_intensity)
 
 def tick(delta):
     if state.get('busy'):return
@@ -36,15 +63,18 @@ def tick(delta):
                         if not text:continue
                         p,e=a.get_actor_bounds(False)
                         normal=ue.MathLibrary.get_right_vector(a.get_actor_rotation())
-                        distance=max(200,2*max(e.x,e.y)*1.25)
+                        distance=max(104,2*max(e.x,e.y)*1.25)
                         camera=p+normal*distance
-                        shots.append(('L_NeptuneStreet','Sign_'+str(len(shots)),(camera.x,camera.y,camera.z),(p.x,p.y,p.z),58,reviews))
-                        ue.log('REFINE_SIGN_VIEW '+str(len(shots)-1)+' '+text+' bounds='+str(e))
+                        name=a.get_component_by_class(ue.StaticMeshComponent).static_mesh.get_name().removeprefix('SM_N94_').removeprefix('SM_')
+                        shots.append(('L_NeptuneStreet','Sign_'+name,(camera.x,camera.y,camera.z),(p.x,p.y,p.z),58,reviews))
+                        ue.log('REFINE_SIGN_VIEW '+name+' '+text+' bounds='+str(e))
                 if state['index']>=len(shots):state['stage']='import';return
             mapname,name,position,target,fov,folder=shots[state['index']]
             if state['map']!=mapname:
+                restore_daylight()
                 assert levels.load_level('/Game/Locations/'+mapname)
                 state['map']=mapname
+                if mapname=='L_NeptuneStreet':street_daylight()
             camera=actors.spawn_actor_from_class(ue.SceneCapture2D,ue.Vector(*position),ue.MathLibrary.find_look_at_rotation(ue.Vector(*position),ue.Vector(*target)))
             capture=camera.get_component_by_class(ue.SceneCaptureComponent2D)
             world=ue.get_editor_subsystem(ue.UnrealEditorSubsystem).get_editor_world()
@@ -79,15 +109,19 @@ def tick(delta):
             import hashlib
             assert len({hashlib.sha256((resources/('T_Transition_'+name+'.png')).read_bytes()).hexdigest() for name in ('Apartment','Neptune','Precinct')})==3,'Destination photos must be distinct'
             tasks=[]
-            for name in ('Apartment','Neptune','Precinct'):
+            changed=('Neptune',) if street_signs_only else ('Apartment','Neptune','Precinct')
+            for name in changed:
                 filename='T_Transition_'+name
                 task=ue.AssetImportTask()
                 task.set_editor_properties(dict(filename=str(resources/(filename+'.png')),destination_path='/Game/Prologue/Street/Transitions',destination_name=filename,automated=True,replace_existing=True,save=True))
                 tasks.append(task)
             ue.AssetToolsHelpers.get_asset_tools().import_asset_tasks(tasks)
-            for name in ('Apartment','Neptune','Precinct'):
+            for name in changed:
                 t=ue.load_asset('/Game/Prologue/Street/Transitions/T_Transition_'+name)
                 assert t
+                t.set_editor_properties(dict(lod_group=ue.TextureGroup.TEXTUREGROUP_UI,
+                                             mip_gen_settings=ue.TextureMipGenSettings.TMGS_NO_MIPMAPS,never_stream=True))
+                assert ue.get_editor_subsystem(ue.EditorAssetSubsystem).save_loaded_asset(t,False)
             # Temporary cameras were destroyed and no map is saved, preserving all authored transforms.
             finish(True)
     except Exception:

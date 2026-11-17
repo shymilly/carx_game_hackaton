@@ -1,10 +1,10 @@
-"""Active-map visual and sidewalk correction; original hand-built Cyrillic vector letters."""
+"""Active-map visual and sidewalk correction."""
 from pathlib import Path
 from math import sin,cos,sqrt,tau
 from random import Random
 import json
 import unreal as ue
-from NeptuneSignFont import write_obj
+from NeptuneSignFont import SIGNS
 from ApartmentScene import make_material
 from ApartmentFinishes import mapped_coordinates
 from StreetArtwork import png
@@ -143,51 +143,100 @@ def wall_material(name,color,kind,span):
         LIB.connect_material_expressions(uv,'',node,'Coordinates');LIB.connect_material_property(node,'RGB',channel)
     LIB.recompile_material(m);save(m);return m
 
-SIGNS={'SM_NeighborhoodGrocery':('ПРОДУКТЫ',42,700,0),'SM_NeighborhoodPharmacy':('АПТЕКА',42,680,0),'SM_NeighborhoodBar':('БАР «МАЯК»',38,680,90),'SM_NeighborhoodFlea':('БАРАХОЛКА',38,435,90),'SM_NeighborhoodPrecinct':('ПОЛИЦИЯ / УЧАСТОК 60',28,575,-90),'SM_NeighborhoodPark':('ДЕТСКАЯ ПЛОЩАДКА',20,246,180),'SM_SignStreet':('УЛ. НЕПТУН',11,102,180)}
-def sign_mesh(name,text,height,width):
-    asset=ROOT+'/Signs/SM_N94_'+name
-    if ASSETS.does_asset_exist(asset):return ue.load_asset(asset)
-    file=STAGE/('SM_N94_'+name+'.obj');metrics=write_obj(file,text,height,width)
-    options=ue.FbxImportUI();options.set_editor_properties(dict(import_materials=False,import_textures=False,import_as_skeletal=False))
-    task=ue.AssetImportTask();task.set_editor_properties(dict(filename=str(file),destination_path=ROOT+'/Signs',automated=True,save=False,options=options))
-    ue.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task]);mesh=ue.load_asset(asset);assert mesh,asset
-    mesh.set_material(0,make_material(ROOT,'SignIvoryEnamel',(.79,.74,.59),.66));save(mesh)
-    ue.log('STREET_SIGN_MESH '+text+' '+str(metrics));return mesh
-def typography(placed):
+def sign_mesh(key, enamel, reimport):
+    name = 'SM_N94_' + key
+    asset = ROOT + '/Signs/' + name
+    if reimport or not ASSETS.does_asset_exist(asset):
+        options = ue.FbxImportUI()
+        options.set_editor_properties(dict(import_materials=False,import_textures=False,import_as_skeletal=False))
+        task = ue.AssetImportTask()
+        task.set_editor_properties(dict(filename=str(STAGE / (name+'.obj')),destination_path=ROOT+'/Signs',
+                                        automated=True,replace_existing=reimport,save=False,options=options))
+        ue.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
+        assert task.get_objects(), asset
+        mesh = ue.load_asset(asset)
+        change = mesh.get_bounding_box()
+        size = change.max - change.min
+        spec = SIGNS[key]
+        assert 0 < size.x <= spec.width+.1 and 0 < size.z <= spec.height+.1, (key,size)
+        mesh.set_material(0,enamel)
+        save(mesh)
+    return ue.load_asset(asset)
+
+
+def sign_actor(placed, label, position, folder):
+    actor = next((entry for entry in placed if entry.get_actor_label() == label),None)
+    if not actor:
+        actor = ACTORS.spawn_actor_from_class(ue.StaticMeshActor,position,R())
+        actor.set_actor_label(label)
+        actor.set_folder_path(ue.Name(folder))
+    actor.set_actor_location(position,False,True)
+    return actor
+
+
+def place_sign(actor, mesh, material, scale, yaw, cull):
+    component = actor.get_component_by_class(ue.StaticMeshComponent)
+    component.set_static_mesh(mesh)
+    component.set_material(0,material)
+    component.set_collision_profile_name(ue.Name('NoCollision'))
+    component.set_editor_properties(dict(cast_shadow=False,affect_distance_field_lighting=False))
+    component.set_cull_distance(cull)
+    actor.set_actor_scale3d(scale)
+    actor.set_actor_rotation(R(yaw),False)
+
+
+def set_lettering(actor, key, enamel, reimport):
+    spec = SIGNS[key]
+    mesh = sign_mesh(key,enamel,reimport)
+    place_sign(actor,mesh,enamel,V(1,1,1),spec.yaw,14000 if spec.width>400 else 7600)
+    actor.tags = [tag for tag in actor.tags if not str(tag).startswith(('SignText:','SignFont:'))] + [
+        ue.Name('SignText:'+spec.text),ue.Name('SignFont:'+spec.family),
+    ]
+
+
+def typography(placed, *, reimport=False, storefronts=True):
     enamel=make_material(ROOT,'Neptune94Ivory',(.79,.74,.59),.66)
     enamel.set_editor_property('shading_model',ue.MaterialShadingModel.MSM_UNLIT)
     if not LIB.get_material_property_input_node(enamel,P.MP_EMISSIVE_COLOR):
         emission=LIB.create_material_expression(enamel,ue.MaterialExpressionConstant3Vector,50,280)
         emission.set_editor_property('constant',ue.LinearColor(.42,.36,.25,1))
         LIB.connect_material_property(emission,'',P.MP_EMISSIVE_COLOR);LIB.recompile_material(enamel);save(enamel)
-    for a in placed:
-        c=a.get_component_by_class(ue.StaticMeshComponent)
-        if not c or not c.static_mesh:continue
-        key=next((k for k in SIGNS if c.static_mesh.get_name() in (k,'SM_N94_'+k)),None)
-        if not key:continue
-        text,h,w,yaw=SIGNS[key];c.set_static_mesh(sign_mesh(key,text,h,w));c.set_collision_profile_name(ue.Name('NoCollision'))
-        c.set_material(0,enamel)
-        if key=='SM_NeighborhoodBar':
-            pos=a.get_actor_location();pos.x=3355;pos.z=365;a.set_actor_location(pos,False,True)
-        c.set_editor_properties(dict(cast_shadow=False,affect_distance_field_lighting=False));c.set_cull_distance(14000 if w>400 else 7600)
-        a.set_actor_scale3d(V(1,1,1));a.set_actor_rotation(R(yaw),False)
-        a.tags=[t for t in a.tags if not str(t).startswith('SignText:')]+[ue.Name('SignText:'+text)]
-    backing=next((a for a in placed if a.get_actor_label()=='Neptune94 bar enamel fascia'),None)
-    if not backing:
-        backing=ACTORS.spawn_actor_from_class(ue.StaticMeshActor,V(3370,1290,365),R())
-        backing.set_actor_label('Neptune94 bar enamel fascia');backing.set_folder_path(ue.Name(FOLDER))
-    backing.set_actor_scale3d(V(.12,4.8,.86))
-    c=backing.get_component_by_class(ue.StaticMeshComponent);c.set_static_mesh(ue.load_asset('/Engine/BasicShapes/Cube'))
-    c.set_material(0,make_material(ROOT,'PressBottleGreenEnamel',(.037,.115,.10),.58));c.set_collision_profile_name(ue.Name('NoCollision'))
-    c.set_editor_properties(dict(cast_shadow=False,affect_distance_field_lighting=False))
-    kiosk=next(a for a in placed if a.get_actor_label()=='Газетный киоск КНИГИ / ПРЕССА');p=kiosk.get_actor_location()
-    for label,mesh,offset,scale,mat in [('Neptune94 press enamel fascia',ue.load_asset('/Engine/BasicShapes/Cube'),-95,V(2.4,.025,.34),make_material(ROOT,'PressBottleGreenEnamel',(.037,.115,.10),.58)),('Neptune94 press lettering',sign_mesh('Press','КНИГИ / ПРЕССА',18,222),-97,V(1,1,1),None)]:
-        a=next((a for a in placed if a.get_actor_label()==label),None)
-        if not a:a=ACTORS.spawn_actor_from_class(ue.StaticMeshActor,V(p.x,p.y+offset,220),R(180));a.set_actor_label(label);a.set_folder_path(ue.Name('Street/09 Sidewalk props'))
-        a.set_actor_scale3d(scale);c=a.get_component_by_class(ue.StaticMeshComponent);c.set_static_mesh(mesh);c.set_collision_profile_name(ue.Name('NoCollision'))
-        c.set_editor_properties(dict(cast_shadow=False,affect_distance_field_lighting=False));c.set_cull_distance(7600)
-        if mat:c.set_material(0,mat)
-        else:c.set_material(0,enamel);a.tags=[ue.Name('SignText:КНИГИ / ПРЕССА')]
+    if storefronts:
+        panel = ue.load_asset('/Engine/BasicShapes/Cube')
+        green = make_material(ROOT,'PressBottleGreenEnamel',(.037,.115,.10),.58)
+        bar = next(actor for actor in placed if actor.get_actor_label() == 'Bar Lighthouse shell')
+        bar_wall = bounds(bar)[0]
+        bar_face = bar_wall-34
+        fascia = sign_actor(placed,'Neptune94 bar enamel fascia',V(bar_face+6,1290,365),FOLDER)
+        place_sign(fascia,panel,green,V(.12,4.8,.86),0,14000)
+        for index, y in enumerate((1100,1480),1):
+            bracket = sign_actor(placed,f'Bar fascia bracket {index}',V(bar_wall-11,y,365),FOLDER)
+            place_sign(bracket,panel,green,V(.23,.07,.62),0,7600)
+
+        press = next(actor for actor in placed if actor.get_actor_label() == 'Газетный киоск КНИГИ / ПРЕССА')
+        p = press.get_actor_location()
+        folder = 'Street/09 Sidewalk props'
+        fascia = sign_actor(placed,'Neptune94 press enamel fascia',V(p.x,p.y-95,220),folder)
+        place_sign(fascia,panel,green,V(2.4,.025,.34),180,7600)
+        press_front = bounds(press)[2]
+        rail = sign_actor(placed,'Press lettering on awning face',V(p.x,press_front-1.2,221.5),folder)
+        place_sign(rail,panel,green,V(2.4,.025,.34),180,7600)
+        press_letters = sign_actor(placed,'Neptune94 press lettering',V(p.x,press_front-2.64,221.5),folder)
+        set_lettering(press_letters,'Press',enamel,reimport)
+
+    updated = {'Press'} if storefronts else set()
+    for actor in placed:
+        component = actor.get_component_by_class(ue.StaticMeshComponent)
+        if not component or not component.static_mesh:
+            continue
+        key = component.static_mesh.get_name().removeprefix('SM_N94_')
+        if key not in SIGNS or key == 'Press':
+            continue
+        if key == 'SM_NeighborhoodBar' and storefronts:
+            actor.set_actor_location(V(bar_face-.2,1290,365),False,True)
+        set_lettering(actor,key,enamel,reimport)
+        updated.add(key)
+    return updated
 def safe_traffic_turn():
     flow=next(a for a in ACTORS.get_all_level_actors() if isinstance(a,ue.StreetTrafficFlow));spline=flow.get_editor_property('eastbound')
     route=[(-8640,-1010)]+[(1680+920*cos((-90+90*i/18)*tau/360),-90+920*sin((-90+90*i/18)*tau/360)) for i in range(19)]+[(2600,6450)]
@@ -256,7 +305,8 @@ def audit():
         texts=[str(t)[9:] for t in a.tags if str(t).startswith('SignText:')]
         if texts:
             scale=a.get_actor_scale3d();assert min(scale.x,scale.y,scale.z)>0
-            signs.append(dict(label=label,text=texts[0],yaw=a.get_actor_rotation().yaw,positive_scale=True))
+            font = next((str(tag)[9:] for tag in a.tags if str(tag).startswith('SignFont:')),'')
+            signs.append(dict(label=label,text=texts[0],font=font,yaw=a.get_actor_rotation().yaw,positive_scale=True))
     return dict(sidewalk_violations=violations,building_count=len(bodies),signs=signs)
 def apply():
     STAGE.mkdir(parents=True,exist_ok=True);placed=ACTORS.get_all_level_actors()

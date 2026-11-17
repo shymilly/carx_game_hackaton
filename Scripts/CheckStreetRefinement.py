@@ -7,11 +7,13 @@ root=Path(ue.Paths.convert_relative_path_to_full(ue.Paths.project_dir()))
 sys.path.insert(0,str(root/'Tools'))
 levels=ue.get_editor_subsystem(ue.LevelEditorSubsystem)
 assert levels.load_level('/Game/Locations/L_NeptuneStreet')
-from RefineStreetVisuals import audit
+from RefineStreetVisuals import SIGNS,audit
 report=audit()
 assert not report['sidewalk_violations'],report['sidewalk_violations']
 assert len(report['signs'])==8,report['signs']
 assert all(s['positive_scale'] for s in report['signs'])
+assert {s['text']:s['font'] for s in report['signs']}=={s.text:s.family for s in SIGNS.values()}
+assert len({s['font'] for s in report['signs']})==len(report['signs'])
 
 baseline=json.loads((root/'Resources/StreetRefinement/SmokeBaseline.json').read_text(encoding='utf-8'))
 smoke_path=root/'Content/Prologue/Street/Materials/M_AegisSmoke.uasset'
@@ -49,6 +51,14 @@ for path in ue.get_editor_subsystem(ue.EditorAssetSubsystem).list_assets('/Game/
  t=ue.load_asset(path)
  if isinstance(t,ue.Texture2D):
   assert t.blueprint_get_size_x()<=256 and t.blueprint_get_size_y()<=256,path
+
+assert levels.load_level('/Game/Locations/L_PolicePrecinct')
+plaque,=[a for a in ue.get_editor_subsystem(ue.EditorActorSubsystem).get_all_level_actors()
+        if a.get_actor_label()=='60 Precinct fascia']
+precinct=SIGNS['SM_NeighborhoodPrecinct']
+assert plaque.actor_has_tag(ue.Name('SignText:'+precinct.text))
+assert plaque.actor_has_tag(ue.Name('SignFont:'+precinct.family))
+assert plaque.get_component_by_class(ue.StaticMeshComponent).static_mesh.get_name()=='SM_N94_SM_NeighborhoodPrecinct'
 result=dict(sidewalk_violations=0,architectural_groups=report['building_count'],signs=len(report['signs']),factory_batches=len(factory),factory_instances=instances,smoke_unchanged=True,unique_photos=3)
 (root/'Saved/StreetRefinementCheck.json').write_text(json.dumps(result,indent=2),encoding='utf-8')
 ue.log('STREET_REFINEMENT_CHECK_PASSED '+str(result))

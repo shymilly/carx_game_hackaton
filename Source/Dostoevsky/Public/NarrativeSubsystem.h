@@ -25,6 +25,9 @@ public:
     UFUNCTION(BlueprintCallable, Category="Narrative")
     bool ShowDocument(APlayerController* Player, UInteractionDocument* Document, TSubclassOf<UDocumentWindow> WindowClass);
     bool ShowChoices(APlayerController* Player, UInteractionDocument* Document, TArray<FText> Choices, FDocumentChoice Selection);
+    bool ShowStoryPage(APlayerController* Player, UInteractionDocument* Document, FSimpleDelegate Continue);
+    bool ShowRequiredChoices(APlayerController* Player, UInteractionDocument* Document, TArray<FText> Choices, FDocumentChoice Selection);
+    bool ShowChallenge(APlayerController* Player, UInteractionDocument* Document, FDocumentKeyInput Input, FSimpleDelegate Cancel);
     UFUNCTION(BlueprintCallable, Category="Narrative") void CloseDocument();
     UFUNCTION(BlueprintPure, Category="Narrative") bool IsDocumentOpen() const { return Window != nullptr; }
     UFUNCTION(BlueprintCallable, Category="Narrative|Audio") void StartAmbience(USoundBase* Sound, float Volume = 0.5f);
@@ -56,7 +59,8 @@ private:
     FDelegateHandle MapLoadedHandle;
     FDelegateHandle TravelFailureHandle;
     bool OpenDocument(APlayerController* Player, UInteractionDocument* Document,
-        TSubclassOf<UDocumentWindow> WindowClass, TArray<FText> Choices, FDocumentChoice Selection);
+        TSubclassOf<UDocumentWindow> WindowClass, TArray<FText> Choices, FDocumentChoice Selection,
+        bool bRequireChoice = false, FSimpleDelegate Continue = {}, FDocumentKeyInput Input = {});
     FName PendingDestination;
     FTimerHandle TravelBegin;
     double TravelStartedAt = 0;

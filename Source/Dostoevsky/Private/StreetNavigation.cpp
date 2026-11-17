@@ -1,4 +1,5 @@
 #include "StreetNavigation.h"
+#include "ActOne.h"
 
 #include "Components/BoxComponent.h"
 #include "Engine/GameInstance.h"
@@ -37,6 +38,7 @@ bool AStreetPortal::Use(APlayerController* Player) const
     const APawn* Pawn = Player ? Player->GetPawn() : nullptr;
     if (!UI || !Pawn || Player->IsMoveInputIgnored() || Player->GetViewTarget() != Pawn ||
         FVector::DistSquared(Pawn->GetActorLocation(), GetActorLocation()) > FMath::Square(285.0)) return false;
+    if (UActOneSubsystem* Act=UActOneSubsystem::Find(this); Act && Act->HandlePortal(*this)) return true;
     if (!DestinationMap.IsNull()) return UI->TravelToStreet(DestinationMap, DestinationTitle, DestinationPhoto, DestinationSpawn);
     if (Arrival) return UI->ShowLocationCard(Player, DestinationTitle, DestinationPhoto, Arrival);
     return ClosedNotice && UI->ShowDocument(Player, ClosedNotice, nullptr);

@@ -1,4 +1,5 @@
 #include "DimaApartmentStory.h"
+#include "ActOne.h"
 #include "LocationTravel.h"
 #include "Engine/Texture2D.h"
 #include "InteractionDocument.h"
@@ -268,7 +269,7 @@ bool UDimaApartmentStoryComponent::TryInteract(FName Tag)
             if (UGameplayStatics::GetCurrentLevelName(this,true) != TEXT("L_DimaApartmentInterior")) return false;
             GetWorld()->GetGameInstance()->GetSubsystem<UNarrativeSubsystem>()->TravelToStreet(
                 TSoftObjectPtr<UWorld>(FSoftObjectPath(TEXT("/Game/Locations/L_NeptuneStreet.L_NeptuneStreet"))),
-                NSLOCTEXT("Dostoevsky","NeptuneDestination","Улица Нептун"),
+                NSLOCTEXT("Dostoevsky","BrightonDestination","4-я улица · Брайтон-Бич"),
                 LoadObject<UTexture2D>(nullptr,TEXT("/Game/Prologue/Street/Transitions/T_Transition_Neptune.T_Transition_Neptune")),TEXT("FromApartment"));
             return true;
         }
@@ -386,6 +387,8 @@ bool UDimaApartmentStoryLibrary::IsBusy(AHUD* HUD)
 }
 FString UDimaApartmentStoryLibrary::Objective(AHUD* HUD,const FString& Fallback)
 {
+    if (const UActOneSubsystem* Act=UActOneSubsystem::Find(HUD); Act && Act->IsActive() && Act->GetPhase()!=EActOnePhase::Apartment)
+        return Act->Objective().ToString();
     const UDimaApartmentStoryComponent* Component = Story(HUD,false);
     return Component ? Component->Objective(Fallback) : Fallback;
 }

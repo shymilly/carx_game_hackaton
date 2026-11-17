@@ -1,4 +1,5 @@
 #include "JournalUI.h"
+#include "ActOne.h"
 #include "DocumentWindow.h"
 #include "InteractionDocument.h"
 #include "Brushes/SlateRoundedBoxBrush.h"
@@ -40,8 +41,10 @@ bool Flag(const UObject* State, FName Name)
 
 bool Available(const UObject* State, const UJournalCatalog* Catalog, int32 Index)
 {
-    return Catalog && Catalog->Entries.IsValidIndex(Index) && IsValid(Catalog->Entries[Index].Document)
-        && Flag(State, Catalog->Entries[Index].DiscoveryFlag);
+    if (!Catalog || !Catalog->Entries.IsValidIndex(Index) || !IsValid(Catalog->Entries[Index].Document)) return false;
+    const FName FlagName=Catalog->Entries[Index].DiscoveryFlag;
+    const UActOneSubsystem* Act=UActOneSubsystem::Find(State);
+    return Flag(State,FlagName) || (Act && Act->HasEvidence(FlagName));
 }
 
 enum class EJournalKeyAction { None, Back, Close };
@@ -384,8 +387,13 @@ bool UJournalUILibrary::ValidateJournalBlueprint(UObject* BlueprintAsset)
     }
     const UJournalCatalog* Catalog = LoadObject<UJournalCatalog>(nullptr,TEXT("/Game/UI/Journal/DA_JournalCatalog.DA_JournalCatalog"));
     if (Presenters != 1 || !Catalog || Catalog->Entries.IsEmpty()) return false;
+    const UActOneData* Story = LoadObject<UActOneData>(nullptr,TEXT("/Game/Story/ActOne/DA_ActOne.DA_ActOne"));
     for (const FJournalEntry& Entry : Catalog->Entries)
-        if (!Entry.Document || !FindFProperty<FBoolProperty>(Blueprint->GeneratedClass, Entry.DiscoveryFlag)) return false;
+    {
+        if (!Entry.Document) return false;
+        if (Story && Story->Documents.FindRef(Entry.DiscoveryFlag)==Entry.Document) continue;
+        if (!FindFProperty<FBoolProperty>(Blueprint->GeneratedClass,Entry.DiscoveryFlag)) return false;
+    }
     return true;
 #else
     return false;

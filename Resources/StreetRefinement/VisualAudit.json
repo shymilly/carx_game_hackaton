@@ -4,49 +4,57 @@
   "signs": [
     {
       "label": "Fascia lettering",
-      "text": "ПРОДУКТЫ",
+      "text": "ПРОДУКТЫ / GROCERY",
+      "font": "Russo One",
       "yaw": 0.0,
       "positive_scale": true
     },
     {
       "label": "Fascia lettering",
-      "text": "АПТЕКА",
+      "text": "АПТЕКА / PHARMACY",
+      "font": "PT Serif",
       "yaw": 0.0,
       "positive_scale": true
     },
     {
       "label": "Fascia lettering",
-      "text": "БАР «МАЯК»",
+      "text": "Бар «Маяк» / Lighthouse Bar",
+      "font": "Lobster",
       "yaw": 89.99999999999999,
       "positive_scale": true
     },
     {
       "label": "Вывеска БАРАХОЛКА",
-      "text": "БАРАХОЛКА",
+      "text": "БАРАХОЛКА / FLEA MARKET",
+      "font": "Rubik Mono One",
       "yaw": 89.99999999999999,
       "positive_scale": true
     },
     {
       "label": "Neptune Playground entrance plate",
-      "text": "ДЕТСКАЯ ПЛОЩАДКА",
+      "text": "ПЛОЩАДКА «НЕПТУН» / NEPTUNE PLAYGROUND",
+      "font": "Marmelad",
       "yaw": 180.0,
       "positive_scale": true
     },
     {
       "label": "60 Precinct fascia",
-      "text": "ПОЛИЦИЯ / УЧАСТОК 60",
+      "text": "ПОЛИЦИЯ · 60-Й УЧАСТОК / POLICE · 60TH PRECINCT",
+      "font": "PT Sans Narrow",
       "yaw": -90.00000000000001,
       "positive_scale": true
     },
     {
       "label": "Neptune avenue blade",
-      "text": "УЛ. НЕПТУН",
+      "text": "УЛ. НЕПТУН / NEPTUNE AVE",
+      "font": "IBM Plex Mono",
       "yaw": 180.0,
       "positive_scale": true
     },
     {
       "label": "Neptune94 press lettering",
-      "text": "КНИГИ / ПРЕССА",
+      "text": "КНИГИ И ПРЕССА / BOOKS & NEWSPAPERS",
+      "font": "IBM Plex Serif",
       "yaw": 180.0,
       "positive_scale": true
     }

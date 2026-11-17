@@ -64,7 +64,7 @@ powershell -File Scripts/BuildEditor.ps1 -EngineRoot "D:\UE_5.8" -GenerateVSCode
 & "D:\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" "$PWD\Dostoevsky.uproject" -run=pythonscript "-script=$PWD\Scripts\CheckDialoguePaint.py" -LiveCoding=false -unattended -nullrhi -nosplash -nosound
 ```
 
-Квартира, улица и полицейский участок находятся на отдельных картах в `Content/Locations`. Стартовая карта — `L_DimaApartmentInterior`. Нажатие E на выходной двери показывает загрузочный экран и загружает улицу; вход в участок работает так же. Время, журнал и прогресс сохраняются между загрузками. [Карты, двери и проверки](Docs/SeparateLocations.md).
+Первый акт проходит через восемь отдельных карт в `Content/Locations`. Стартовая карта — `L_DimaApartmentInterior`. Нажатие E на выходной двери показывает загрузочный экран и загружает улицу. Доступ к бару, участку и квартире Фёдора открывается по сценарию. Время, журнал, характеристики и прогресс сохраняются между загрузками. [Маршрут и механики первого акта](Docs/ActOne.md). [Карты, двери и проверки](Docs/SeparateLocations.md).
 
 ## Совместная работа
 

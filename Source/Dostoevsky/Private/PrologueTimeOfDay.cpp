@@ -1,4 +1,5 @@
 #include "PrologueTimeOfDay.h"
+#include "ActOne.h"
 #include "LocationTravel.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -300,6 +301,7 @@ void UPrologueWorldLibrary::OpenBedMenu(AHUD* HUD)
 
 bool UPrologueWorldLibrary::IsWorldInteractionModal(AHUD* HUD)
 {
+    if (const UActOneSubsystem* Act=UActOneSubsystem::Find(HUD); Act && Act->IsCinematic()) return true;
     if (const UNarrativeSubsystem* UI = Narrative(OwningPlayer(HUD)); UI &&
         (UI->IsDocumentOpen() || UI->IsLocationTransitionActive())) return true;
     const APrologueTimeOfDay* Time = TimeController(HUD);

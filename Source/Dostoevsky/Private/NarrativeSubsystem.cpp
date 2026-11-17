@@ -1,4 +1,5 @@
 #include "NarrativeSubsystem.h"
+#include "DimaApartmentStory.h"
 #include "LocationTravel.h"
 #include "HAL/PlatformTime.h"
 #include "DocumentWindow.h"
@@ -11,6 +12,7 @@
 #include "Engine/Texture2D.h"
 #include "Engine/World.h"
 #include "GameFramework/Pawn.h"
+#include "GameFramework/PawnMovementComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
 #include "Misc/PackageName.h"
@@ -110,8 +112,26 @@ bool UNarrativeSubsystem::ShowChoices(APlayerController* Player, UInteractionDoc
     return OpenDocument(Player, Document, UDocumentWindow::StaticClass(), MoveTemp(Choices), MoveTemp(Selection));
 }
 
+bool UNarrativeSubsystem::ShowStoryPage(APlayerController* Player, UInteractionDocument* Document, FSimpleDelegate Continue)
+{
+    return OpenDocument(Player,Document,UDimaStoryDialogueWindow::StaticClass(),{},{},false,MoveTemp(Continue));
+}
+
+bool UNarrativeSubsystem::ShowRequiredChoices(APlayerController* Player,UInteractionDocument* Document,
+    TArray<FText> Choices,FDocumentChoice Selection)
+{
+    return OpenDocument(Player,Document,UDocumentWindow::StaticClass(),MoveTemp(Choices),MoveTemp(Selection),true);
+}
+
+bool UNarrativeSubsystem::ShowChallenge(APlayerController* Player,UInteractionDocument* Document,
+    FDocumentKeyInput Input,FSimpleDelegate Cancel)
+{
+    return OpenDocument(Player,Document,UDocumentWindow::StaticClass(),{},{},false,MoveTemp(Cancel),MoveTemp(Input));
+}
+
 bool UNarrativeSubsystem::OpenDocument(APlayerController* Player, UInteractionDocument* Document,
-    TSubclassOf<UDocumentWindow> WindowClass, TArray<FText> Choices, FDocumentChoice Selection)
+    TSubclassOf<UDocumentWindow> WindowClass, TArray<FText> Choices, FDocumentChoice Selection,
+    bool bRequireChoice, FSimpleDelegate Continue, FDocumentKeyInput Input)
 {
     if (!Player || !Player->IsLocalController() || !Document || IsLocationTransitionActive()) return false;
     CloseDocument();
@@ -119,12 +139,17 @@ bool UNarrativeSubsystem::OpenDocument(APlayerController* Player, UInteractionDo
     if (!Window) return false;
     CurrentDocument = Document;
     Window->Document = Document;
+    Window->bRequireChoice = bRequireChoice;
+    Window->OnCloseRequested = MoveTemp(Continue);
+    Window->OnKeyInput = MoveTemp(Input);
     Window->SetChoices(MoveTemp(Choices), MoveTemp(Selection));
     Window->AddToViewport(50);
     ModalPlayer = Player;
     bPreviousCursor = Player->bShowMouseCursor;
     Player->SetIgnoreMoveInput(true);
     Player->SetIgnoreLookInput(true);
+    if (APawn* Pawn = Player->GetPawn())
+        if (UPawnMovementComponent* Movement = Pawn->GetMovementComponent()) Movement->StopMovementImmediately();
     Player->bShowMouseCursor = true;
     FInputModeUIOnly Mode;
     Mode.SetWidgetToFocus(Window->TakeWidget());
@@ -138,7 +163,12 @@ bool UNarrativeSubsystem::OpenDocument(APlayerController* Player, UInteractionDo
 void UNarrativeSubsystem::CloseDocument()
 {
     if (Voice) { Voice->Stop(); Voice = nullptr; }
-    if (Window) Window->RemoveFromParent();
+    if (Window)
+    {
+        Window->OnCloseRequested.Unbind();
+        Window->OnKeyInput.Unbind();
+        Window->RemoveFromParent();
+    }
     if (IsValid(ModalPlayer))
     {
         ModalPlayer->SetIgnoreMoveInput(false);
