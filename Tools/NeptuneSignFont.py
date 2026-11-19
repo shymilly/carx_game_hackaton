@@ -15,7 +15,7 @@ class Sign:
 
     @property
     def text(self):
-        return f"{self.russian} / {self.english}"
+        return f"{self.russian} / {self.english}" if self.russian else self.english
 
 
 # Width and height are the usable area of the fascia, in centimeters.
@@ -24,7 +24,7 @@ SIGNS = {
     "SM_NeighborhoodPharmacy": Sign("АПТЕКА", "PHARMACY", "PT Serif", "ptserif/PT_Serif-Web-Bold.ttf", 680, 49, 0),
     "SM_NeighborhoodBar": Sign("Бар «Маяк»", "Lighthouse Bar", "Lobster", "lobster/Lobster-Regular.ttf", 443, 72, 90),
     "SM_NeighborhoodFlea": Sign("БАРАХОЛКА", "FLEA MARKET", "Rubik Mono One", "rubikmonoone/RubikMonoOne-Regular.ttf", 435, 47, 90),
-    "SM_NeighborhoodPrecinct": Sign("ПОЛИЦИЯ · 60-Й УЧАСТОК", "POLICE · 60TH PRECINCT", "PT Sans Narrow",
+    "SM_NeighborhoodPrecinct": Sign("", "POLICE · 60TH PRECINCT", "PT Sans Narrow",
                                    "ptsansnarrow/PT_Sans-Narrow-Web-Bold.ttf", 575, 47, -90),
     "SM_NeighborhoodPark": Sign("БРАЙТОНСКИЙ ДВОР", "BRIGHTON PLAYGROUND", "Marmelad",
                                "marmelad/Marmelad-Regular.ttf", 246, 43, 180),
@@ -68,8 +68,11 @@ def build():
     for key, sign in SIGNS.items():
         font = bpy.data.fonts.load(str(source / "SignFonts" / sign.font), check_existing=True)
         vertices, faces = [], []
-        append_row(bpy, sign.russian, font, sign.width, .51*sign.height, .24*sign.height, vertices, faces)
-        append_row(bpy, sign.english, font, sign.width, .40*sign.height, -.25*sign.height, vertices, faces)
+        if sign.russian:
+            append_row(bpy, sign.russian, font, sign.width, .51*sign.height, .24*sign.height, vertices, faces)
+            append_row(bpy, sign.english, font, sign.width, .40*sign.height, -.25*sign.height, vertices, faces)
+        else:
+            append_row(bpy, sign.english, font, sign.width, .82*sign.height, 0, vertices, faces)
         assert faces, key
         name = "SM_N94_" + key
         lines = [f"# {sign.family} | {sign.text}", "o " + name, "usemtl EnamelLetters", "s off"]

@@ -1,9 +1,13 @@
 #include "ActOneScene.h"
 #include "BrightonEnvironment.h"
 #include "CityCharacter.h"
+#include "CigaretteSmokeComponent.h"
 
 #include "Animation/AnimSingleNodeInstance.h"
 #include "Camera/PlayerCameraManager.h"
+#include "Components/LightComponent.h"
+#include "Engine/PointLight.h"
+#include "GameFramework/Pawn.h"
 #include "Components/AudioComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/InputComponent.h"
@@ -49,8 +53,19 @@ void AActOneCast::BeginPlay()
         CharacterMesh->SetRelativeLocation(FVector(0,0,CharacterProfile->FeetOffset));
     }
     Pose(DefaultPose);
-    if (AnimationPhase>0)
-        if (UAnimSingleNodeInstance* Clip=CharacterMesh->GetSingleNodeInstance()) Clip->SetPosition(AnimationPhase,false);
+    if (UAnimSingleNodeInstance* Clip=CharacterMesh->GetSingleNodeInstance())
+    {
+        const float Offset=AnimationPhase>0 ? AnimationPhase : (GetTypeHash(GetFName())%1000)*.001f*Clip->GetLength();
+        if (DefaultPose==EActOnePose::Seated) Clip->SetPosition(2.3f,false);
+        else if (Clip->GetLength()>0) Clip->SetPosition(FMath::Fmod(Offset,Clip->GetLength()),false);
+    }
+    if (DefaultPose==EActOnePose::Smoking)
+    {
+        TArray<AActor*> Props;
+        GetAttachedActors(Props,false,true);
+        for (AActor* Prop:Props) if (Prop->ActorHasTag(TEXT("CigaretteSource"))) CigaretteTip=Prop;
+        SmokeTrail=UCigaretteSmokeComponent::CreateTrail(this);
+    }
 }
 
 void AActOneCast::Pose(EActOnePose NewPose)
@@ -58,31 +73,43 @@ void AActOneCast::Pose(EActOnePose NewPose)
     const bool bChanged=NewPose!=CurrentPose;
     if (bChanged) Life=0;
     CurrentPose=NewPose;
-    const bool bFallen=NewPose==EActOnePose::Fallen;
+    const bool bFallen=NewPose==EActOnePose::Fallen || NewPose==EActOnePose::Dead || NewPose==EActOnePose::Subdued;
+    Body->SetCollisionEnabled(NewPose==EActOnePose::Dead ? ECollisionEnabled::NoCollision : ECollisionEnabled::QueryOnly);
     Body->SetCapsuleHalfHeight(bFallen ? 29.f : 88.f);
     Body->SetRelativeLocation(FVector(0,0,bFallen ? 29.f : 88.f));
-    if (bChanged || !CharacterMesh->GetSingleNodeInstance()) PlayCharacterPose();
+    if (bChanged || !Cast<UCityClipInstance>(CharacterMesh->GetAnimInstance())) PlayCharacterPose();
 }
 
 void AActOneCast::PlayCharacterPose()
 {
     if (!CharacterProfile || !CharacterProfile->Mesh) return;
     NodRemaining=0;
-    FName Motion=TEXT("Idle");
+    FName Motion=bSpeaking ? TEXT("Talk") : TEXT("Idle");
     switch (CurrentPose)
     {
-    case EActOnePose::Seated: Motion=TEXT("Sit"); break;
+    case EActOnePose::Seated: Motion=bSpeaking && CharacterProfile->Motions.Contains(TEXT("SeatedTalk")) ? TEXT("SeatedTalk") : TEXT("Sit"); break;
     case EActOnePose::Smoking: Motion=TEXT("Smoke"); break;
     case EActOnePose::Armed: Motion=TEXT("Armed"); break;
     case EActOnePose::Fallen: Motion=TEXT("Fall"); break;
     case EActOnePose::Walking: Motion=TEXT("Walk"); break;
     case EActOnePose::Running: Motion=TEXT("Run"); break;
     case EActOnePose::Conversing: Motion=TEXT("Talk"); break;
+    case EActOnePose::Firing: Motion=TEXT("Shot"); break;
+    case EActOnePose::Dead: Motion=TEXT("Fall"); break;
+    case EActOnePose::Subdued: Motion=TEXT("Sit"); break;
     default: break;
     }
-    const bool bLoop=CurrentPose!=EActOnePose::Fallen;
+    const bool bLoop=CurrentPose!=EActOnePose::Fallen && CurrentPose!=EActOnePose::Dead && CurrentPose!=EActOnePose::Firing;
     const float Rate=CurrentPose==EActOnePose::Walking && WalkSpeed<1 ? .72f : 1.f;
     CharacterProfile->Play(*CharacterMesh,Motion,bLoop,Rate);
+    if (Motion==TEXT("Sit") && CharacterMesh->GetSingleNodeInstance()) CharacterMesh->SetPosition(2.3f,false);
+}
+
+void AActOneCast::SetSpeaking(bool bIsSpeaking)
+{
+    if (bSpeaking==bIsSpeaking) return;
+    bSpeaking=bIsSpeaking;
+    if (CurrentPose==EActOnePose::Idle || CurrentPose==EActOnePose::Seated) PlayCharacterPose();
 }
 
 void AActOneCast::Face(const FVector& Target)
@@ -95,7 +122,7 @@ void AActOneCast::WalkAway(const FVector& Destination,float Speed)
 {
     WalkTarget=Destination;
     WalkSpeed=Speed;
-    Pose(EActOnePose::Walking);
+    Pose(Speed>=330.f ? EActOnePose::Running : EActOnePose::Walking);
 }
 
 void AActOneCast::Nod()
@@ -138,6 +165,19 @@ void AActOneCast::Tick(float DeltaSeconds)
     }
     if (CharacterProfile && CharacterProfile->Mesh)
     {
+        if (UAnimSingleNodeInstance* Clip=CharacterMesh->GetSingleNodeInstance())
+        {
+            const float T=Clip->GetCurrentTime();
+            if ((CurrentPose==EActOnePose::Seated || CurrentPose==EActOnePose::Subdued) && Clip->GetLength()>5.f && T>Clip->GetLength()-.4f)
+                Clip->SetPosition(2.3f,false);
+            if (SmokeTrail && CurrentPose==EActOnePose::Smoking)
+            {
+                const FVector Mouth=CharacterMesh->GetSocketLocation(TEXT("Head"))+GetActorForwardVector()*9.f;
+                const FVector Tip=CigaretteTip.IsValid() ? CigaretteTip->GetActorLocation() : CharacterMesh->GetSocketLocation(TEXT("MiddleHand_R"));
+                SmokeTrail->SetSource(Tip,Mouth,T>3.8f && T<4.9f);
+            }
+            else if (SmokeTrail) SmokeTrail->StopEmitting();
+        }
         if (NodRemaining>0 && (NodRemaining-=DeltaSeconds)<=0) PlayCharacterPose();
         return;
     }
@@ -237,6 +277,68 @@ void AActOneDirector::Pose(FName Key,EActOnePose InPose) const
     if (AActOneCast* CastActor=Cast<AActOneCast>(Cue(Key))) CastActor->Pose(InPose);
 }
 
+void AActOneDirector::SetSpeaker(FName CueName)
+{
+    AActOneCast* Next=Cast<AActOneCast>(Cue(CueName));
+    if (Speaker.Get()==Next) return;
+    if (Speaker.IsValid()) Speaker->SetSpeaking(false);
+    Speaker=Next;
+    if (Next) Next->SetSpeaking(true);
+}
+
+void AActOneDirector::StartBarShot()
+{
+    APlayerController* PC=UGameplayStatics::GetPlayerController(this,0);
+    if (!PC) return;
+    PreviousBarView=PC->GetViewTarget();
+    if (AActor* Camera=Cue(TEXT("BarShotCamera"))) PC->SetViewTargetWithBlend(Camera,.14f);
+    if (APawn* Pawn=PC->GetPawn()) Pawn->SetActorHiddenInGame(true);
+    Show(TEXT("BarDima"),true);
+    Pose(TEXT("BarDima"),EActOnePose::Firing);
+}
+
+void AActOneDirector::BarShotImpact()
+{
+    DropBarWeapon();
+    Pose(TEXT("BarGuard"),EActOnePose::Dead);
+    if (auto* Light=Cast<APointLight>(Cue(TEXT("BarFlash"))))
+    {
+        if (AActor* Prop=Cue(TEXT("BarShotProp"))) Light->SetActorLocation(Prop->GetActorLocation()+Prop->GetActorForwardVector()*10);
+        Light->GetLightComponent()->SetVisibility(true);
+        FlashRemaining=.075f;
+    }
+}
+
+void AActOneDirector::DropBarWeapon()
+{
+    AActor* Held=Cue(TEXT("GuardWeapon"));
+    AActor* Dropped=Cue(TEXT("DroppedWeapon"));
+    if (Held && Dropped)
+    {
+        ReleaseTransform=Held->GetActorTransform();
+        LandingTransform=Dropped->GetActorTransform();
+        const double Height=FMath::Max(1.,ReleaseTransform.GetLocation().Z-LandingTransform.GetLocation().Z);
+        DropDuration=FMath::Sqrt(2.*Height/980.);
+        DropElapsed=0;
+        FallingBarWeapon=Dropped;
+        Dropped->SetActorTransform(ReleaseTransform);
+    }
+    Show(TEXT("GuardWeapon"),false);
+    Show(TEXT("DroppedWeapon"),true);
+}
+
+void AActOneDirector::EndBarShot()
+{
+    if (APlayerController* PC=UGameplayStatics::GetPlayerController(this,0))
+    {
+        if (APawn* Pawn=PC->GetPawn()) Pawn->SetActorHiddenInGame(false);
+        AActor* Target=PreviousBarView.IsValid() ? PreviousBarView.Get() : PC->GetPawn();
+        if (Target) PC->SetViewTargetWithBlend(Target,.18f);
+    }
+    PreviousBarView.Reset();
+    Show(TEXT("BarDima"),false);
+}
+
 bool AActOneDirector::PatrolCanSeePlayer(APlayerController* Player) const
 {
     const AActor* Patrol=Cue(TEXT("Patrol"));
@@ -254,6 +356,7 @@ bool AActOneDirector::PatrolCanSeePlayer(APlayerController* Player) const
 void AActOneDirector::StartSmoke()
 {
     bSmoking=true;
+    if (!SmokeTrail) SmokeTrail=UCigaretteSmokeComponent::CreateTrail(this);
     SmokeTime=0;
     SmokeRig->SetHiddenInGame(false,true);
 }
@@ -261,6 +364,7 @@ void AActOneDirector::StartSmoke()
 void AActOneDirector::StopSmoke()
 {
     bSmoking=false;
+    if (SmokeTrail) SmokeTrail->StopEmitting();
     SmokeRig->SetHiddenInGame(true,true);
 }
 
@@ -393,6 +497,8 @@ void AActOneDirector::UpdateSmoke(APlayerController* Player,float DeltaSeconds)
     const FVector Position=Player->PlayerCameraManager->GetCameraLocation()+
         View.RotateVector(FVector(54-23*Lift,25-14*Lift,-34+18*Lift+FMath::Sin(SmokeTime*8)*.5f));
     SmokeRig->SetWorldLocationAndRotation(Position,View+FRotator(8+25*Lift,-17,0));
+    if (SmokeTrail) SmokeTrail->SetSource(Ember->GetComponentLocation(),
+        Player->PlayerCameraManager->GetCameraLocation()+View.RotateVector(FVector(20,2,-6)),SmokeTime>1.45f && SmokeTime<2.35f);
 }
 
 void AActOneDirector::UpdateRecorder(APlayerController* Player,float DeltaSeconds)
@@ -427,6 +533,20 @@ void AActOneDirector::Tick(float DeltaSeconds)
     if (UActOneSubsystem* Act=UActOneSubsystem::Find(this)) Act->Update(DeltaSeconds);
     if (bRain) UpdateRain(Player->GetPawn()->GetActorLocation(),DeltaSeconds);
     if (bSmoking) UpdateSmoke(Player,DeltaSeconds);
+    if (AActor* Prop=FallingBarWeapon.Get())
+    {
+        DropElapsed+=DeltaSeconds;
+        const float T=FMath::Min(1.f,DropElapsed/DropDuration);
+        FTransform Pose;
+        Pose.Blend(ReleaseTransform,LandingTransform,T);
+        FVector Position=Pose.GetLocation();
+        Position.Z=FMath::Lerp(ReleaseTransform.GetLocation().Z,LandingTransform.GetLocation().Z,T*T);
+        Pose.SetLocation(Position);
+        Prop->SetActorTransform(Pose);
+        if (T>=1.f) FallingBarWeapon.Reset();
+    }
+    if (FlashRemaining>0 && (FlashRemaining-=DeltaSeconds)<=0)
+        if (auto* Light=Cast<APointLight>(Cue(TEXT("BarFlash")))) Light->GetLightComponent()->SetVisibility(false);
     if (TapeTime>=0) UpdateRecorder(Player,DeltaSeconds);
     if (MovingDoor.IsValid())
     {

@@ -9,7 +9,7 @@ import unreal as ue
 
 project = Path(ue.Paths.convert_relative_path_to_full(ue.Paths.project_dir()))
 sys.path.insert(0,str(project/"Tools"))
-from ActOneScenes import ACTORS, BUILDERS, ROOT, TAG, Scene
+from ActOneScenes import ACTORS, BUILDERS, ROOT, TAG, Scene, page_speakers
 
 assets = ue.get_editor_subsystem(ue.EditorAssetSubsystem)
 levels = ue.get_editor_subsystem(ue.LevelEditorSubsystem)
@@ -83,6 +83,7 @@ def art_and_dialogue():
     configure_apartment_audio(sounds)
     append_to_journal(documents)
     data=data_asset(ue.ActOneData,ROOT,"DA_ActOne")
+    data.set_editor_property("page_speakers",page_speakers(spec))
     data.set_editor_properties({"documents":{ue.Name(key):doc for key,doc in documents.items()},
                                 "sounds":{ue.Name(key):sound for key,sound in sounds.items() if not key.startswith("Voice_")}})
     save(data)

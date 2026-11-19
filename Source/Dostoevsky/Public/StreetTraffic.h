@@ -39,6 +39,11 @@ public:
     AStreetTrafficFlow();
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Traffic") TObjectPtr<USplineComponent> Eastbound;
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Traffic") TObjectPtr<USplineComponent> Westbound;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Traffic") TObjectPtr<USplineComponent> Northbound;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Traffic") TObjectPtr<USplineComponent> Southbound;
+    UPROPERTY(EditInstanceOnly, Category="Traffic") bool bUseCrossStreetRoutes=false;
+    UFUNCTION(BlueprintPure, Category="Traffic") int32 GetRouteCount() const { return bUseCrossStreetRoutes ? 4 : 2; }
+    UFUNCTION(BlueprintPure, Category="Traffic") USplineComponent* GetLane(int32 Lane) const;
     UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category="Traffic") TObjectPtr<UStaticMesh> CarMesh;
     UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category="Traffic") int32 PaintSlot=INDEX_NONE;
     UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category="Traffic") TArray<TObjectPtr<UMaterialInterface>> Paints;
@@ -66,13 +71,12 @@ private:
     };
     TArray<FVehicle> Fleet;
     FRandomStream DrivingRandom;
-    bool LaneAllowed[2]={false,false};
+    bool LaneAllowed[4]={};
     float TimeUntilSpawn=1.5f;
     int32 NextLane=0;
     int32 TotalSpawned=0;
     int32 RouteObstructions=0;
     int32 BlockedMoves=0;
-    USplineComponent* GetLane(int32 Lane) const;
     void Release(FVehicle& Vehicle);
     void SpawnNext();
     void Advance(FVehicle& Vehicle,float DeltaSeconds);

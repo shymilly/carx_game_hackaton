@@ -8,6 +8,7 @@ sys.path.insert(0,str(root/'Tools'))
 levels=ue.get_editor_subsystem(ue.LevelEditorSubsystem)
 assert levels.load_level('/Game/Locations/L_NeptuneStreet')
 from RefineStreetVisuals import SIGNS,audit
+from BrightonStreetDetails import FACTORY_PIVOT,FACTORY_SCALE
 report=audit()
 assert not report['sidewalk_violations'],report['sidewalk_violations']
 assert len(report['signs'])==8,report['signs']
@@ -25,8 +26,8 @@ for a in smoke:
  before=next(b for b in baseline['actors'] if b['label']==a.get_actor_label())
  p,r,s=a.get_actor_location(),a.get_actor_rotation(),a.get_actor_scale3d()
  actual=(p.x,p.y,p.z,r.pitch,r.yaw,r.roll,s.x,s.y,s.z)
- expected=before['pos']+before['rot']+before['scale']
- assert all(abs(x-y)<.0001 for x,y in zip(actual,expected)),a.get_actor_label()
+ expected=[o+(v-o)*FACTORY_SCALE for o,v in zip(FACTORY_PIVOT,before['pos'])]+before['rot']+[v*FACTORY_SCALE for v in before['scale']]
+ assert a.actor_has_tag('BrightonEnlargedFactory') and all(abs(x-y)<.002 for x,y in zip(actual,expected)),a.get_actor_label()
  c=a.get_component_by_class(ue.StaticMeshComponent)
  assert c.get_material(0).get_path_name()==before['materials'][0]
  assert c.static_mesh.get_path_name()==before['mesh']
@@ -39,6 +40,10 @@ for a in factory:
  assert c and not a.get_component_by_class(ue.LightComponent)
  assert str(c.get_collision_profile_name())=='NoCollision'
  assert not c.get_editor_property('cast_shadow')
+ assert a.actor_has_tag('BrightonEnlargedFactory')
+ mat=c.get_material(0)
+ assert mat.get_editor_property('shading_model')==ue.MaterialShadingModel.MSM_DEFAULT_LIT,mat
+ assert ue.MaterialEditingLibrary.get_material_property_input_node(mat,ue.MaterialProperty.MP_BASE_COLOR)
  instances+=c.get_instance_count()
 assert 400<=instances<=1000,instances
 photo_hashes=[]
@@ -59,6 +64,6 @@ precinct=SIGNS['SM_NeighborhoodPrecinct']
 assert plaque.actor_has_tag(ue.Name('SignText:'+precinct.text))
 assert plaque.actor_has_tag(ue.Name('SignFont:'+precinct.family))
 assert plaque.get_component_by_class(ue.StaticMeshComponent).static_mesh.get_name()=='SM_N94_SM_NeighborhoodPrecinct'
-result=dict(sidewalk_violations=0,architectural_groups=report['building_count'],signs=len(report['signs']),factory_batches=len(factory),factory_instances=instances,smoke_unchanged=True,unique_photos=3)
+result=dict(sidewalk_violations=0,architectural_groups=report['building_count'],signs=len(report['signs']),factory_batches=len(factory),factory_instances=instances,factory_scale=FACTORY_SCALE,smoke_aligned=True,unique_photos=3)
 (root/'Saved/StreetRefinementCheck.json').write_text(json.dumps(result,indent=2),encoding='utf-8')
 ue.log('STREET_REFINEMENT_CHECK_PASSED '+str(result))

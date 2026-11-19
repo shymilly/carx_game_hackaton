@@ -1,0 +1,16 @@
+newmtl slide
+Kd .19 .20 .21
+Ks .4 .4 .4
+Ns 80
+newmtl frame
+Kd .12 .13 .14
+Ks .25 .25 .25
+Ns 45
+newmtl grip
+Kd .10 .105 .11
+newmtl rubber
+Kd .065 .068 .07
+newmtl metal
+Kd .29 .30 .31
+newmtl dark
+Kd .025 .027 .028

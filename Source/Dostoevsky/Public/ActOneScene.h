@@ -13,9 +13,10 @@ class USplineComponent;
 class UStaticMeshComponent;
 class USkeletalMeshComponent;
 class UCityCharacterProfile;
+class UCigaretteSmokeComponent;
 
 UENUM(BlueprintType)
-enum class EActOnePose : uint8 { Idle, Seated, Smoking, Armed, Fallen, Walking, Conversing, Running };
+enum class EActOnePose : uint8 { Idle, Seated, Smoking, Armed, Fallen, Walking, Conversing, Running, Firing, Dead, Subdued };
 
 UCLASS()
 class DOSTOEVSKY_API AActOneCast : public AActor
@@ -34,6 +35,7 @@ public:
     void Face(const FVector& Target);
     void Nod();
     void WalkAway(const FVector& Destination,float Speed);
+    void SetSpeaking(bool bIsSpeaking);
 protected:
     void BeginPlay() override;
     void Tick(float DeltaSeconds) override;
@@ -44,6 +46,9 @@ private:
     float WalkSpeed = 0;
     float NodTime = 1;
     float NodRemaining = 0;
+    UPROPERTY(Transient) TObjectPtr<UCigaretteSmokeComponent> SmokeTrail;
+    TWeakObjectPtr<AActor> CigaretteTip;
+    bool bSpeaking = false;
     FVector WalkTarget = FVector::ZeroVector;
     void Part(FName Name,float Pitch,float Roll=0);
     void PlayCharacterPose();
@@ -68,9 +73,14 @@ public:
     AActor* Cue(FName Key) const;
     void Show(FName Key,bool bVisible) const;
     void Pose(FName Key,EActOnePose Pose) const;
+    void SetSpeaker(FName CueName);
     bool PatrolCanSeePlayer(APlayerController* Player) const;
     void StartSmoke();
     void StopSmoke();
+    void StartBarShot();
+    void BarShotImpact();
+    void DropBarWeapon();
+    void EndBarShot();
     void PressRecorder();
     void OpenDoor(FName Hinge,float Yaw);
     UFUNCTION(BlueprintCallable,Category="Weather") void SetRain(bool bOn);
@@ -94,6 +104,13 @@ private:
     int32 NextSplash=0;
     UPROPERTY(Transient) TObjectPtr<UAudioComponent> RainLoop;
     UPROPERTY() TObjectPtr<USceneComponent> SmokeRig;
+    UPROPERTY(Transient) TObjectPtr<UCigaretteSmokeComponent> SmokeTrail;
+    TWeakObjectPtr<AActor> PreviousBarView;
+    TWeakObjectPtr<AActor> FallingBarWeapon;
+    FTransform ReleaseTransform, LandingTransform;
+    float DropElapsed=0, DropDuration=0;
+    TWeakObjectPtr<AActOneCast> Speaker;
+    float FlashRemaining = 0;
     FRandomStream Random{1994};
     float WeatherTime = 0;
     float SmokeTime = 0;

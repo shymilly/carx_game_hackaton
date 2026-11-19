@@ -28,15 +28,40 @@ for map_name in maps:
             assert (hand(3.0)-hand(.1)).length()>45,actor
         if actor.actor_has_tag("ActOneGenerated"):total+=1
     if map_name in ("L_NeptuneStreet","L_DimaApartmentInterior"):
-        train,=[a for a in placed if isinstance(a,ue.CityRailTraffic)]
+        train,branch=sorted([a for a in placed if isinstance(a,ue.CityRailTraffic)],key=lambda a:a.get_actor_location().x)
         assert train.get_editor_property("interval")==300 and len(train.get_editor_property("consist"))==6
+        assert branch.get_editor_property("interval")==300 and len(branch.get_editor_property("consist"))==4
+        assert branch.get_editor_property("first_pass_delay")==95 and branch.get_actor_location().y<-7600
         translation=train.get_actor_location()
         assert translation.x<-6735 and abs(translation.z-(591.65 if map_name=="L_NeptuneStreet" else -48.35))<.001
         buffers=[a.get_editor_property("instances") for a in placed if isinstance(a,ue.StreetMeshInstances)
                  and a.actor_has_tag("CityLifeDressing") and a.get_actor_label()=="Rail segments"]
         assert sum(buffer.get_instance_count() for buffer in buffers)==44
+        branch_track=[a.get_editor_property("instances") for a in placed if a.get_actor_label()=="Industrial line rails"]
+        assert sum(b.get_instance_count() for b in branch_track)==26
+        assert {"Bus shelter frame","Wooden shipping cases","Park planting beds"} <= {a.get_actor_label() for a in placed}
         fog,=[a for a in placed if isinstance(a,ue.ExponentialHeightFog)]
         assert fog.get_component_by_class(ue.ExponentialHeightFogComponent).get_editor_property("start_distance")>=3500
+    if map_name=="L_DimaApartmentInterior":
+        pistol=next(a for a in placed if a.actor_has_tag("ActCue:Pistol"))
+        pc,pe=pistol.get_actor_bounds(False)
+        tc,te=next(a for a in placed if a.get_actor_label()=="Writing desk").get_actor_bounds(False)
+        assert abs(pc.z-pe.z-tc.z-te.z)<.15
+        assert pistol.get_component_by_class(ue.StaticMeshComponent).static_mesh.get_name()=="SM_pistol_obj"
+        neighbors={"Cassette recorder case","Pencil","Desk lamp","SM_Telephone","Industrial Herald","Patrol report"}
+        for item in [a for a in placed if a.get_actor_label() in neighbors]:
+            c,e=item.get_actor_bounds(False)
+            assert abs(pc.x-c.x)>pe.x+e.x+2 or abs(pc.y-c.y)>pe.y+e.y+2,item.get_actor_label()
+    if map_name=="L_LighthouseBar":
+        for role in ("BarShotProp","GuardWeapon","DroppedWeapon"):
+            prop,=[a for a in placed if a.actor_has_tag("ActCue:"+role)]
+            assert prop.get_component_by_class(ue.StaticMeshComponent).static_mesh.get_name()=="SM_pistol_obj"
+            if role!="DroppedWeapon":
+                assert isinstance(prop.get_attach_parent_actor(),ue.ActOneCast)
+                assert str(prop.get_attach_parent_socket_name())=="MiddleHand_R"
+            else:
+                assert prop.get_component_by_class(ue.StaticMeshComponent).get_editor_property("mobility")==ue.ComponentMobility.MOVABLE
+        assert len([a for a in placed if a.actor_has_tag("ActCue:BarShotCamera")])==1
     ue.log("CITY_LIFE_ASSET_MAP "+map_name+" characters="+str(len(cast)))
 
 assert total==11,total

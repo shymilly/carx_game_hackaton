@@ -3,6 +3,7 @@
 #include "ActOne.h"
 #include "ActOneScene.h"
 #include "CityCharacter.h"
+#include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/SpotLightComponent.h"
@@ -74,20 +75,33 @@ void UBrightonEnvironmentComponent::UpdatePlayerAppearance(ACharacter* Character
         for (USkeletalMeshComponent* Original:Existing)
             if (Original->GetSkeletalMeshAsset() && Original->GetSkeletalMeshAsset()->GetFName()==TEXT("SKM_Manny_Simple"))
             {
-                // Keep the original animated socket for the first-person camera.
-                Original->VisibilityBasedAnimTickOption=EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
+                Original->VisibilityBasedAnimTickOption=EVisibilityBasedAnimTickOption::OnlyTickPoseWhenRendered;
                 Original->SetVisibility(false);
                 Original->SetCastShadow(false);
                 bTemplateCharacter=true;
             }
         if (!bTemplateCharacter) return;
+        if (UCameraComponent* Eyes=Character->FindComponentByClass<UCameraComponent>())
+        {
+            Eyes->AttachToComponent(Character->GetCapsuleComponent(),FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+            Eyes->SetRelativeLocation(FVector(8,0,Character->BaseEyeHeight));
+            Eyes->bUsePawnControlRotation=true;
+        }
         Visual=NewObject<USkeletalMeshComponent>(Character,TEXT("DimaStreetClothes"));
         Visual->SetupAttachment(Character->GetCapsuleComponent());
         Appearance->Configure(*Visual);
-        Visual->SetRelativeLocation(FVector(-35,0,Appearance->FeetOffset-Character->GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight()));
+        Visual->SetRelativeLocation(FVector(-24,0,Appearance->FeetOffset-Character->GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight()));
         Visual->RegisterComponent();
         PlayerMesh=Visual;
         PlayerMotion=NAME_None;
+    }
+    const APlayerController* Viewer=Cast<APlayerController>(Character->GetController());
+    const bool bFirstPerson=Viewer && Viewer->GetViewTarget()==Character;
+    static const FName HeadBone(TEXT("Head"));
+    if (Visual->IsBoneHiddenByName(HeadBone)!=bFirstPerson)
+    {
+        if (bFirstPerson) Visual->HideBoneByName(HeadBone,PBO_None);
+        else Visual->UnHideBoneByName(HeadBone);
     }
     const UCharacterMovementComponent& Movement=*Character->GetCharacterMovement();
     const float Speed=Character->GetVelocity().Size2D();
@@ -100,7 +114,11 @@ void UBrightonEnvironmentComponent::UpdatePlayerAppearance(ACharacter* Character
         Appearance->Play(*Visual,Next,Next!=TEXT("Jump"));
     }
     if (bWalk && !Movement.IsFalling())
-        Visual->SetPlayRate(FMath::Clamp(Speed/(bRun ? 530.f : 275.f),.60f,1.55f));
+    {
+        const float Rate=FMath::Clamp(Speed/(bRun ? 530.f : 275.f),.60f,1.55f);
+        const bool bBackwards=FVector::DotProduct(Character->GetVelocity().GetSafeNormal2D(),Character->GetActorForwardVector())<-.55f;
+        Visual->SetPlayRate(bBackwards ? -Rate : Rate);
+    }
 }
 
 void UBrightonEnvironmentComponent::UpdateFootsteps(ACharacter* Character)

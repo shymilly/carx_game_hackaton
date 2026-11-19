@@ -44,7 +44,8 @@ public:
     void SetTravelMask(uint8 Mask) { Progress.UsedMask = Mask & FExplorationTutorialProgress::CompleteMask; }
     void ObserveHUD(bool bOfferControls);
     bool ShouldShowControls() const;
-    bool ShouldShowStatus() const;
+    UFUNCTION(BlueprintPure, Category="HUD") bool ShouldShowTasks() const;
+    UFUNCTION(BlueprintPure, Category="HUD") bool ShouldShowStamina() const;
     float StaminaFraction() const;
     FText MainObjective() const;
     TArray<FText> OptionalObjectives() const;
@@ -58,7 +59,10 @@ private:
     FExplorationTutorialProgress Progress;
     uint64 LastObservedFrame = 0;
     bool bControlsOffered = false;
+    bool bTasksOpen = false;
+    uint64 LastTaskToggleFrame = 0;
     bool IsHUDVisible() const;
+    bool CanInspectStatus(const APlayerController* Player) const;
     void ObserveMovementInput(APlayerController* Player);
 };
 

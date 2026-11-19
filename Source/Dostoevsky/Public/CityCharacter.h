@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Animation/AnimSequence.h"
+#include "Animation/AnimSingleNodeInstance.h"
 #include "Engine/DataAsset.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "CityCharacter.generated.h"
@@ -10,6 +11,16 @@ class UAnimSequence;
 class UMaterialInterface;
 class USkeletalMesh;
 class USkeletalMeshComponent;
+
+UCLASS(Transient)
+class DOSTOEVSKY_API UCityClipInstance : public UAnimSingleNodeInstance
+{
+    GENERATED_BODY()
+public:
+    void TransitionTo(UAnimSequence* Clip, bool bLoop, float Rate, bool bMatchStride);
+protected:
+    FAnimInstanceProxy* CreateAnimInstanceProxy() override;
+};
 
 UCLASS()
 class DOSTOEVSKY_API UCityGestureSequence : public UAnimSequence

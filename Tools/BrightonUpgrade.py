@@ -615,6 +615,8 @@ def capture_exterior():
                     rotation=(r.pitch,r.yaw,r.roll),scale=vector(s),
                     materials=[component.get_material(i).get_path_name() if component.get_material(i) else None
                                for i in range(component.get_num_materials())])
+        if actor.actor_has_tag('BrightonEnlargedFactory'):
+            record['enlarged_factory']=True
         if isinstance(component,ue.InstancedStaticMeshComponent):
             record['instances']=[]
             for index in range(component.get_instance_count()):
@@ -645,6 +647,8 @@ def apartment_city(records):
             continue
         cls=ue.StreetMeshInstances if 'instances' in record else ue.StaticMeshActor
         actor=builder.actor(cls,'Third-floor view '+record['label'],vector(p),rotation)
+        if record.get('enlarged_factory'):
+            actor.tags=[*actor.tags,ue.Name('BrightonEnlargedFactory')]
         actor.set_actor_scale3d(V(*record['scale']))
         mesh=actor.get_component_by_class(ue.StaticMeshComponent)
         mesh.set_static_mesh(ue.load_asset(record['mesh']))
@@ -660,7 +664,10 @@ def apartment_city(records):
                 orientation=ue.MathLibrary.quat_rotator(ue.Quat(x=q[0],y=q[1],z=q[2],w=q[3]))
                 transform=ue.Transform(location=V(*instance['p'])+shift,rotation=orientation,scale=V(*instance['s']))
                 mesh.add_instance(transform,True)
-            mesh.set_cull_distances(19000,26000)
+            if record.get('enlarged_factory'):
+                mesh.set_cull_distances(29000,42000)
+            else:
+                mesh.set_cull_distances(19000,26000)
     facade=ue.load_asset('/Game/StreetRefinement/Materials/M_AgedRedBrick')
     builder.box('Two storeys below Dima north windows',(-190,466,-327),(1175,18,626),facade)
     builder.box('Two storeys below Dima west windows',(-782,0,-327),(18,880,626),facade)

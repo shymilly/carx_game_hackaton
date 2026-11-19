@@ -1,80 +1,20 @@
 """Bounded 2.5D industrial set: instanced solids, tiled masonry, no lights/collision/particles."""
-import math,hashlib
 from random import Random
-from pathlib import Path
 import unreal as ue
 
 FOLDER='Street/08 Industrial horizon/Refined works'
-ROOT='/Game/Prologue/Street/RefinedFactory'
 def apply_factory():
     actors=ue.get_editor_subsystem(ue.EditorActorSubsystem)
-    assets=ue.get_editor_subsystem(ue.EditorAssetSubsystem)
-    lib=ue.MaterialEditingLibrary
-    from ApartmentScene import make_material
-    from StreetMaterials import custom_input
     smoke=[a for a in actors.get_all_level_actors() if a.get_actor_label().startswith('Animated factory stack plume')]
-    def signature():
-        result=[]
-        for a in smoke:
-            p,r,s=a.get_actor_location(),a.get_actor_rotation(),a.get_actor_scale3d()
-            result.append((a.get_actor_label(),tuple(round(v,6) for v in (p.x,p.y,p.z,r.pitch,r.yaw,r.roll,s.x,s.y,s.z)),a.get_component_by_class(ue.StaticMeshComponent).get_material(0).get_path_name()))
-        return result
-    before=signature()
     old=[a for a in actors.get_all_level_actors() if str(a.get_folder_path())==FOLDER]
     if old: assert actors.destroy_actors(old)
-    # Replace both painted factory rectangles with actual depth. Smoke is independent and untouched.
+    # Replace the two old painted rectangles with instanced architecture.
     for a in actors.get_all_level_actors():
         if a.get_actor_label() in ('Aegis works painted facade','Aegis skyline behind the works'):
             a.set_actor_hidden_in_game(True)
             a.get_component_by_class(ue.StaticMeshComponent).set_visibility(False,True)
-    collection=ue.load_asset('/Game/Prologue/Street/Materials/MPC_StreetLighting')
-    palette={
-        'brick':((1.18,.97,.84),'T_brick_Color',200),
-        'ochre':((1.08,1.04,.94),'T_ochre_brick_Color',200),
-        'soot':((.48,.49,.50),'T_brick_Color',200),
-        'concrete':((.86,.89,.88),'T_concrete_Color',400),
-        'steel':((.16,.19,.20),None,200),
-        'rust':((.31,.17,.105),None,200),
-        'glass':((.115,.21,.265),None,200),
-        'glass_warm':((.46,.38,.22),None,200),
-        'black':((.027,.033,.036),None,200),
-    }
-    mats={}
-    for name,(tint,tex,span) in palette.items():
-        m=make_material(ROOT,'Factory_'+name,tint,.9)
-        if not lib.get_material_property_input_node(m,ue.MaterialProperty.MP_EMISSIVE_COLOR):
-            m.set_editor_property('shading_model',ue.MaterialShadingModel.MSM_UNLIT)
-            def n(cls,x,y,**kw):
-                obj=lib.create_material_expression(m,cls,x,y)
-                obj.set_editor_properties(kw)
-                return obj
-            p=n(ue.MaterialExpressionWorldPosition,-850,0)
-            normal=n(ue.MaterialExpressionPixelNormalWS,-850,200)
-            uv=n(ue.MaterialExpressionCustom,-600,0,inputs=[custom_input('P'),custom_input('N')],
-                output_type=ue.CustomMaterialOutputType.CMOT_FLOAT2,code=f'return float2(abs(N.x)>abs(N.y)?P.y:P.x,-P.z)/{float(span)};')
-            lib.connect_material_expressions(p,'',uv,'P');lib.connect_material_expressions(normal,'',uv,'N')
-            if tex:
-                color=n(ue.MaterialExpressionTextureSample,-380,0,texture=ue.load_asset('/Game/Prologue/Street/Textures/'+tex))
-                lib.connect_material_expressions(uv,'',color,'Coordinates')
-            else: color=n(ue.MaterialExpressionConstant3Vector,-380,0,constant=ue.LinearColor(1,1,1,1))
-            tintnode=n(ue.MaterialExpressionConstant3Vector,-380,300,constant=ue.LinearColor(*tint,1))
-            exposure=n(ue.MaterialExpressionCollectionParameter,-380,450,collection=collection,parameter_name=ue.Name('FactoryExposure'))
-            shade=n(ue.MaterialExpressionCustom,0,0,inputs=[custom_input(s) for s in ('C','Tint','N','Light')],
-                output_type=ue.CustomMaterialOutputType.CMOT_FLOAT3,
-                code='float shade=.38+.62*saturate(dot(normalize(N),normalize(float3(-.8,-.5,.8)))); return C*Tint*shade*Light;')
-            for node,pin in ((color,'C'),(tintnode,'Tint'),(normal,'N'),(exposure,'Light')):lib.connect_material_expressions(node,'',shade,pin)
-            lib.connect_material_property(shade,'',ue.MaterialProperty.MP_EMISSIVE_COLOR)
-            lib.recompile_material(m)
-            assert assets.save_loaded_asset(m,False)
-        mats[name]=m
-        # Guard normals on the cheap unlit path and explicitly feed RGB (not RGBA).
-        for expr in ue.ObjectIterator(ue.MaterialExpressionCustom):
-            if expr.get_outer()!=m or 'float shade=' not in expr.get_editor_property('code'):continue
-            expr.set_editor_property('code','float3 normal=N+float3(.0001,.0001,.0001); float shade=.68+.32*saturate(dot(normalize(normal),normalize(float3(-.8,-.5,.8)))); return C.rgb*Tint.rgb*shade*1.8*max(Light,.4);')
-            for sample in ue.ObjectIterator(ue.MaterialExpressionTextureSample):
-                if sample.get_outer()==m:lib.connect_material_expressions(sample,'RGB',expr,'C')
-            m.set_editor_property('used_with_instanced_static_meshes',True)
-            lib.recompile_material(m);assert assets.save_loaded_asset(m,False)
+    from BrightonStreetDetails import enlarge_factory, factory_finishes
+    mats=factory_finishes()
     batches={};counts={}
     def item(material,pos,size,shape='Cube',roll=0):
         key=(material,shape)
@@ -137,8 +77,8 @@ def apply_factory():
     for z in (320,880):
         item('rust',(5340,-1800,z),(70,2120,70),'Cube')
         for y in range(-2740,-700,480):item('steel',(5380,y,z-44),(110,18,45))
-    assert before==signature(),'Smoke actor configuration changed'
+    enlarge_factory(actors.get_all_level_actors(), (0,0,0))
     triangles=sum(n*(12 if shape=='Cube' else 200) for (mat,shape),n in counts.items())
-    report=dict(batches=len(batches),instances=sum(counts.values()),estimated_triangles=triangles,new_lights=0,new_collision_shapes=0,smoke_unchanged=True)
+    report=dict(batches=len(batches),instances=sum(counts.values()),estimated_triangles=triangles,new_lights=0,new_collision_shapes=0,aligned_plumes=len(smoke))
     ue.log('FACTORY_REFINED '+str(report))
     return report

@@ -114,6 +114,7 @@ void UActOneSubsystem::Reset()
     Stats={};
     Evidence.Reset();
     bPressOpen=bVeteranDone=bVeteranFled=bPistol=bOldManFled=bGuardResolved=bArchives=bLockpickTraining=false;
+    bGuardKilled=false;
     bIvanKey=bAlarm=bFloorboardOpen=bDrawerOpen=bBankKey=bAgentEscaped=bIvanSpoken=bClosingStarted=false;
     Cash=20;
     ChasePosition=0;
@@ -213,6 +214,12 @@ void UActOneSubsystem::RefreshScene()
         if (bVeteranFled) Director->Show(TEXT("Veteran"),false);
     }
     if (Place()==EActOneLocation::Apartment) Director->Show(TEXT("Pistol"),!bPistol && Phase<=EActOnePhase::BarCall);
+    if (Place()==EActOneLocation::Bar && bGuardResolved && !bCinematic)
+    {
+        Director->Pose(TEXT("BarGuard"),bGuardKilled ? EActOnePose::Dead : EActOnePose::Subdued);
+        Director->Show(TEXT("GuardWeapon"),false);
+        Director->Show(TEXT("DroppedWeapon"),true);
+    }
     if (Place()==EActOneLocation::Fedor)
     {
         Director->Show(TEXT("IvanFedor"),bAllClues&&!bBankKey);
@@ -266,21 +273,26 @@ void UActOneSubsystem::NextLine()
     UI()->CloseDocument();
     if (Lines.IsValidIndex(Line))
     {
-        UInteractionDocument* Page=Doc(Lines[Line++]);
+        const FName PageId=Lines[Line++];
+        Director->SetSpeaker(Data->PageSpeakers.FindRef(PageId));
+        UInteractionDocument* Page=Doc(PageId);
         if (Page && UI()->ShowStoryPage(Player(),Page,FSimpleDelegate::CreateUObject(this,&ThisClass::NextLine))) return;
         Lines.Reset();
     }
     FSimpleDelegate Done=MoveTemp(AfterLines);
+    Director->SetSpeaker(NAME_None);
     Lines.Reset();
     Done.ExecuteIfBound();
 }
 
 void UActOneSubsystem::Ask(FName Page,TArray<FText> Choices,FDocumentChoice Choice)
 {
+    Director->SetSpeaker(Data->PageSpeakers.FindRef(Page));
     UI()->ShowRequiredChoices(Player(),Doc(Page),MoveTemp(Choices),
         FDocumentChoice::CreateWeakLambda(this,[this,Choice=MoveTemp(Choice)](int32 Value)
         {
             UI()->CloseDocument();
+            Director->SetSpeaker(NAME_None);
             Choice.ExecuteIfBound(Value);
         }));
 }
@@ -543,11 +555,33 @@ void UActOneSubsystem::ResolveGuard(bool bShot)
 {
     if (bGuardResolved) return;
     bGuardResolved=true;
+    if (bShot)
+    {
+        Stats.Anger+=20;
+        --Stats.Neighborhood;
+        Director->StartBarShot();
+        Timed(.48f,FSimpleDelegate::CreateWeakLambda(this,[this]()
+        {
+            bGuardKilled=true;
+            PlayAudio(TEXT("Shot"),.85f);
+            Director->BarShotImpact();
+            Timed(2.12f,FSimpleDelegate::CreateWeakLambda(this,[this]()
+            {
+                Director->EndBarShot();
+                EndBarConflict();
+            }));
+        }));
+        return;
+    }
     Director->Pose(TEXT("BarGuard"),EActOnePose::Fallen);
-    Director->Show(TEXT("GuardWeapon"),false);
-    Director->Show(TEXT("DroppedWeapon"),true);
-    PlayAudio(bShot ? TEXT("Shot") : TEXT("Impact"),.85f);
-    if (bShot) { Stats.Anger+=20; --Stats.Neighborhood; }
+    Director->DropBarWeapon();
+    PlayAudio(TEXT("Impact"),.85f);
+    Timed(1.05f,FSimpleDelegate::CreateUObject(this,&ThisClass::EndBarConflict));
+}
+
+void UActOneSubsystem::EndBarConflict()
+{
+    if (!bGuardKilled) Director->Pose(TEXT("BarGuard"),EActOnePose::Subdued);
     TArray<FName> Pages;
     if (!bOldManFled)
     {

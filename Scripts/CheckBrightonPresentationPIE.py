@@ -55,6 +55,7 @@ def run_presentation():
     yield from pause(.7)
     guide=hud().get_component_by_class(ue.ExplorationHUDComponent)
     assert not guide.is_tutorial_complete()
+    assert not guide.should_show_tasks() and not guide.should_show_stamina()
     yield from capture_hud('ApartmentHUD')
     place((-230,-321,100),0)
     yield from pause(.25)
@@ -69,9 +70,10 @@ def run_presentation():
     yield from pause(.1)
     game_key('J',False)
     assert pc().is_move_input_ignored() and pc().get_editor_property('show_mouse_cursor')
-    for key in ('W','A','S','D','SpaceBar','LeftShift'):
+    for key in ('Q','W','A','S','D','SpaceBar','LeftShift'):
         game_key(key,True)
         yield from pause(.04)
+        assert not guide.should_show_stamina() and not guide.should_show_tasks()
         game_key(key,False)
     assert not guide.is_tutorial_complete(),'Journal input counted towards movement training'
     assert ue.ActOneBlueprintLibrary.send_editor_key('J')
@@ -82,8 +84,13 @@ def run_presentation():
         yield from pause(.08)
         game_key(key,False)
         yield from pause(.04)
-    yield from capture_hud('ApartmentHUDAfterTraining')
     assert guide.is_tutorial_complete(),'The six movement actions did not complete training'
+    assert not guide.should_show_tasks()
+    game_key('Q',True)
+    yield from pause(.08)
+    game_key('Q',False)
+    assert guide.should_show_tasks()
+    yield from capture_hud('ApartmentHUDAfterTraining')
     del guide
     story_try=ue.DimaApartmentStoryLibrary.try_interact
     for tag in ('Wardrobe','Television','FloorLamp'):
@@ -115,6 +122,9 @@ def run_presentation():
     yield from walk((1,0,0),1.7)
     assert environment().get_footstep_count()>previous,'Dry street footsteps did not play'
     assert str(environment().get_last_footstep_surface())=='Asphalt'
+    game_key('Q',True)
+    yield from pause(.08)
+    game_key('Q',False)
     yield from capture_hud('StreetHUD')
     place((-6570,-1425,90),180)
     yield from pause(.2)

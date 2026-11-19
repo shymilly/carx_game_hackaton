@@ -126,6 +126,10 @@ AStreetTrafficFlow::AStreetTrafficFlow()
     Eastbound->SetupAttachment(RootComponent);
     Westbound=CreateDefaultSubobject<USplineComponent>(TEXT("From the west"));
     Westbound->SetupAttachment(RootComponent);
+    Northbound=CreateDefaultSubobject<USplineComponent>(TEXT("Cross street northbound"));
+    Northbound->SetupAttachment(RootComponent);
+    Southbound=CreateDefaultSubobject<USplineComponent>(TEXT("Cross street southbound"));
+    Southbound->SetupAttachment(RootComponent);
     PrimaryActorTick.bCanEverTick=true;
     PrimaryActorTick.TickGroup=TG_PrePhysics;
 }
@@ -146,7 +150,11 @@ void AStreetTrafficFlow::BeginPlay()
         Fleet.AddDefaulted_GetRef().Car=Car;
     }
 }
-USplineComponent* AStreetTrafficFlow::GetLane(int32 Lane) const {return Lane==0 ? Eastbound : Westbound;}
+USplineComponent* AStreetTrafficFlow::GetLane(int32 Lane) const
+{
+    USplineComponent* Lanes[]={Eastbound,Westbound,Northbound,Southbound};
+    return Lane>=0 && Lane<GetRouteCount() ? Lanes[Lane] : nullptr;
+}
 int32 AStreetTrafficFlow::GetActiveCount() const
 {
     int32 Count=0;
@@ -167,7 +175,8 @@ bool AStreetTrafficFlow::ValidateRouteClearance()
     for (const FVehicle& V:Fleet) if (V.Car.IsValid()) Query.AddIgnoredActor(V.Car.Get());
     // Pedestrians are moving obstacles, not an invalid road. Runtime sweeps still hit them.
     for (TActorIterator<APawn> It(GetWorld());It;++It) Query.AddIgnoredActor(*It);
-    for (int32 Index=0;Index<2;++Index)
+    bool bAllClear=true;
+    for (int32 Index=0;Index<GetRouteCount();++Index)
     {
         const USplineComponent& Lane=*GetLane(Index);
         LaneAllowed[Index]=Lane.GetSplineLength()>=100.f;
@@ -188,9 +197,10 @@ bool AStreetTrafficFlow::ValidateRouteClearance()
             }
             Before=After;
         }
+        bAllClear&=LaneAllowed[Index];
     }
-    UE_LOG(LogTemp,Display,TEXT("TRAFFIC_ROUTE_AUDIT obstructions=%d east=%d west=%d halfwidth=%.1f halflength=%.1f"),RouteObstructions,LaneAllowed[0],LaneAllowed[1],Extent.Y,Extent.X);
-    return RouteObstructions==0 && LaneAllowed[0] && LaneAllowed[1];
+    UE_LOG(LogTemp,Display,TEXT("TRAFFIC_ROUTE_AUDIT obstructions=%d routes=%d"),RouteObstructions,GetRouteCount());
+    return bAllClear;
 }
 void AStreetTrafficFlow::Release(FVehicle& V)
 {
@@ -201,7 +211,7 @@ void AStreetTrafficFlow::Release(FVehicle& V)
 void AStreetTrafficFlow::SpawnNext()
 {
     const int32 LaneIndex=NextLane;
-    NextLane=1-NextLane;
+    NextLane=(NextLane+1)%GetRouteCount();
     if (!LaneAllowed[LaneIndex] || Fleet.ContainsByPredicate([LaneIndex](const FVehicle& V) {return V.Lane==LaneIndex && V.Distance<MinimumSpawnGap;})) return;
     FVehicle* Slot=Fleet.FindByPredicate([](const FVehicle& V) {return V.Car.IsValid() && V.Lane==INDEX_NONE;});
     if (!Slot) return;

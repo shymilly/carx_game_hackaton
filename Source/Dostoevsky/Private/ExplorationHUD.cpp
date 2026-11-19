@@ -1,6 +1,9 @@
 #include "ExplorationHUD.h"
 #include "ActOne.h"
 #include "DimaApartmentStory.h"
+#include "NarrativeSubsystem.h"
+#include "Engine/GameInstance.h"
+#include "GameFramework/Pawn.h"
 #include "Brushes/SlateRoundedBoxBrush.h"
 #include "EngineGlobals.h"
 #include "Fonts/CompositeFont.h"
@@ -313,7 +316,7 @@ TSharedRef<SWidget> UExplorationOverlayWidget::RebuildWidget()
         [SNew(SVerticalBox)
           + SVerticalBox::Slot().AutoHeight().Padding(0,0,0,10)
             [SNew(SBox).WidthOverride(330)
-              .Visibility_Lambda([Owner](){return Owner.IsValid() && Owner->ShouldShowStatus() ? EVisibility::SelfHitTestInvisible : EVisibility::Collapsed;})
+              .Visibility_Lambda([Owner](){return Owner.IsValid() && Owner->ShouldShowTasks() ? EVisibility::SelfHitTestInvisible : EVisibility::Collapsed;})
               [SNew(SPaperFrame)[Tasks]]]
           + SVerticalBox::Slot().AutoHeight()
             [SNew(SBox).WidthOverride(330)
@@ -334,11 +337,13 @@ TSharedRef<SWidget> UExplorationOverlayWidget::RebuildWidget()
                   + SVerticalBox::Slot().AutoHeight()
                     [SNew(SHorizontalBox)
                       + SHorizontalBox::Slot().AutoWidth().Padding(0,0,10,0)[Key(TEXT("Shift"),5,104)]
-                      + SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[Label(FText::FromString(TEXT("Бег")))]]]]]]
+                      + SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[Label(FText::FromString(TEXT("Бег")))]]
+                  + SVerticalBox::Slot().AutoHeight().Padding(0,8,0,0)
+                    [Label(NSLOCTEXT("Dostoevsky","TasksShortcut","Q — задачи"))]]]]]
       + SConstraintCanvas::Slot().Anchors(FAnchors(0.045f,0.955f)).AutoSize(true)
         .Offset(FMargin(0)).Alignment(FVector2D(0,1))
         [SNew(SBox).WidthOverride(410)
-          .Visibility_Lambda([Owner](){return Owner.IsValid() && Owner->ShouldShowStatus() ? EVisibility::SelfHitTestInvisible : EVisibility::Collapsed;})
+          .Visibility_Lambda([Owner](){return Owner.IsValid() && Owner->ShouldShowStamina() ? EVisibility::SelfHitTestInvisible : EVisibility::Collapsed;})
           [SNew(SBorder).BorderImage(&StaminaCard).Padding(FMargin(18,12,18,14))
             [SNew(SVerticalBox)
               + SVerticalBox::Slot().AutoHeight().Padding(0,0,0,7)
@@ -366,9 +371,25 @@ bool UExplorationHUDComponent::ShouldShowControls() const
     return IsHUDVisible() && bControlsOffered && !Progress.IsComplete();
 }
 
-bool UExplorationHUDComponent::ShouldShowStatus() const
+bool UExplorationHUDComponent::CanInspectStatus(const APlayerController* Player) const
 {
-    return IsHUDVisible() && bControlsOffered;
+    if (!Player || !IsHUDVisible() || !bControlsOffered || Player->IsMoveInputIgnored() ||
+        !Player->GetPawn() || Player->GetViewTarget()!=Player->GetPawn()) return false;
+    const auto* UI=Player->GetGameInstance()->GetSubsystem<UNarrativeSubsystem>();
+    return !UI || (!UI->IsDocumentOpen() && !UI->IsLocationTransitionActive());
+}
+
+bool UExplorationHUDComponent::ShouldShowTasks() const
+{
+    const AHUD* HUD=Cast<AHUD>(GetOwner());
+    return bTasksOpen && HUD && CanInspectStatus(HUD->GetOwningPlayerController());
+}
+
+bool UExplorationHUDComponent::ShouldShowStamina() const
+{
+    const AHUD* HUD=Cast<AHUD>(GetOwner());
+    const APlayerController* Player=HUD ? HUD->GetOwningPlayerController() : nullptr;
+    return CanInspectStatus(Player) && (Player->IsInputKeyDown(EKeys::LeftShift) || Player->IsInputKeyDown(EKeys::RightShift));
 }
 
 float UExplorationHUDComponent::StaminaFraction() const
@@ -391,10 +412,15 @@ TArray<FText> UExplorationHUDComponent::OptionalObjectives() const
 
 void UExplorationHUDComponent::ObserveMovementInput(APlayerController* Player)
 {
-    if (!Player || !Player->IsLocalController() || !IsHUDVisible() || !bControlsOffered ||
-        Progress.IsComplete() || Player->IsMoveInputIgnored()) return;
+    if (!Player || !Player->IsLocalController() || !CanInspectStatus(Player)) return;
     if (const FBoolProperty* Journal=FindFProperty<FBoolProperty>(GetOwner()->GetClass(),TEXT("JournalOpen")))
         if (Journal->GetPropertyValue_InContainer(GetOwner())) return;
+    if (Player->WasInputKeyJustPressed(EKeys::Q) && LastTaskToggleFrame!=GFrameCounter)
+    {
+        LastTaskToggleFrame=GFrameCounter;
+        bTasksOpen=!bTasksOpen;
+    }
+    if (Progress.IsComplete()) return;
     const FKey Keys[]={EKeys::W,EKeys::A,EKeys::S,EKeys::D,EKeys::SpaceBar,EKeys::LeftShift,EKeys::RightShift};
     for (const FKey& Key:Keys) if (Player->WasInputKeyJustPressed(Key)) Progress.RecordKey(Key);
 }

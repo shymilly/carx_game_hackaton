@@ -58,18 +58,18 @@ def tick(delta):
                 location=car.get_actor_location()
                 # Remove the fixed collider center offset to compare with actual lane centerlines.
                 road=ue.Vector(location.x,location.y,location.z-75)
-                lanes=[flow.get_editor_property('eastbound'),flow.get_editor_property('westbound')]
+                lanes=[flow.get_lane(index) for index in range(flow.get_route_count())]
                 distances=[lane.find_location_closest_to_world_location(road,ue.SplineCoordinateSpace.WORLD).distance(road) for lane in lanes]
                 assert min(distances)<3.5,('Vehicle drifted off its route',name,location,distances)
                 state['lanes'].add(distances.index(min(distances)))
                 state['positions'][name]=(location.x,location.y)
             assert flow.get_blocked_moves()==state['prior_blocks'],'A car hit static scenery or another car on an empty road'
             if ue.GameplayStatics.get_time_seconds(world)-state['started']<60:return
-            assert state['lanes']=={0,1},state['lanes']
+            assert state['lanes']=={0,1,2,3},state['lanes']
             assert len(state['finished'])>=2,('Both lanes did not finish a route',state['finished'])
             assert flow.get_total_spawned()-state['prior_spawns']>=7
             ue.GameplayStatics.set_global_time_dilation(world,1)
-            ue.log('TRAFFIC_ROUTES_OK: full static swept audit, 60 game seconds, two completed lanes, pooled cars, no scenery contact')
+            ue.log('TRAFFIC_ROUTES_OK: full static swept audit, 60 game seconds, four active routes, pooled cars, no scenery contact')
             state['step']='choose_impact'
         elif step=='choose_impact':
             cars=ue.GameplayStatics.get_all_actors_of_class(world,ue.StreetTrafficCar)

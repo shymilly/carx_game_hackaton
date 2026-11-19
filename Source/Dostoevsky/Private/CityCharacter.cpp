@@ -1,6 +1,7 @@
 #include "CityCharacter.h"
 
 #include "Animation/AnimSequence.h"
+#include "Animation/AnimSingleNodeInstanceProxy.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Engine/SkeletalMesh.h"
 #if WITH_EDITOR
@@ -19,6 +20,64 @@ void UCityGestureSequence::UseRawBoneTracks()
     CopyDataModel(TScriptInterface<IAnimationDataModel>(Raw));
 }
 #endif
+
+namespace
+{
+struct FCityClipProxy : FAnimSingleNodeInstanceProxy
+{
+    using FAnimSingleNodeInstanceProxy::FAnimSingleNodeInstanceProxy;
+    TArray<FTransform> PreviousPose;
+    float Elapsed = 0;
+    static constexpr float BlendSeconds = .18f;
+
+    void PreUpdate(UAnimInstance* Instance,float Delta) override
+    {
+        FAnimSingleNodeInstanceProxy::PreUpdate(Instance,Delta);
+        Elapsed+=Delta;
+        if (Elapsed>=BlendSeconds) PreviousPose.Reset();
+    }
+
+    bool Evaluate(FPoseContext& Output) override
+    {
+        FAnimSingleNodeInstanceProxy::Evaluate(Output);
+        if (!PreviousPose.IsEmpty())
+        {
+            const float Alpha=FMath::SmoothStep(0.f,BlendSeconds,Elapsed);
+            const FBoneContainer& Bones=Output.Pose.GetBoneContainer();
+            for (FCompactPoseBoneIndex Bone:Output.Pose.ForEachBoneIndex())
+            {
+                const int32 Index=Bones.MakeMeshPoseIndex(Bone).GetInt();
+                if (PreviousPose.IsValidIndex(Index))
+                {
+                    const FTransform NewPose=Output.Pose[Bone];
+                    Output.Pose[Bone].Blend(PreviousPose[Index],NewPose,Alpha);
+                }
+            }
+        }
+        return true;
+    }
+};
+}
+
+FAnimInstanceProxy* UCityClipInstance::CreateAnimInstanceProxy()
+{
+    return new FCityClipProxy(this);
+}
+
+void UCityClipInstance::TransitionTo(UAnimSequence* Clip,bool bLoop,float Rate,bool bMatchStride)
+{
+    float Start=0.f;
+    if (GetCurrentAsset())
+    {
+        FCityClipProxy& Proxy=GetProxyOnGameThread<FCityClipProxy>();
+        Proxy.PreviousPose=GetSkelMeshComponent()->GetBoneSpaceTransforms();
+        Proxy.Elapsed=0;
+        if (bMatchStride && GetLength()>UE_SMALL_NUMBER)
+            Start=FMath::Fmod(GetCurrentTime()/GetLength(),1.f)*Clip->GetPlayLength();
+    }
+    SetAnimationAsset(Clip,bLoop,Rate);
+    PlayAnim(bLoop,Rate,Start);
+}
 
 void UCityCharacterProfile::Configure(USkeletalMeshComponent& Component) const
 {
@@ -39,8 +98,17 @@ float UCityCharacterProfile::Play(USkeletalMeshComponent& Component, FName Motio
     if (!Requested || !*Requested) Requested=Motions.Find(TEXT("Idle"));
     if (!Requested || !*Requested) return 0;
     UAnimSequence* Animation=Requested->Get();
-    Component.PlayAnimation(Animation,bLoop);
-    Component.SetPlayRate(Rate);
+    UCityClipInstance* Player=Cast<UCityClipInstance>(Component.GetAnimInstance());
+    if (!Player)
+    {
+        Component.SetAnimInstanceClass(UCityClipInstance::StaticClass());
+        Player=Cast<UCityClipInstance>(Component.GetAnimInstance());
+    }
+    if (!Player) return 0.f;
+    const auto* Previous=Player->GetCurrentAsset();
+    const bool bStride=(Motion==TEXT("Walk") || Motion==TEXT("Run")) && Previous &&
+        (Previous==Motions.FindRef(TEXT("Walk")).Get() || Previous==Motions.FindRef(TEXT("Run")).Get());
+    Player->TransitionTo(Animation,bLoop,Rate,bStride);
     return Animation->GetPlayLength()/FMath::Max(Rate,.01f);
 }
 
@@ -117,12 +185,14 @@ bool UCityCharacterAuthoring::AuthorGesture(USkeletalMesh* Mesh,UAnimSequence* I
         return false;
 
     const bool bSmoke=Gesture==TEXT("Smoke");
-    const bool bTalk=Gesture==TEXT("Talk");
+    const bool bSeatedTalk=Gesture==TEXT("SeatedTalk");
+    const bool bTalk=Gesture==TEXT("Talk") || bSeatedTalk;
     const bool bNod=Gesture==TEXT("Nod");
     const bool bArmed=Gesture==TEXT("Armed");
-    if (!bSmoke && !bTalk && !bNod && !bArmed) return false;
+    const bool bShot=Gesture==TEXT("Shot");
+    if (!bSmoke && !bTalk && !bNod && !bArmed && !bShot) return false;
     constexpr int32 FramesPerSecond=30;
-    const int32 FrameCount=bSmoke ? 216 : bTalk ? 126 : bNod ? 34 : 72;
+    const int32 FrameCount=bSmoke ? 216 : bTalk ? 126 : bNod ? 34 : bShot ? 45 : 72;
     struct FGestureKeys
     {
         TArray<FVector> Positions;
@@ -135,7 +205,8 @@ bool UCityCharacterAuthoring::AuthorGesture(USkeletalMesh* Mesh,UAnimSequence* I
     for (int32 Frame=0; Frame<=FrameCount; ++Frame)
     {
         const double Phase=double(Frame)/FrameCount;
-        const float T=bNod ? 0.f : Idle->GetPlayLength()*Phase;
+        const float T=bSeatedTalk ? Idle->GetPlayLength()*(.37+.26*FMath::Square(FMath::Sin(PI*Phase))) :
+            bNod ? 0.f : Idle->GetPlayLength()*Phase;
         CitySamplePose(Ref,Model,T,Local,Pose);
         const FVector Up=FVector::UpVector;
         const FVector Right=(Pose[RightUpper].GetLocation()-Pose[LeftUpper].GetLocation()).GetSafeNormal2D();
@@ -146,21 +217,24 @@ bool UCityCharacterAuthoring::AuthorGesture(USkeletalMesh* Mesh,UAnimSequence* I
         const double Nod=FMath::Sin(PI*Phase)*FMath::Sin(PI*Phase);
         const double Puff=FMath::SmoothStep(.14,.29,Phase)*(1-FMath::SmoothStep(.52,.70,Phase));
         const double Speaking=FMath::Square(FMath::Sin(PI*Phase));
-        if (bSmoke || bTalk || bArmed)
+        const double Kick=bShot ? FMath::SmoothStep(.318,.35,Phase)*(1.-FMath::SmoothStep(.36,.56,Phase)) : 0.;
+        const double Present=bShot ? FMath::SmoothStep(0.,.22,Phase)*(1.-.65*FMath::SmoothStep(.65,1.,Phase)) : 1.;
+        if (bSmoke || bTalk || bArmed || bShot)
         {
             const FVector NearMouth=HeadPosition+Forward*Width*.26+Right*Width*.13-Up*Width*.01;
             const FVector TalkHand=Shoulders+Forward*Width*(.47+.08*FMath::Sin(4*PI*Phase))+
                 Right*Width*.57-Up*Width*(.40+.15*FMath::Cos(4*PI*Phase));
-            const FVector Reach=bSmoke ? NearMouth : bTalk ? TalkHand : Shoulders+Forward*Width*1.14+Right*Width*.14;
+            const FVector Reach=bSmoke ? NearMouth : bTalk ? TalkHand :
+                Shoulders+Forward*Width*(1.14-.30*Kick)+Right*Width*.14+Up*Width*.25*Kick;
             const FVector Pole=Shoulders+Right*Width*1.1-Up*Width*.9;
             CityReach(Ref,Local,Pose,RightUpper,RightElbow,RightHand,Reach,Pole,
-                bSmoke ? Puff : bTalk ? .72*Speaking : .94);
-            if (bTalk || bArmed)
+                bSmoke ? Puff : bTalk ? (bSeatedTalk ? .50 : .72)*Speaking : .94*Present);
+            if (bTalk || bArmed || bShot)
             {
-                const FVector Other=Shoulders+Forward*Width*(bArmed ? 1.04 : .38)
-                    -Right*Width*(bArmed ? .04 : .62)-Up*Width*(bArmed ? .12 : .51);
+                const FVector Other=Shoulders+Forward*Width*(bTalk ? .38 : 1.04-.30*Kick)
+                    -Right*Width*(bTalk ? .62 : .04)-Up*Width*(bTalk ? .51 : .12-.25*Kick);
                 CityReach(Ref,Local,Pose,LeftUpper,LeftElbow,LeftHand,Other,
-                    Shoulders-Right*Width*1.1-Up*Width*.9,bArmed ? .94 : .32*Speaking);
+                    Shoulders-Right*Width*1.1-Up*Width*.9,bTalk ? .32*Speaking : .94*Present);
             }
         }
         const double Tilt=bNod ? 12*Nod : bSmoke ? 6*Puff : bTalk ? 5*Speaking*FMath::Sin(6*PI*Phase) : -2;

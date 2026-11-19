@@ -294,6 +294,13 @@ def picture_material(texture,crop):
     return m
 
 
+def page_speakers(spec):
+    roles={"Guard":"BarGuard","Veteran":"Veteran","Captain":"Krill","Ivan":"IvanStreet"}
+    result={key:roles[row["voice"]] for key,row in spec["documents"].items() if row.get("voice") in roles}
+    result.update(OldManThanks="OldMan",IvanFedor="IvanFedor")
+    return {ue.Name(page):ue.Name(role) for page,role in result.items()}
+
+
 def weapon(s,name,pos,cue=None,angle=0):
     x,y,z=pos
     a=s.box(name,(x,y,z),(18,4,5),"charcoal",cue,False,angle)

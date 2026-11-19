@@ -27,13 +27,15 @@ def fonts():
         face.save(FONTS/('Podkova-'+name+'.ttf'))
 
 
-def supplied_models():
+def supplied_models(names=None):
     source = Path.home()/'Desktop/assets'
-    names = (('green_can_obj','can',13.5), ('soda_bottle_obj','bottle',30.0),
-             ('chocolate_bar_obj','bar',14.0), ('cash_register_obj','register',47.0))
+    if names is None:
+        names = (('green_can_obj','can',13.5), ('soda_bottle_obj','bottle',30.0),
+                 ('chocolate_bar_obj','bar',14.0), ('cash_register_obj','register',47.0),
+                 ('pistol_obj','pistol',20.5))
     for folder, stem, longest in names:
         original = source/folder
-        destination = OUT/'Groceries'/folder
+        destination = OUT/('Props' if folder=='pistol_obj' else 'Groceries')/folder
         destination.mkdir(parents=True, exist_ok=True)
         for file in original.iterdir():
             if file.is_file():
@@ -45,6 +47,8 @@ def supplied_models():
         factor = longest/max(high[i]-low[i] for i in range(3))
         center = [(low[i]+high[i])/2 for i in range(2)]
         cooked = ['mtllib '+stem+'.mtl', 'o SM_'+folder]
+        has_uv=any(line.startswith('vt ') for line in lines)
+        if not has_uv: cooked.append('vt .5 .5')
         for line in lines:
             if line.startswith(('mtllib ', 'o ', 'g ', 's ')):
                 continue
@@ -55,7 +59,10 @@ def supplied_models():
                 x,y,z = map(float,line.split()[1:4])
                 line = 'vn %.7f %.7f %.7f'%(x,-y,z)
             elif line.startswith('f '):
-                line = 'f '+' '.join(reversed(line.split()[1:]))
+                corners=list(reversed(line.split()[1:]))
+                if not has_uv:
+                    corners=[face.replace('//','/1/') if '//' in face else face+'/1' for face in corners]
+                line = 'f '+' '.join(corners)
             cooked.append(line)
         (destination/('SM_'+folder+'.obj')).write_text('\n'.join(cooked)+'\n',encoding='utf-8')
         print('BRIGHTON_SOURCE',folder,'height_cm',round((high[2]-low[2])*factor,2))
@@ -129,14 +136,17 @@ def letter_row(text, face, width, height, z):
     return result
 
 
-def signs():
+def signs(keys=('SM_SignStreet','SM_NeighborhoodPark','SM_NeighborhoodPrecinct')):
     from NeptuneSignFont import SIGNS
     output=ROOT/'Resources/StreetRefinement'
-    for key in ('SM_SignStreet','SM_NeighborhoodPark'):
+    for key in keys:
         spec=SIGNS[key]
         face=TTFont(output/'SignFonts'/spec.font)
-        triangles=letter_row(spec.russian,face,spec.width,.51*spec.height,.24*spec.height)
-        triangles+=letter_row(spec.english,face,spec.width,.40*spec.height,-.25*spec.height)
+        if spec.russian:
+            triangles=letter_row(spec.russian,face,spec.width,.51*spec.height,.24*spec.height)
+            triangles+=letter_row(spec.english,face,spec.width,.40*spec.height,-.25*spec.height)
+        else:
+            triangles=letter_row(spec.english,face,spec.width,.82*spec.height,0)
         name='SM_N94_'+key
         lines=['# '+spec.text,'o '+name,'usemtl EnamelLetters','vn 0 -1 0']
         for triangle in triangles:

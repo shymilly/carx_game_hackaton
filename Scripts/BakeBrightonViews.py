@@ -5,7 +5,8 @@ import traceback
 import unreal as ue
 
 project=Path(ue.Paths.convert_relative_path_to_full(ue.Paths.project_dir()))
-reviews=project/'Saved/Reviews/Brighton012'
+quarter='-quarterviews' in ue.SystemLibrary.get_command_line().lower()
+reviews=project/'Saved/Reviews'/('Brighton014' if quarter else 'Brighton012')
 reviews.mkdir(parents=True,exist_ok=True)
 levels=ue.get_editor_subsystem(ue.LevelEditorSubsystem)
 actors=ue.get_editor_subsystem(ue.EditorActorSubsystem)
@@ -26,6 +27,16 @@ shots=[
     ('L_LighthouseBar','BarCast',(234,199,161),(439,238,131),72),
     ('L_PolicePrecinct','CaptainKrill',(1264,-1760,162),(1254,-1537,122),66),
 ]
+if quarter:
+    shots=[shot for shot in shots if shot[1] in ('Apartment','Street')]
+    shots.extend([
+        ('L_NeptuneStreet','FactorySkyline',(980,-1320,164),(5740,-1430,1675),90),
+        ('L_NeptuneStreet','FactoryWorks',(3140,-1700,2770),(5790,-1420,2010),108),
+        ('L_NeptuneStreet','PrecinctSign',(1995,-2719,258),(1541,-2725,269),70),
+        ('L_NeptuneStreet','BusStop',(-4595,-1750,144),(-4750,-1940,98),74),
+        ('L_DimaApartmentInterior','PistolDesk',(-25,310,131),(-58.3,349.3,87.7),52),
+        ('L_PolicePrecinct','Precinct',(1602,-2725,170),(1110,-2860,133),80),
+    ])
 state=dict(index=0,stage='open',map=None,busy=False,deadline=time.monotonic()+240)
 ue.EditorPythonScripting.set_keep_python_script_alive(True)
 
@@ -59,6 +70,8 @@ def import_views():
     changed=(('Grocery','Resources/ActOne/Transitions/T_Act_BrightonGrocery.png','/Game/Story/ActOne/Art'),
              ('Apartment','Resources/Presentation/T_Transition_Apartment.png','/Game/Prologue/Street/Transitions'),
              ('Street','Resources/Presentation/T_Transition_Neptune.png','/Game/Prologue/Street/Transitions'))
+    if quarter:
+        changed=(*changed[1:],('Precinct','Resources/Presentation/T_Transition_Precinct.png','/Game/Prologue/Street/Transitions'))
     for name,destination,folder in changed:
         file=project/destination
         copy2(reviews/(name+'.png'),file)
@@ -104,7 +117,8 @@ def tick(delta):
             angle=ue.MathLibrary.find_look_at_rotation(ue.Vector(*position),ue.Vector(*target))
             camera=actors.spawn_actor_from_class(ue.SceneCapture2D,ue.Vector(*position),angle)
             capture=camera.get_component_by_class(ue.SceneCaptureComponent2D)
-            render=ue.RenderingLibrary.create_render_target2d(editor.get_editor_world(),1280,720,ue.TextureRenderTargetFormat.RTF_RGBA8)
+            image_format=ue.TextureRenderTargetFormat.RTF_RGBA8_SRGB if quarter else ue.TextureRenderTargetFormat.RTF_RGBA8
+            render=ue.RenderingLibrary.create_render_target2d(editor.get_editor_world(),1280,720,image_format)
             capture.set_editor_properties(dict(texture_target=render,fov_angle=field,
                 capture_source=ue.SceneCaptureSource.SCS_FINAL_COLOR_LDR,capture_every_frame=False,capture_on_movement=False))
             # Match the editor photo pass exposure; no gameplay light or map is saved here.

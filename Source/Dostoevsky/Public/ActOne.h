@@ -52,6 +52,7 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly) TMap<FName,TObjectPtr<UInteractionDocument>> Documents;
     UPROPERTY(EditAnywhere, BlueprintReadOnly) TMap<FName,TObjectPtr<USoundBase>> Sounds;
     UPROPERTY(EditAnywhere, BlueprintReadOnly) TMap<FName,TObjectPtr<UTexture2D>> Photos;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly) TMap<FName,FName> PageSpeakers;
 };
 
 UCLASS()
@@ -96,6 +97,7 @@ public:
     UFUNCTION(BlueprintPure, Category="Act One") bool IsPursuitFinished() const { return bAgentEscaped; }
     UFUNCTION(BlueprintPure, Category="Act One") bool HasLockpickTraining() const { return bLockpickTraining; }
     UFUNCTION(BlueprintPure, Category="Act One") bool HasPistol() const { return bPistol; }
+    UFUNCTION(BlueprintPure, Category="Act One") bool WasGuardKilled() const { return bGuardKilled; }
 
 private:
     enum class EChallenge : uint8 { None, Disarm, Lock };
@@ -115,6 +117,7 @@ private:
     bool bPistol = false;
     bool bOldManFled = false;
     bool bGuardResolved = false;
+    bool bGuardKilled = false;
     bool bArchives = false;
     bool bLockpickTraining = false;
     bool bIvanKey = false;
@@ -153,6 +156,7 @@ private:
     void StartBar();
     void DrawGuardWeapon();
     void ResolveGuard(bool bShot);
+    void EndBarConflict();
     void StartCaptain();
     void CaptainSecond();
     void CaptainOffer();

@@ -139,6 +139,13 @@ def physical_use(which, offset):
     yield from pause(.17)
     hud().call_method('ReceiveDrawHUD',(1280,720))
     assert str(hud().get_editor_property('Focus')) == 'StreetPortal', (which,hud().get_editor_property('Focus'))
+    if which==action.PISTOL:
+        folder=root/'Saved/Reviews/Brighton014'
+        folder.mkdir(parents=True,exist_ok=True)
+        picture=folder/'PistolInGame.png'
+        picture.unlink(missing_ok=True)
+        ue.SystemLibrary.execute_console_command(world(),'HighResShot 1280x720 filename="'+str(picture)+'"',pc())
+        yield from wait(picture.is_file,'Pistol on the desk',5)
     game_key('E',True)
     yield from pause(.09)
     game_key('E',False)
@@ -205,7 +212,7 @@ def beginning(pistol):
         yield from page()
     assert str(ue.DimaApartmentStoryLibrary.objective(hud(),'')) == 'Выйти на улицу'
     if pistol:
-        use(action.PISTOL)
+        yield from physical_use(action.PISTOL,(82,-92))
         yield from page('Pistol')
         assert act().has_pistol()
     place((-194,-330,98),-90)
@@ -256,6 +263,9 @@ def brighton(alt,alarm):
     yield from travel('L_BrightonGrocery','ActEntry')
     yield from physical_use(action.CIGARETTES,(-132,0))
     yield from travel(street,'FromGrocery')
+    director=ue.GameplayStatics.get_actor_of_class(world(),ue.ActOneDirector)
+    yield from wait(lambda: director.get_component_by_class(ue.CigaretteSmokeComponent) and
+                    director.get_component_by_class(ue.CigaretteSmokeComponent).is_visible(),'Dima cigarette smoke',2)
     yield from pages('DispatchBar','Disposition')
     assert act().get_statistics().get_editor_property('calm') == 1
     use(action.BAR)
@@ -268,6 +278,34 @@ def conflict(alt):
     yield from page('BarChoice',1 if alt else 0,2)
     if alt:
         yield from page('BarGun',1,2)
+        camera=target('ActCue:BarShotCamera')
+        yield from wait(lambda: pc().get_view_target()==camera,'Cut to the shot')
+        shooter=target('ActCue:BarDima')
+        assert not shooter.get_editor_property('hidden') and pawn().get_editor_property('hidden')
+        shot=shooter.get_editor_property('character_mesh').get_anim_instance()
+        authored=shooter.get_editor_property('character_profile').get_editor_property('motions')
+        assert isinstance(shot,ue.CityClipInstance) and abs(shot.get_length()-authored[ue.Name('Shot')].get_play_length())<.001
+        chamber=root/'Saved/Reviews/Brighton014'
+        chamber.mkdir(parents=True,exist_ok=True)
+        yield from wait(lambda: shooter.get_editor_property('character_mesh').get_position()>.32,'Dima raises his arm')
+        aim=chamber/'BarAim.png'
+        aim.unlink(missing_ok=True)
+        ue.SystemLibrary.execute_console_command(world(),'HighResShot 1280x720 filename="'+str(aim)+'"',pc())
+        yield from wait(aim.is_file,'Capture the gesture',5)
+        yield from wait(lambda: act().was_guard_killed(),'Shot reaches the guard')
+        loose=target('ActCue:DroppedWeapon')
+        assert loose.get_actor_location().z>40, 'Weapon should fall from the hand'
+        guard=target('ActCue:BarGuard')
+        fall=guard.get_editor_property('character_profile').get_editor_property('motions')[ue.Name('Fall')]
+        fallen=guard.get_editor_property('character_mesh').get_anim_instance()
+        assert 'Death' in fall.get_name() and abs(fallen.get_length()-fall.get_play_length())<.001
+        for delay,name in ((0,'BarShot'),(.78,'BarFall')):
+            yield from pause(delay)
+            image=chamber/(name+'.png')
+            image.unlink(missing_ok=True)
+            ue.SystemLibrary.execute_console_command(world(),'HighResShot 1280x720 filename="'+str(image)+'"',pc())
+            yield from wait(image.is_file,'Capture '+name,5)
+        assert loose.get_actor_location().z<12, 'Dropped prop should have landed'
     else:
         yield from pages('GuardTaunt','DimaBarReply','GuardEnglish')
         yield from page('BarGun',0,1)
@@ -280,6 +318,8 @@ def conflict(alt):
         yield from page('OldManThanks')
     yield from page('DispatchPrecinct')
     assert act().get_phase() == phase.PRECINCT
+    assert act().was_guard_killed() == alt
+    assert not pawn().get_editor_property('hidden')
     stats = act().get_statistics()
     assert stats.get_editor_property('anger') == (35 if alt else 0)
     assert stats.get_editor_property('neighborhood') == (-1 if alt else 0)
