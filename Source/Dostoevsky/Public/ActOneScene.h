@@ -6,13 +6,16 @@
 
 class ACameraActor;
 class UAudioComponent;
+class UBrightonEnvironmentComponent;
 class UCapsuleComponent;
 class UInstancedStaticMeshComponent;
 class USplineComponent;
 class UStaticMeshComponent;
+class USkeletalMeshComponent;
+class UCityCharacterProfile;
 
 UENUM(BlueprintType)
-enum class EActOnePose : uint8 { Idle, Seated, Smoking, Armed, Fallen, Walking };
+enum class EActOnePose : uint8 { Idle, Seated, Smoking, Armed, Fallen, Walking, Conversing, Running };
 
 UCLASS()
 class DOSTOEVSKY_API AActOneCast : public AActor
@@ -22,6 +25,9 @@ public:
     AActOneCast();
     UPROPERTY(VisibleAnywhere,BlueprintReadOnly) TObjectPtr<USceneComponent> PoseRoot;
     UPROPERTY(VisibleAnywhere,BlueprintReadOnly) TObjectPtr<UCapsuleComponent> Body;
+    UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Character") TObjectPtr<USkeletalMeshComponent> CharacterMesh;
+    UPROPERTY(EditInstanceOnly,BlueprintReadWrite,Category="Character") TObjectPtr<UCityCharacterProfile> CharacterProfile;
+    UPROPERTY(EditInstanceOnly,BlueprintReadWrite,Category="Character") float AnimationPhase = 0;
     UPROPERTY(EditInstanceOnly,BlueprintReadWrite) EActOnePose DefaultPose = EActOnePose::Idle;
     UPROPERTY(EditInstanceOnly,BlueprintReadWrite) TMap<FName,TObjectPtr<AActor>> Parts;
     void Pose(EActOnePose NewPose);
@@ -37,8 +43,10 @@ private:
     float Life = 0;
     float WalkSpeed = 0;
     float NodTime = 1;
+    float NodRemaining = 0;
     FVector WalkTarget = FVector::ZeroVector;
     void Part(FName Name,float Pitch,float Roll=0);
+    void PlayCharacterPose();
 };
 
 UCLASS()
@@ -52,6 +60,8 @@ public:
     UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category="Story") TObjectPtr<ACameraActor> FinaleCamera;
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Story") TObjectPtr<USplineComponent> PursuitRoute;
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Weather") TObjectPtr<UInstancedStaticMeshComponent> Rain;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Weather") TObjectPtr<UInstancedStaticMeshComponent> RainSplashes;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Environment") TObjectPtr<UBrightonEnvironmentComponent> Environment;
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Props") TObjectPtr<UStaticMeshComponent> SmokeHand;
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Props") TObjectPtr<UStaticMeshComponent> Cigarette;
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Props") TObjectPtr<UStaticMeshComponent> Ember;
@@ -63,7 +73,8 @@ public:
     void StopSmoke();
     void PressRecorder();
     void OpenDoor(FName Hinge,float Yaw);
-    void SetRain(bool bOn);
+    UFUNCTION(BlueprintCallable,Category="Weather") void SetRain(bool bOn);
+    UFUNCTION(BlueprintPure,Category="Weather") bool IsRaining() const { return bRain; }
     const TArray<TWeakObjectPtr<AActOneInteraction>>& Interactions() const { return Targets; }
 
 protected:
@@ -74,6 +85,13 @@ private:
     TMap<FName,TWeakObjectPtr<AActor>> Cues;
     TArray<TWeakObjectPtr<AActOneInteraction>> Targets;
     TArray<FTransform> Drops;
+    TArray<float> DropFloors;
+    TArray<float> SplashAges;
+    TArray<FVector> SplashLocations;
+    TArray<FTransform> SplashTransforms;
+    TArray<float> GroundGrid;
+    FVector GroundGridCenter=FVector(1.e9,1.e9,1.e9);
+    int32 NextSplash=0;
     UPROPERTY(Transient) TObjectPtr<UAudioComponent> RainLoop;
     UPROPERTY() TObjectPtr<USceneComponent> SmokeRig;
     FRandomStream Random{1994};
@@ -89,6 +107,7 @@ private:
     bool bInputBound = false;
     void StatusKey();
     void UpdateRain(const FVector& Around,float DeltaSeconds);
+    void SampleRainGround(const FVector& Around);
     void UpdateSmoke(APlayerController* Player,float DeltaSeconds);
     void UpdateRecorder(APlayerController* Player,float DeltaSeconds);
 };

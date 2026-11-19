@@ -17,8 +17,8 @@
 | Бар «Маяк» | Lobster |
 | Барахолка | Rubik Mono One |
 | Полицейский участок | PT Sans Narrow |
-| Площадка «Нептун» | Marmelad |
-| Улица Нептун | IBM Plex Mono |
+| Брайтонский двор / Brighton Playground | Marmelad |
+| 4-я Брайтон-Бич / 4th Brighton beach | IBM Plex Mono |
 | Книги и пресса | IBM Plex Serif |
 
 Текст и габариты заданы в `Tools/NeptuneSignFont.py`. Для изменения текста запусти этот скрипт в Blender через `-b --factory-startup -P Tools/NeptuneSignFont.py`, затем импортируй OBJ и обнови размещение через `Scripts/ApplyStreetSigns.py` в Unreal Python. Шрифты и лицензии лежат в `Resources/StreetRefinement/SignFonts`. В игре надписи используют готовые объёмные меши из `Content/StreetRefinement/Signs`. [Исходные семейства Google Fonts](https://github.com/google/fonts/tree/main/ofl)

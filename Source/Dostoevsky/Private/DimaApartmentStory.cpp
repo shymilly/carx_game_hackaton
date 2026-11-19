@@ -269,7 +269,7 @@ bool UDimaApartmentStoryComponent::TryInteract(FName Tag)
             if (UGameplayStatics::GetCurrentLevelName(this,true) != TEXT("L_DimaApartmentInterior")) return false;
             GetWorld()->GetGameInstance()->GetSubsystem<UNarrativeSubsystem>()->TravelToStreet(
                 TSoftObjectPtr<UWorld>(FSoftObjectPath(TEXT("/Game/Locations/L_NeptuneStreet.L_NeptuneStreet"))),
-                NSLOCTEXT("Dostoevsky","BrightonDestination","4-я улица · Брайтон-Бич"),
+                NSLOCTEXT("Dostoevsky","BrightonDestination","4th Brighton beach"),
                 LoadObject<UTexture2D>(nullptr,TEXT("/Game/Prologue/Street/Transitions/T_Transition_Neptune.T_Transition_Neptune")),TEXT("FromApartment"));
             return true;
         }
@@ -307,7 +307,7 @@ bool UDimaApartmentStoryComponent::TryInteract(FName Tag)
 FString UDimaApartmentStoryComponent::Objective(const FString& Fallback) const
 {
     const FString Level = UGameplayStatics::GetCurrentLevelName(this,true);
-    if (Level == TEXT("L_NeptuneStreet")) return TEXT("Исследуйте улицу Нептун.");
+    if (Level == TEXT("L_NeptuneStreet")) return TEXT("Исследуйте 4th Brighton beach.");
     if (Level == TEXT("L_PolicePrecinct")) return TEXT("Осмотрите полицейский участок.");
     if (!bActive) return Fallback;
     if (Progress.Phase == EDimaApartmentPhase::ReadyToExit) return Scenario->ExitObjective.ToString();

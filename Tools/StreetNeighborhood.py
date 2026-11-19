@@ -311,7 +311,7 @@ def location_portals(b):
     outside = b.spawn(ue.TargetPoint,"Precinct sidewalk arrival",(1914,-2725,101))
     for label,pos,rot,dest,title,key,prompt in (
         ("Precinct street door",(1853,-2725,106),(0,0,0),inside,"Полицейский участок","PrecinctCard","Войти в участок"),
-        ("Precinct lobby exit",(1746,-2725,106),(0,0,0),outside,"Улица Нептун","StreetCard","Выйти на улицу"),
+        ("Precinct lobby exit",(1746,-2725,106),(0,0,0),outside,"4th Brighton beach","StreetCard","Выйти на улицу"),
     ):
         gate = b.spawn(ue.StreetPortal,label,pos,rot)
         gate.set_editor_properties({"prompt":prompt,"destination_title":title,"arrival":dest,"destination_photo":preview(key)})

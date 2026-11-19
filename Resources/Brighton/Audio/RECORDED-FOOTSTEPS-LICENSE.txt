@@ -1,0 +1,34 @@
+Footsteps on different surfaces, assembled by congusbongus (CC BY 3.0).
+https://opengameart.org/content/footsteps-on-different-surfaces
+Project edits: converted to mono PCM, trimmed quiet tails, softened the attack and matched levels.
+Wet variants blend a recorded splash with a recorded shoe on concrete.
+
+Wood
+Derived from footstep-wood.wav by swuing
+https://freesound.org/people/swuing/sounds/38876/
+
+http://creativecommons.org/licenses/by/3.0/
+
+Tile
+Derived from footstep-concrete.wav by swuing
+http://www.freesound.org/people/swuing/sounds/38873/
+
+And Squeaky footstep.wav from ceberation
+https://freesound.org/people/ceberation/sounds/235524/
+
+http://creativecommons.org/licenses/by/3.0/
+
+Asphalt
+Derived from footstep-concrete.wav by swuing
+http://www.freesound.org/people/swuing/sounds/38873/
+
+http://creativecommons.org/licenses/by/3.0/
+
+Wet
+Derived from Water Footsteps by EminYILDIRIM
+https://freesound.org/people/EminYILDIRIM/sounds/608663/
+
+And footstep-concrete.wav by swuing
+http://www.freesound.org/people/swuing/sounds/38873/
+
+http://creativecommons.org/licenses/by/3.0/

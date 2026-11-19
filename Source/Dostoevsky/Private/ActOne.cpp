@@ -153,6 +153,26 @@ bool UActOneSubsystem::CanUseDisposition(int32 MinimumCalm,int32 MinimumAnger,in
         Stats.Anger>=MinimumAnger && Stats.Anger<=MaximumAnger;
 }
 
+TArray<FText> UActOneSubsystem::OptionalObjectives() const
+{
+    TArray<FText> Result;
+    if (Place()==EActOneLocation::Apartment && Phase==EActOnePhase::Apartment && !bPistol)
+        Result.Add(Text(TEXT("Взять служебный пистолет")));
+    if (Place()==EActOneLocation::Street && Phase<=EActOnePhase::BarCall)
+    {
+        if (!HasEvidence(TEXT("BrightonNewspaper"))) Result.Add(Text(TEXT("Прочитать свежую газету")));
+        if (!HasEvidence(TEXT("LizaCall"))) Result.Add(Text(TEXT("Позвонить Лизе в Москву")));
+        if (!bVeteranDone) Result.Add(Text(TEXT("Поговорить с ветераном")));
+    }
+    if (Place()==EActOneLocation::Precinct && Phase<=EActOnePhase::CaptainDone)
+    {
+        if (!HasEvidence(TEXT("FedorMissing"))) Result.Add(Text(TEXT("Осмотреть доску розыска")));
+        if (!bLockpickTraining) Result.Add(Text(TEXT("Изучить учебную карточку")));
+        if (bArchives && !HasEvidence(TEXT("AegisArchive"))) Result.Add(Text(TEXT("Посмотреть архивную опись")));
+    }
+    return Result;
+}
+
 bool UActOneSubsystem::IsRain() const
 {
     return Place()==EActOneLocation::Entrance || Place()==EActOneLocation::Alley ||
@@ -347,7 +367,7 @@ bool UActOneSubsystem::HandlePortal(const AStreetPortal& Portal)
     }
     if (Portal.ActorHasTag(TEXT("ActPrecinctExit")) && Phase==EActOnePhase::CaptainDone)
     {
-        if (Travel(TEXT("L_NeptuneStreet"),TEXT("4-я улица · Брайтон-Бич"),TEXT("FromPrecinct")))
+        if (Travel(TEXT("L_NeptuneStreet"),TEXT("4th Brighton beach"),TEXT("FromPrecinct")))
             Phase=EActOnePhase::MeetIvan;
         return true;
     }
@@ -388,9 +408,9 @@ bool UActOneSubsystem::Use(const AActOneInteraction& Item,APlayerController* Use
         if (Phase==EActOnePhase::Cigarettes) Travel(TEXT("L_BrightonGrocery"),TEXT("Продукты"),TEXT("ActEntry"));
         else Hint(Text(TEXT("Сигареты уже куплены.")));
         break;
-    case EActOneAction::LeaveGrocery: Travel(TEXT("L_NeptuneStreet"),TEXT("4-я улица · Брайтон-Бич"),TEXT("FromGrocery")); break;
+    case EActOneAction::LeaveGrocery: Travel(TEXT("L_NeptuneStreet"),TEXT("4th Brighton beach"),TEXT("FromGrocery")); break;
     case EActOneAction::Cigarettes:
-        if (Phase==EActOnePhase::Cigarettes && Travel(TEXT("L_NeptuneStreet"),TEXT("4-я улица · Брайтон-Бич"),TEXT("FromGrocery")))
+        if (Phase==EActOnePhase::Cigarettes && Travel(TEXT("L_NeptuneStreet"),TEXT("4th Brighton beach"),TEXT("FromGrocery")))
             Phase=EActOnePhase::Smoke;
         break;
     case EActOneAction::Bar:
@@ -401,7 +421,7 @@ bool UActOneSubsystem::Use(const AActOneInteraction& Item,APlayerController* Use
         else Hint(Objective());
         break;
     case EActOneAction::LeaveBar:
-        if (Phase==EActOnePhase::Precinct) Travel(TEXT("L_NeptuneStreet"),TEXT("4-я улица · Брайтон-Бич"),TEXT("FromBar"));
+        if (Phase==EActOnePhase::Precinct) Travel(TEXT("L_NeptuneStreet"),TEXT("4th Brighton beach"),TEXT("FromBar"));
         else Hint(Text(TEXT("Сначала нужно разобраться с дебошем.")));
         break;
     case EActOneAction::Guard: if (Phase==EActOnePhase::Bar && !bGuardResolved) StartBar(); break;
@@ -696,7 +716,7 @@ void UActOneSubsystem::UpdatePursuit(float DeltaSeconds)
     ChasePosition=FMath::Max(ChasePosition,FMath::Min3(Length,ChasePosition+DeltaSeconds*(bAlarm ? 570.f : 505.f),At+Lead));
     const FTransform Pose=Route->GetTransformAtDistanceAlongSpline(ChasePosition,ESplineCoordinateSpace::World);
     Agent->SetActorLocationAndRotation(Pose.GetLocation(),Pose.GetRotation());
-    Agent->Pose(EActOnePose::Walking);
+    Agent->Pose(EActOnePose::Running);
     if (ChasePosition>=Length-1)
     {
         bAgentEscaped=true;

@@ -29,6 +29,9 @@ public:
     FVector LastArrivalLocation = FVector::ZeroVector;
     static bool IsArrivalSafe(APlayerController* Player, FName Tag);
     void ResetSession();
+    double GetRailServiceSeconds();
+private:
+    double RailServiceEpoch = -1;
 };
 
 UCLASS()

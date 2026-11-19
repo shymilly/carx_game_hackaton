@@ -367,14 +367,6 @@ def build_gameplay(root, asset_name=None, *, street_door=None):
     g.line(28)
     _, active = g.branch(active, g.pure(STORY, "IsBusy"))
     active = update_stamina(g, active, pc, player, now)
-    active = draw_stamina(g, active, height)
-    if street:
-        goal = g.pure(STORY, "Objective", Fallback="Выйдите на улицу.")
-    else:
-        father_goal = g.string_choice("Вернитесь к входной двери.", "Найдите записку Фёдора.", g.equals(state, KEY))
-        goal = g.pure(STORY, "Objective",
-                      Fallback=g.string_choice("Осмотрите комнату или выйдите из квартиры.", father_goal, at_dimas))
-    active = g.draw(active, goal, "24", 1.12)
     hint = g.string_choice(g.get("Hint"), "", g.pure(MATH, "Less_DoubleDouble", A=now, B=g.get("HintUntil")))
     active = g.draw(active, hint, g.offset(center_y, -95), 1.13)
     active = g.execute(active, "/Script/Dostoevsky.ExplorationHUDLibrary", "PresentExplorationHUD")
@@ -512,14 +504,6 @@ def update_stamina(g, previous, pc, player, now):
     jump = g.set(jump, "Stamina", g.arithmetic("Subtract", stamina, JUMP_COST))
     g.set(jump, "RecoverAt", g.offset(now, 1))
     return idle
-
-
-def draw_stamina(g, previous, height):
-    y = g.offset(height, -81)
-    previous = g.draw(previous, "ВЫНОСЛИВОСТЬ", g.offset(height, -103), 0.95)
-    previous = g.rect(previous, "30", y, "150", "5", "(R=0.2,G=0.2,B=0.2,A=0.9)")
-    width = g.arithmetic("Multiply", g.get("Stamina"), "1.5")
-    return g.rect(previous, "30", y, width, "5", "(R=0.91,G=0.66,B=0.3,A=1)")
 
 
 def draw_idle_reticle(g, previous, center_x, center_y):

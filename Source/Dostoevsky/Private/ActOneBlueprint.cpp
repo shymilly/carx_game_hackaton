@@ -72,16 +72,21 @@ bool UActOneBlueprintLibrary::SendEditorKey(FName KeyName)
 
 bool UActOneBlueprintLibrary::CaptureEditorDocument(UDocumentWindow* Window,const FString& FileName)
 {
+    return CaptureEditorWidget(Window,FileName);
+}
+
+bool UActOneBlueprintLibrary::CaptureEditorWidget(UUserWidget* Widget,const FString& FileName)
+{
 #if WITH_EDITOR
-    if (!Window || !FSlateApplication::IsInitialized()) return false;
+    if (!Widget || !FSlateApplication::IsInitialized()) return false;
     FWidgetRenderer* Renderer=new FWidgetRenderer(true,true);
     UTextureRenderTarget2D* Target=NewObject<UTextureRenderTarget2D>();
     Target->RenderTargetFormat=RTF_RGBA8;
     Target->ClearColor=FLinearColor::Transparent;
     Target->InitAutoFormat(1280,720);
     Target->UpdateResourceImmediate(true);
-    Renderer->DrawWidget(Target,Window->TakeWidget(),FVector2D(1280,720),0);
-    if (Target) UKismetRenderingLibrary::ExportRenderTarget(Window,Target,FPaths::GetPath(FileName),FPaths::GetCleanFilename(FileName));
+    Renderer->DrawWidget(Target,Widget->TakeWidget(),FVector2D(1280,720),0);
+    if (Target) UKismetRenderingLibrary::ExportRenderTarget(Widget,Target,FPaths::GetPath(FileName),FPaths::GetCleanFilename(FileName));
     BeginCleanup(Renderer);
     return Target!=nullptr;
 #else

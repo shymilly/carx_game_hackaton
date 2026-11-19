@@ -1,11 +1,15 @@
 #include "ActOneScene.h"
+#include "BrightonEnvironment.h"
+#include "CityCharacter.h"
 
+#include "Animation/AnimSingleNodeInstance.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Components/AudioComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/InputComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/SplineComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "EngineUtils.h"
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
@@ -26,6 +30,10 @@ AActOneCast::AActOneCast()
     Body->SetCanEverAffectNavigation(false);
     PoseRoot=CreateDefaultSubobject<USceneComponent>(TEXT("PoseRoot"));
     PoseRoot->SetupAttachment(GetRootComponent());
+    CharacterMesh=CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CharacterMesh"));
+    CharacterMesh->SetupAttachment(GetRootComponent());
+    CharacterMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    CharacterMesh->SetCanEverAffectNavigation(false);
     PrimaryActorTick.bCanEverTick=true;
     PrimaryActorTick.TickInterval=.033f;
 }
@@ -35,16 +43,46 @@ void AActOneCast::BeginPlay()
     Super::BeginPlay();
     for (const auto& Item:Parts)
         if (IsValid(Item.Value)) Rest.Add(Item.Key,Item.Value->GetRootComponent()->GetRelativeRotation());
+    if (CharacterProfile && CharacterProfile->Mesh)
+    {
+        CharacterProfile->Configure(*CharacterMesh);
+        CharacterMesh->SetRelativeLocation(FVector(0,0,CharacterProfile->FeetOffset));
+    }
     Pose(DefaultPose);
+    if (AnimationPhase>0)
+        if (UAnimSingleNodeInstance* Clip=CharacterMesh->GetSingleNodeInstance()) Clip->SetPosition(AnimationPhase,false);
 }
 
 void AActOneCast::Pose(EActOnePose NewPose)
 {
-    if (NewPose!=CurrentPose) Life=0;
+    const bool bChanged=NewPose!=CurrentPose;
+    if (bChanged) Life=0;
     CurrentPose=NewPose;
     const bool bFallen=NewPose==EActOnePose::Fallen;
     Body->SetCapsuleHalfHeight(bFallen ? 29.f : 88.f);
     Body->SetRelativeLocation(FVector(0,0,bFallen ? 29.f : 88.f));
+    if (bChanged || !CharacterMesh->GetSingleNodeInstance()) PlayCharacterPose();
+}
+
+void AActOneCast::PlayCharacterPose()
+{
+    if (!CharacterProfile || !CharacterProfile->Mesh) return;
+    NodRemaining=0;
+    FName Motion=TEXT("Idle");
+    switch (CurrentPose)
+    {
+    case EActOnePose::Seated: Motion=TEXT("Sit"); break;
+    case EActOnePose::Smoking: Motion=TEXT("Smoke"); break;
+    case EActOnePose::Armed: Motion=TEXT("Armed"); break;
+    case EActOnePose::Fallen: Motion=TEXT("Fall"); break;
+    case EActOnePose::Walking: Motion=TEXT("Walk"); break;
+    case EActOnePose::Running: Motion=TEXT("Run"); break;
+    case EActOnePose::Conversing: Motion=TEXT("Talk"); break;
+    default: break;
+    }
+    const bool bLoop=CurrentPose!=EActOnePose::Fallen;
+    const float Rate=CurrentPose==EActOnePose::Walking && WalkSpeed<1 ? .72f : 1.f;
+    CharacterProfile->Play(*CharacterMesh,Motion,bLoop,Rate);
 }
 
 void AActOneCast::Face(const FVector& Target)
@@ -62,6 +100,11 @@ void AActOneCast::WalkAway(const FVector& Destination,float Speed)
 
 void AActOneCast::Nod()
 {
+    if (CharacterProfile && CharacterProfile->Motions.Contains(TEXT("Nod")))
+    {
+        NodRemaining=CharacterProfile->Play(*CharacterMesh,TEXT("Nod"),false);
+        return;
+    }
     NodTime=0;
 }
 
@@ -93,6 +136,11 @@ void AActOneCast::Tick(float DeltaSeconds)
             for (AActor* Child:Attached) Child->SetActorHiddenInGame(true);
         }
     }
+    if (CharacterProfile && CharacterProfile->Mesh)
+    {
+        if (NodRemaining>0 && (NodRemaining-=DeltaSeconds)<=0) PlayCharacterPose();
+        return;
+    }
     const float Swing=CurrentPose==EActOnePose::Walking ? 31.f*FMath::Sin(12.f*Life) : 0.f;
     const float Breath=FMath::Sin(1.8f*Life)*1.6f;
     Part(TEXT("LegL"),Swing);
@@ -119,6 +167,13 @@ AActOneDirector::AActOneDirector()
     Rain->SetCanEverAffectNavigation(false);
     Rain->SetCastShadow(false);
     Rain->bAffectDistanceFieldLighting=false;
+    RainSplashes=CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("RainSplashes"));
+    RainSplashes->SetupAttachment(RootComponent);
+    RainSplashes->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    RainSplashes->SetCastShadow(false);
+    RainSplashes->SetCanEverAffectNavigation(false);
+    RainSplashes->bAffectDistanceFieldLighting=false;
+    Environment=CreateDefaultSubobject<UBrightonEnvironmentComponent>(TEXT("Environment"));
     SmokeRig=CreateDefaultSubobject<USceneComponent>(TEXT("SmokeRig"));
     SmokeRig->SetupAttachment(RootComponent);
     SmokeHand=CreateDefaultSubobject<UStaticMeshComponent>(TEXT("SmokeHand"));
@@ -241,7 +296,14 @@ void AActOneDirector::SetRain(bool bOn)
     if (!bOn)
     {
         Rain->ClearInstances();
+        RainSplashes->ClearInstances();
         Drops.Reset();
+        DropFloors.Reset();
+        SplashAges.Reset();
+        SplashLocations.Reset();
+        SplashTransforms.Reset();
+        GroundGrid.Reset();
+        GroundGridCenter=FVector(1.e9,1.e9,1.e9);
         if (RainLoop) RainLoop->FadeOut(.6f,0);
         RainLoop=nullptr;
     }
@@ -255,23 +317,69 @@ void AActOneDirector::StatusKey()
 void AActOneDirector::UpdateRain(const FVector& Around,float DeltaSeconds)
 {
     if (!Rain->GetStaticMesh()) return;
-    constexpr int32 Count=138;
+    constexpr int32 Count=480;
+    constexpr int32 SplashCount=72;
+    SampleRainGround(Around);
     if (Drops.IsEmpty())
     {
         Drops.Reserve(Count);
+        DropFloors.Init(Around.Z-100,Count);
         for (int32 Index=0;Index<Count;++Index)
-            Drops.Emplace(FRotator(-7,15,7),Around+FVector(Random.FRandRange(-520,520),Random.FRandRange(-520,520),Random.FRandRange(-120,640)),
-                         FVector(.007,.008,Random.FRandRange(.18,.34)));
+            Drops.Emplace(FRotator(-7,15,7),Around+FVector(Random.FRandRange(-650,650),Random.FRandRange(-650,650),Random.FRandRange(-120,770)),
+                         FVector(.0025,.0025,Random.FRandRange(.12,.30)));
         Rain->AddInstances(Drops,false,true,false);
+        SplashAges.Init(1.f,SplashCount);
+        SplashLocations.Init(FVector::ZeroVector,SplashCount);
+        SplashTransforms.Init(FTransform(FQuat::Identity,Around,FVector::ZeroVector),SplashCount);
+        if (RainSplashes->GetStaticMesh()) RainSplashes->AddInstances(SplashTransforms,false,true,false);
     }
-    for (FTransform& Drop:Drops)
+    for (int32 Index=0;Index<Drops.Num();++Index)
     {
+        FTransform& Drop=Drops[Index];
         FVector At=Drop.GetLocation()+FVector(125,36,-925)*DeltaSeconds;
-        if (At.Z<Around.Z-145 || FVector::DistSquared2D(At,Around)>FMath::Square(780))
-            At=Around+FVector(Random.FRandRange(-530,530),Random.FRandRange(-530,530),Random.FRandRange(460,650));
+        const int32 X=FMath::Clamp(FMath::RoundToInt((At.X-GroundGridCenter.X)/160)+4,0,8);
+        const int32 Y=FMath::Clamp(FMath::RoundToInt((At.Y-GroundGridCenter.Y)/160)+4,0,8);
+        DropFloors[Index]=GroundGrid[Y*9+X];
+        if (At.Z<DropFloors[Index] || FVector::DistSquared2D(At,Around)>FMath::Square(900))
+        {
+            if (At.Z<DropFloors[Index] && At.Z>Around.Z-270)
+            {
+                SplashLocations[NextSplash]=FVector(At.X,At.Y,DropFloors[Index]+1.5f);
+                SplashAges[NextSplash]=0;
+                NextSplash=(NextSplash+1)%SplashCount;
+            }
+            At=Around+FVector(Random.FRandRange(-650,650),Random.FRandRange(-650,650),Random.FRandRange(580,840));
+        }
         Drop.SetLocation(At);
     }
     Rain->BatchUpdateInstancesTransforms(0,Drops,true,true,true);
+    if (RainSplashes->GetInstanceCount()==SplashCount)
+    {
+        for (int32 Index=0;Index<SplashCount;++Index)
+        {
+            SplashAges[Index]+=DeltaSeconds;
+            const float Size=SplashAges[Index]<.34f ? .04f+.42f*SplashAges[Index] : 0.f;
+            SplashTransforms[Index]=FTransform(FQuat::Identity,SplashLocations[Index],FVector(Size,Size,Size));
+        }
+        RainSplashes->BatchUpdateInstancesTransforms(0,SplashTransforms,true,true,true);
+    }
+}
+
+void AActOneDirector::SampleRainGround(const FVector& Around)
+{
+    if (!GroundGrid.IsEmpty() && FVector::DistSquared2D(Around,GroundGridCenter)<FMath::Square(150.f)) return;
+    GroundGridCenter=Around;
+    GroundGrid.Reset(81);
+    FCollisionObjectQueryParams Objects(ECC_WorldStatic);
+    FCollisionQueryParams Query(SCENE_QUERY_STAT(BrightonRainGround),false,this);
+    for (int32 Y=-4;Y<=4;++Y)
+        for (int32 X=-4;X<=4;++X)
+        {
+            const FVector At=Around+FVector(X*160,Y*160,0);
+            FHitResult Hit;
+            const bool bHit=GetWorld()->LineTraceSingleByObjectType(Hit,At+FVector(0,0,1150),At-FVector(0,0,310),Objects,Query);
+            GroundGrid.Add(bHit && !Hit.bStartPenetrating ? Hit.ImpactPoint.Z : Around.Z+1100);
+        }
 }
 
 void AActOneDirector::UpdateSmoke(APlayerController* Player,float DeltaSeconds)

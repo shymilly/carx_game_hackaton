@@ -12,7 +12,7 @@
 
 namespace
 {
-UNarrativeSubsystem* Narrative(APlayerController* Player)
+UNarrativeSubsystem* PortalNarrative(APlayerController* Player)
 {
     UGameInstance* Instance = Player ? Player->GetGameInstance() : nullptr;
     return Instance ? Instance->GetSubsystem<UNarrativeSubsystem>() : nullptr;
@@ -34,7 +34,7 @@ AStreetPortal::AStreetPortal()
 
 bool AStreetPortal::Use(APlayerController* Player) const
 {
-    UNarrativeSubsystem* UI = Narrative(Player);
+    UNarrativeSubsystem* UI = PortalNarrative(Player);
     const APawn* Pawn = Player ? Player->GetPawn() : nullptr;
     if (!UI || !Pawn || Player->IsMoveInputIgnored() || Player->GetViewTarget() != Pawn ||
         FVector::DistSquared(Pawn->GetActorLocation(), GetActorLocation()) > FMath::Square(285.0)) return false;
@@ -73,11 +73,11 @@ void AStreetDoorThreshold::Tick(float DeltaSeconds)
     if (!NewSide) return;
     const bool bCrossed = Side && Side != NewSide;
     Side = NewSide;
-    UNarrativeSubsystem* UI = Narrative(Player);
+    UNarrativeSubsystem* UI = PortalNarrative(Player);
     if (bCrossed && UI)
     {
         const bool bOutside = NewSide > 0;
-        const FText Title = bOutside ? NSLOCTEXT("Dostoevsky", "StreetArrival", "Улица Нептун")
+        const FText Title = bOutside ? NSLOCTEXT("Dostoevsky", "StreetArrival", "4th Brighton beach")
                                      : NSLOCTEXT("Dostoevsky", "ApartmentArrival", "Квартира Димы");
         UI->ShowLocationCard(Player, Title, bOutside ? StreetPhoto.Get() : ApartmentPhoto.Get());
     }

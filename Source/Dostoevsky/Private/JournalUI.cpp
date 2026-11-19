@@ -33,7 +33,7 @@ namespace
 const FLinearColor Paper = FLinearColor::FromSRGBColor(FColor(255,231,157));
 const FLinearColor Ink = FLinearColor::Black;
 
-bool Flag(const UObject* State, FName Name)
+bool JournalFlag(const UObject* State, FName Name)
 {
     const FBoolProperty* Property = State ? FindFProperty<FBoolProperty>(State->GetClass(), Name) : nullptr;
     return Property && Property->GetPropertyValue_InContainer(State);
@@ -44,7 +44,7 @@ bool Available(const UObject* State, const UJournalCatalog* Catalog, int32 Index
     if (!Catalog || !Catalog->Entries.IsValidIndex(Index) || !IsValid(Catalog->Entries[Index].Document)) return false;
     const FName FlagName=Catalog->Entries[Index].DiscoveryFlag;
     const UActOneSubsystem* Act=UActOneSubsystem::Find(State);
-    return Flag(State,FlagName) || (Act && Act->HasEvidence(FlagName));
+    return JournalFlag(State,FlagName) || (Act && Act->HasEvidence(FlagName));
 }
 
 enum class EJournalKeyAction { None, Back, Close };
@@ -186,7 +186,7 @@ UInteractionDocument* UJournalPresenterComponent::GetEntry(int32 Index) const
 
 void UJournalPresenterComponent::Present()
 {
-    if (Overlay || !Flag(GetOwner(),TEXT("JournalOpen"))) return;
+    if (Overlay || !JournalFlag(GetOwner(),TEXT("JournalOpen"))) return;
     const AHUD* HUD = Cast<AHUD>(GetOwner());
     APlayerController* Player = HUD ? HUD->GetOwningPlayerController() : nullptr;
     if (!Player || !Player->IsLocalController()) return;
@@ -220,7 +220,7 @@ void UJournalPresenterComponent::SelectEntry(int32 Index)
 void UJournalPresenterComponent::CloseJournal()
 {
     if (!Overlay) return;
-    const bool bLegacyLockHeld = Flag(GetOwner(),TEXT("JournalOpen"));
+    const bool bLegacyLockHeld = JournalFlag(GetOwner(),TEXT("JournalOpen"));
     if (FBoolProperty* Property = FindFProperty<FBoolProperty>(GetOwner()->GetClass(),TEXT("JournalOpen")))
         Property->SetPropertyValue_InContainer(GetOwner(),false);
     Overlay->ClearSelection();
@@ -245,7 +245,7 @@ void UJournalPresenterComponent::TickComponent(float Delta,ELevelTick TickType,F
 {
     Super::TickComponent(Delta,TickType,TickFunction);
     if (!Overlay) return;
-    if (!Flag(GetOwner(),TEXT("JournalOpen"))) { CloseJournal(); return; }
+    if (!JournalFlag(GetOwner(),TEXT("JournalOpen"))) { CloseJournal(); return; }
     const TArray<int32> Visible = VisibleEntries();
     if (Visible != PreviousVisibleEntries)
     {

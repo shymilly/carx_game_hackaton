@@ -47,6 +47,8 @@ powershell -File Scripts/BuildEditor.ps1 -EngineRoot "D:\UE_5.8" -GenerateVSCode
 - [Управление и значок журнала после вставания](Docs/ExplorationHUD.md)
 - [Журнал с выбором записей мышью](Docs/JournalUI.md)
 - [Сценарий квартиры Димы](Docs/DimaApartmentScenario.md)
+- [Брайтон-Бич: магазин, третий этаж, дождь и HUD](Docs/BrightonPresentation.md)
+- [Квартал, персонажи и поезд](Docs/CityLife.md)
 - [Подключение текста, озвучки и переходов между картами](Docs/NarrativeIntegration.md)
 - [Постоянные правила разработки](AGENTS.md)
 

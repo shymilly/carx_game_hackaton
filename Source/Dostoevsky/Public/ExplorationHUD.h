@@ -44,6 +44,10 @@ public:
     void SetTravelMask(uint8 Mask) { Progress.UsedMask = Mask & FExplorationTutorialProgress::CompleteMask; }
     void ObserveHUD(bool bOfferControls);
     bool ShouldShowControls() const;
+    bool ShouldShowStatus() const;
+    float StaminaFraction() const;
+    FText MainObjective() const;
+    TArray<FText> OptionalObjectives() const;
     bool HasUsed(int32 Index) const { return Progress.HasUsed(Index); }
     UFUNCTION(BlueprintPure, Category="HUD|Tutorial") bool IsTutorialComplete() const { return Progress.IsComplete(); }
     UFUNCTION(BlueprintCallable, Category="HUD|Tutorial") void ResetTutorial() { Progress = FExplorationTutorialProgress(); }
@@ -55,6 +59,7 @@ private:
     uint64 LastObservedFrame = 0;
     bool bControlsOffered = false;
     bool IsHUDVisible() const;
+    void ObserveMovementInput(APlayerController* Player);
 };
 
 UCLASS()
@@ -68,5 +73,6 @@ public:
     UFUNCTION(BlueprintCallable, Category="HUD", meta=(DefaultToSelf="HUD", HidePin="HUD"))
     static void PresentJournalHUD(AHUD* HUD, const FString& Text, FLinearColor TextColor, float ScreenX, float ScreenY, UFont* Font, float Scale, bool bScalePosition);
     UFUNCTION(BlueprintCallable, Category="HUD|Editor") static int32 UpgradeExplorationHUD(UObject* BlueprintAsset);
+    UFUNCTION(BlueprintCallable, Category="HUD|Editor") static int32 UpgradeStatusHUD(UObject* BlueprintAsset);
     UFUNCTION(BlueprintCallable, Category="HUD|Editor") static bool ValidateExplorationHUD();
 };

@@ -26,9 +26,9 @@ SIGNS = {
     "SM_NeighborhoodFlea": Sign("БАРАХОЛКА", "FLEA MARKET", "Rubik Mono One", "rubikmonoone/RubikMonoOne-Regular.ttf", 435, 47, 90),
     "SM_NeighborhoodPrecinct": Sign("ПОЛИЦИЯ · 60-Й УЧАСТОК", "POLICE · 60TH PRECINCT", "PT Sans Narrow",
                                    "ptsansnarrow/PT_Sans-Narrow-Web-Bold.ttf", 575, 47, -90),
-    "SM_NeighborhoodPark": Sign("ПЛОЩАДКА «НЕПТУН»", "NEPTUNE PLAYGROUND", "Marmelad",
+    "SM_NeighborhoodPark": Sign("БРАЙТОНСКИЙ ДВОР", "BRIGHTON PLAYGROUND", "Marmelad",
                                "marmelad/Marmelad-Regular.ttf", 246, 43, 180),
-    "SM_SignStreet": Sign("УЛ. НЕПТУН", "NEPTUNE AVE", "IBM Plex Mono", "ibmplexmono/IBMPlexMono-SemiBold.ttf", 101, 24, 180),
+    "SM_SignStreet": Sign("4-я БРАЙТОН-БИЧ", "4th Brighton beach", "IBM Plex Mono", "ibmplexmono/IBMPlexMono-SemiBold.ttf", 101, 24, 180),
     "Press": Sign("КНИГИ И ПРЕССА", "BOOKS & NEWSPAPERS", "IBM Plex Serif", "ibmplexserif/IBMPlexSerif-Bold.ttf", 222, 29, 180),
 }
 

@@ -1,0 +1,65 @@
+newmtl black
+Kd 0.055 0.058 0.063
+Ks 0.22 0.22 0.22
+Ns 45
+
+newmtl charcoal
+Kd 0.110 0.115 0.120
+Ks 0.22 0.22 0.22
+Ns 45
+
+newmtl dark
+Kd 0.025 0.028 0.030
+Ks 0.22 0.22 0.22
+Ns 45
+
+newmtl recess
+Kd 0.006 0.007 0.008
+Ks 0.22 0.22 0.22
+Ns 45
+
+newmtl screen
+Kd 0.045 0.060 0.070
+Ks 0.22 0.22 0.22
+Ns 45
+
+newmtl blue
+Kd 0.025 0.070 0.150
+Ks 0.22 0.22 0.22
+Ns 45
+
+newmtl metal
+Kd 0.560 0.570 0.580
+Ks 0.22 0.22 0.22
+Ns 45
+
+newmtl paper
+Kd 0.910 0.910 0.880
+Ks 0.22 0.22 0.22
+Ns 45
+
+newmtl key
+Kd 0.720 0.730 0.750
+Ks 0.22 0.22 0.22
+Ns 45
+
+newmtl keydark
+Kd 0.120 0.130 0.140
+Ks 0.22 0.22 0.22
+Ns 45
+
+newmtl green
+Kd 0.490 0.670 0.480
+Ks 0.22 0.22 0.22
+Ns 45
+
+newmtl orange
+Kd 0.830 0.530 0.370
+Ks 0.22 0.22 0.22
+Ns 45
+
+newmtl lavender
+Kd 0.560 0.540 0.650
+Ks 0.22 0.22 0.22
+Ns 45
+

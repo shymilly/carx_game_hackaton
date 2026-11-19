@@ -85,6 +85,7 @@ public:
     UFUNCTION(BlueprintPure, Category="Act One") FActOneStatistics GetStatistics() const { return Stats; }
     UFUNCTION(BlueprintPure, Category="Act One") bool HasEvidence(FName Id) const { return Evidence.Contains(Id); }
     UFUNCTION(BlueprintPure, Category="Act One") FText Objective() const;
+    UFUNCTION(BlueprintPure, Category="Act One") TArray<FText> OptionalObjectives() const;
     UFUNCTION(BlueprintPure, Category="Act One") bool HasActKey() const { return bIvanKey; }
     UFUNCTION(BlueprintPure, Category="Act One") bool HasArchiveAccess() const { return bArchives; }
     UFUNCTION(BlueprintPure, Category="Act One") bool IsAlarmed() const { return bAlarm; }
@@ -181,4 +182,5 @@ public:
     UFUNCTION(BlueprintCallable, Category="Act One|Editor") static bool SendEditorKey(FName KeyName);
     UFUNCTION(BlueprintCallable, Category="Act One|Editor") static bool SendEditorGameKey(APlayerController* Player,FName KeyName,bool bPressed);
     UFUNCTION(BlueprintCallable, Category="Act One|Editor") static bool CaptureEditorDocument(UDocumentWindow* Window,const FString& FileName);
+    UFUNCTION(BlueprintCallable, Category="Act One|Editor") static bool CaptureEditorWidget(UUserWidget* Widget,const FString& FileName);
 };

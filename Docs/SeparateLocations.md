@@ -5,7 +5,7 @@
 | Локация | Карта |
 | --- | --- |
 | Квартира Димы, старт игры | `/Game/Locations/L_DimaApartmentInterior` |
-| Улица Нептун | `/Game/Locations/L_NeptuneStreet` |
+| 4th Brighton beach | `/Game/Locations/L_NeptuneStreet` |
 | Полицейский участок | `/Game/Locations/L_PolicePrecinct` |
 | Продуктовый магазин | `/Game/Locations/L_BrightonGrocery` |
 | Бар «Маяк» | `/Game/Locations/L_LighthouseBar` |

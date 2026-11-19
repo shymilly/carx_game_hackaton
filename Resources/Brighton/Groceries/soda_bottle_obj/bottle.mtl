@@ -1,0 +1,19 @@
+newmtl Cola
+Kd 0.13 0.045 0.024
+Ks 0.75 0.75 0.75
+Ns 180
+newmtl Glass
+Kd 0.66 0.76 0.70
+Ks 0.95 0.95 0.95
+Ns 200
+d 0.35
+illum 4
+newmtl Label
+Kd 1 1 1
+Ks 0.20 0.20 0.20
+Ns 35
+map_Kd label.png
+newmtl Cap
+Kd 0.72 0.006 0.015
+Ks 0.6 0.6 0.6
+Ns 90

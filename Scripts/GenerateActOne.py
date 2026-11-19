@@ -92,7 +92,7 @@ def art_and_dialogue():
 def configure_apartment_audio(sounds):
     apartment=ue.load_asset("/Game/Story/DimaApartment/DA_DimaApartmentScenario")
     assert apartment
-    apartment.set_editor_properties({"ambient":sounds["Music90"],"ambient_volume":.39})
+    apartment.set_editor_properties({"ambient":ue.load_asset('/Game/Audio/DimaApartment/S_DimaApartmentAmbient'),"ambient_volume":.4})
     for prop,key in (("television","Television"),("fridge","Fridge"),("wardrobe","Wardrobe"),("floor_lamp","FloorLamp")):
         item=apartment.get_editor_property(prop)
         item.set_editor_property("voice",sounds["Voice_Apartment_"+key])

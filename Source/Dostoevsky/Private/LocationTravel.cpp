@@ -176,6 +176,14 @@ void ULocationTravelSubsystem::ResetSession()
     Stamina=100;
     bExhausted=false;
     TutorialMask=0;
+    RailServiceEpoch=-1;
+}
+
+double ULocationTravelSubsystem::GetRailServiceSeconds()
+{
+    const double Now=FPlatformTime::Seconds();
+    if (RailServiceEpoch<0) RailServiceEpoch=Now;
+    return Now-RailServiceEpoch;
 }
 bool ULocationTravelLibrary::RestoreLocation(AHUD* HUD)
 {
