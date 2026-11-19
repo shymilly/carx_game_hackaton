@@ -1,0 +1,19 @@
+{
+  "source_files": 1161,
+  "source_bytes": 402516114,
+  "imported_sources": 974,
+  "source_alternates": 182,
+  "source_only": 5,
+  "assets": 1740,
+  "classes": {
+    "Texture2D": 1045,
+    "Material": 184,
+    "StaticMesh": 393,
+    "MaterialInstanceConstant": 116,
+    "SkeletalMesh": 2
+  },
+  "meshes": 395,
+  "skeletal_meshes": 2,
+  "missing_materials": 0,
+  "poster_materials_with_textures": 37
+}

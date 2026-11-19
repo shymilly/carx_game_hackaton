@@ -1,0 +1,635 @@
+{
+  "pipeline_version": 2,
+  "bindings": {
+    "OFFICE/OFFICE/book_things/book_case.fbx": [
+      "/Game/ImportedAssets/Office/book_things/book_case/Materials/bookcase1.bookcase1"
+    ],
+    "Fenixapple Retro American Posters vol2/Fenixapple Retro American Posters vol2/Fenixapple Retro American Posters vol2/posters.fbx": [
+      "/Game/ImportedAssets/Posters/AmericanRetro/AppliedMaterials/MI_Poster_01.MI_Poster_01",
+      "/Game/ImportedAssets/Posters/AmericanRetro/AppliedMaterials/MI_Poster_02.MI_Poster_02",
+      "/Game/ImportedAssets/Posters/AmericanRetro/AppliedMaterials/MI_Poster_03.MI_Poster_03",
+      "/Game/ImportedAssets/Posters/AmericanRetro/AppliedMaterials/MI_Poster_04.MI_Poster_04",
+      "/Game/ImportedAssets/Posters/AmericanRetro/AppliedMaterials/MI_Poster_05.MI_Poster_05",
+      "/Game/ImportedAssets/Posters/AmericanRetro/AppliedMaterials/MI_Poster_06.MI_Poster_06",
+      "/Game/ImportedAssets/Posters/AmericanRetro/AppliedMaterials/MI_Poster_07.MI_Poster_07",
+      "/Game/ImportedAssets/Posters/AmericanRetro/AppliedMaterials/MI_Poster_08.MI_Poster_08",
+      "/Game/ImportedAssets/Posters/AmericanRetro/AppliedMaterials/MI_Poster_09.MI_Poster_09",
+      "/Game/ImportedAssets/Posters/AmericanRetro/AppliedMaterials/MI_Poster_10.MI_Poster_10",
+      "/Game/ImportedAssets/Posters/AmericanRetro/AppliedMaterials/MI_Poster_11.MI_Poster_11",
+      "/Game/ImportedAssets/Posters/AmericanRetro/AppliedMaterials/MI_Poster_12.MI_Poster_12",
+      "/Game/ImportedAssets/Posters/AmericanRetro/AppliedMaterials/MI_Poster_13.MI_Poster_13",
+      "/Game/ImportedAssets/Posters/AmericanRetro/AppliedMaterials/MI_Poster_14.MI_Poster_14",
+      "/Game/ImportedAssets/Posters/AmericanRetro/AppliedMaterials/MI_Poster_15.MI_Poster_15",
+      "/Game/ImportedAssets/Posters/AmericanRetro/AppliedMaterials/MI_Poster_16.MI_Poster_16",
+      "/Game/ImportedAssets/Posters/AmericanRetro/AppliedMaterials/MI_Poster_17.MI_Poster_17",
+      "/Game/ImportedAssets/Posters/AmericanRetro/AppliedMaterials/MI_Poster_18.MI_Poster_18",
+      "/Game/ImportedAssets/Posters/AmericanRetro/AppliedMaterials/MI_Poster_19.MI_Poster_19",
+      "/Game/ImportedAssets/Posters/AmericanRetro/AppliedMaterials/MI_Poster_20.MI_Poster_20",
+      "/Game/ImportedAssets/Posters/AmericanRetro/AppliedMaterials/MI_Poster_21.MI_Poster_21",
+      "/Game/ImportedAssets/Posters/AmericanRetro/AppliedMaterials/MI_Poster_22.MI_Poster_22",
+      "/Game/ImportedAssets/Posters/AmericanRetro/AppliedMaterials/MI_Poster_23.MI_Poster_23",
+      "/Game/ImportedAssets/Posters/AmericanRetro/AppliedMaterials/MI_Poster_24.MI_Poster_24",
+      "/Game/ImportedAssets/Posters/AmericanRetro/AppliedMaterials/MI_Poster_25.MI_Poster_25",
+      "/Game/ImportedAssets/Posters/AmericanRetro/AppliedMaterials/MI_Poster_26.MI_Poster_26",
+      "/Game/ImportedAssets/Posters/AmericanRetro/AppliedMaterials/MI_Poster_27.MI_Poster_27",
+      "/Game/ImportedAssets/Posters/AmericanRetro/AppliedMaterials/MI_Poster_28.MI_Poster_28",
+      "/Game/ImportedAssets/Posters/AmericanRetro/AppliedMaterials/MI_Poster_29.MI_Poster_29",
+      "/Game/ImportedAssets/Posters/AmericanRetro/AppliedMaterials/MI_Poster_30.MI_Poster_30"
+    ],
+    "Industrial_exterior_v1/Industrial_exterior_v2/Models/IndustrialHorror_PS_like.fbx": [
+      "/Game/ImportedAssets/Industrial/ExteriorV2/Industrial_exterior_v2/Industrial_exterior_v2/Materials/Building_1.Building_1",
+      "/Game/ImportedAssets/Industrial/ExteriorV2/Industrial_exterior_v2/Industrial_exterior_v2/Materials/Building_2.Building_2",
+      "/Game/ImportedAssets/Industrial/ExteriorV2/Industrial_exterior_v2/Industrial_exterior_v2/Materials/Building_3.Building_3",
+      "/Game/ImportedAssets/Industrial/ExteriorV2/Industrial_exterior_v2/Industrial_exterior_v2/Materials/Building_5.Building_5",
+      "/Game/ImportedAssets/Industrial/ExteriorV2/Industrial_exterior_v2/Industrial_exterior_v2/Materials/Building_6.Building_6",
+      "/Game/ImportedAssets/Industrial/ExteriorV2/Industrial_exterior_v2/Industrial_exterior_v2/Materials/Building_7.Building_7",
+      "/Game/ImportedAssets/Industrial/ExteriorV2/Industrial_exterior_v2/Industrial_exterior_v2/Materials/Building_8.Building_8",
+      "/Game/ImportedAssets/Industrial/ExteriorV2/Industrial_exterior_v2/Industrial_exterior_v2/Materials/Building_9.Building_9",
+      "/Game/ImportedAssets/Industrial/ExteriorV2/Industrial_exterior_v2/Industrial_exterior_v2/Materials/Building_10.Building_10",
+      "/Game/ImportedAssets/Industrial/ExteriorV2/Industrial_exterior_v2/Industrial_exterior_v2/Materials/Building_11.Building_11",
+      "/Game/ImportedAssets/Industrial/ExteriorV2/Industrial_exterior_v2/Industrial_exterior_v2/Materials/Building_12.Building_12",
+      "/Game/ImportedAssets/Industrial/ExteriorV2/Industrial_exterior_v2/Industrial_exterior_v2/Materials/Cooling_tower.Cooling_tower",
+      "/Game/ImportedAssets/Industrial/ExteriorV2/Industrial_exterior_v2/Industrial_exterior_v2/Materials/Building_13.Building_13",
+      "/Game/ImportedAssets/Industrial/ExteriorV2/Industrial_exterior_v2/Industrial_exterior_v2/Materials/Barrel_1.Barrel_1",
+      "/Game/ImportedAssets/Industrial/ExteriorV2/Industrial_exterior_v2/Industrial_exterior_v2/Materials/Barrel_2.Barrel_2",
+      "/Game/ImportedAssets/Industrial/ExteriorV2/Industrial_exterior_v2/Industrial_exterior_v2/Materials/Barrel_3.Barrel_3",
+      "/Game/ImportedAssets/Industrial/ExteriorV2/Industrial_exterior_v2/Industrial_exterior_v2/Materials/Box_wood.Box_wood",
+      "/Game/ImportedAssets/Industrial/ExteriorV2/Industrial_exterior_v2/Industrial_exterior_v2/Materials/Cargo_1_close.Cargo_1_close",
+      "/Game/ImportedAssets/Industrial/ExteriorV2/Industrial_exterior_v2/Industrial_exterior_v2/Materials/Cargo_1_open.Cargo_1_open",
+      "/Game/ImportedAssets/Industrial/ExteriorV2/Industrial_exterior_v2/Industrial_exterior_v2/Materials/Cargo_2_full.Cargo_2_full",
+      "/Game/ImportedAssets/Industrial/ExteriorV2/Industrial_exterior_v2/Industrial_exterior_v2/Materials/Liquid_reservoir_1.Liquid_reservoir_1",
+      "/Game/ImportedAssets/Industrial/ExteriorV2/Industrial_exterior_v2/Industrial_exterior_v2/Materials/Liquid_reservoir_2.Liquid_reservoir_2",
+      "/Game/ImportedAssets/Industrial/ExteriorV2/Industrial_exterior_v2/Industrial_exterior_v2/Materials/Bridges_turn.Bridges_turn",
+      "/Game/ImportedAssets/Industrial/ExteriorV2/Industrial_exterior_v2/Industrial_exterior_v2/Materials/Bridges_support_3.Bridges_support_3",
+      "/Game/ImportedAssets/Industrial/ExteriorV2/Industrial_exterior_v2/Industrial_exterior_v2/Materials/Pipes.Pipes",
+      "/Game/ImportedAssets/Industrial/ExteriorV2/Industrial_exterior_v2/Industrial_exterior_v2/Materials/Bags_1.Bags_1",
+      "/Game/ImportedAssets/Industrial/ExteriorV2/Industrial_exterior_v2/Industrial_exterior_v2/Materials/Bags_2.Bags_2",
+      "/Game/ImportedAssets/Industrial/ExteriorV2/Industrial_exterior_v2/Industrial_exterior_v2/Materials/Generator.Generator",
+      "/Game/ImportedAssets/Industrial/ExteriorV2/Industrial_exterior_v2/Industrial_exterior_v2/Materials/Metal_cabinet_1.Metal_cabinet_1",
+      "/Game/ImportedAssets/Industrial/ExteriorV2/Industrial_exterior_v2/Industrial_exterior_v2/Materials/Metal_cabinet_2.Metal_cabinet_2",
+      "/Game/ImportedAssets/Industrial/ExteriorV2/Industrial_exterior_v2/Industrial_exterior_v2/Materials/Palet.Palet",
+      "/Game/ImportedAssets/Industrial/ExteriorV2/Industrial_exterior_v2/Industrial_exterior_v2/Materials/Ventilation_1.Ventilation_1",
+      "/Game/ImportedAssets/Industrial/ExteriorV2/Industrial_exterior_v2/Industrial_exterior_v2/Materials/Ventilation_2.Ventilation_2",
+      "/Game/ImportedAssets/Industrial/ExteriorV2/Industrial_exterior_v2/Industrial_exterior_v2/Materials/Ventilation_3.Ventilation_3",
+      "/Game/ImportedAssets/Industrial/ExteriorV2/Industrial_exterior_v2/Industrial_exterior_v2/Materials/Alphalt_Floor.Alphalt_Floor",
+      "/Game/ImportedAssets/Industrial/ExteriorV2/Industrial_exterior_v2/Industrial_exterior_v2/Materials/Fence_metal.Fence_metal",
+      "/Game/ImportedAssets/Industrial/ExteriorV2/Industrial_exterior_v2/Industrial_exterior_v2/Materials/Road.Road",
+      "/Game/ImportedAssets/Industrial/ExteriorV2/Industrial_exterior_v2/Industrial_exterior_v2/Materials/Wall.Wall",
+      "/Game/ImportedAssets/Industrial/ExteriorV2/Industrial_exterior_v2/Industrial_exterior_v2/Materials/Fence.Fence",
+      "/Game/ImportedAssets/Industrial/ExteriorV2/Industrial_exterior_v2/Industrial_exterior_v2/Materials/Roadblock.Roadblock"
+    ],
+    "OFFICE/OFFICE/book_things/book_case_small.fbx": [
+      "/Game/ImportedAssets/Office/book_things/book_case_small/Materials/bookcase1.bookcase1"
+    ],
+    "OFFICE/OFFICE/book_things/book_case_with_back.fbx": [
+      "/Game/ImportedAssets/Office/book_things/book_case_with_back/Materials/bookcase1.bookcase1"
+    ],
+    "OFFICE/OFFICE/book_things/book_case_with_back_Small.fbx": [
+      "/Game/ImportedAssets/Office/book_things/book_case_with_back_Small/Materials/bookcase1.bookcase1"
+    ],
+    "OFFICE/OFFICE/book_things/books.fbx": [
+      "/Game/ImportedAssets/Office/book_things/books/Materials/books1.books1"
+    ],
+    "OFFICE/OFFICE/book_things/books_alt.fbx": [
+      "/Game/ImportedAssets/Office/book_things/books_alt/Materials/books1.books1"
+    ],
+    "OFFICE/OFFICE/book_things/books_alt2.fbx": [
+      "/Game/ImportedAssets/Office/book_things/books_alt2/Materials/books1.books1"
+    ],
+    "OFFICE/OFFICE/book_things/file_binder.fbx": [
+      "/Game/ImportedAssets/Office/book_things/file_binder/Materials/Binders.Binders"
+    ],
+    "OFFICE/OFFICE/book_things/file_binder_alt.fbx": [
+      "/Game/ImportedAssets/Office/book_things/file_binder_alt/Materials/Binders.Binders"
+    ],
+    "OFFICE/OFFICE/book_things/file_binder_alt2.fbx": [
+      "/Game/ImportedAssets/Office/book_things/file_binder_alt2/Materials/Binders.Binders"
+    ],
+    "OFFICE/OFFICE/book_things/file_binder_alt3.fbx": [
+      "/Game/ImportedAssets/Office/book_things/file_binder_alt3/Materials/Binders.Binders"
+    ],
+    "OFFICE/OFFICE/book_things/file_binder_alt4.fbx": [
+      "/Game/ImportedAssets/Office/book_things/file_binder_alt4/Materials/Binders.Binders"
+    ],
+    "OFFICE/OFFICE/book_things/file_binder_alt5.fbx": [
+      "/Game/ImportedAssets/Office/book_things/file_binder_alt5/Materials/Binders.Binders"
+    ],
+    "OFFICE/OFFICE/carpet_floor/floor 2x1.fbx": [
+      "/Game/ImportedAssets/Office/carpet_floor/floor_2x1/Materials/carpet1.carpet1"
+    ],
+    "OFFICE/OFFICE/carpet_floor/floor_1x1.fbx": [
+      "/Game/ImportedAssets/Office/carpet_floor/floor_1x1/Materials/carpet1.carpet1"
+    ],
+    "OFFICE/OFFICE/carpet_floor/floor_2x2.fbx": [
+      "/Game/ImportedAssets/Office/carpet_floor/floor_2x2/Materials/carpet1.carpet1"
+    ],
+    "OFFICE/OFFICE/carpet_floor/floor_3x3.fbx": [
+      "/Game/ImportedAssets/Office/carpet_floor/floor_3x3/Materials/carpet1.carpet1"
+    ],
+    "OFFICE/OFFICE/carpet_floor/floor_corner.fbx": [
+      "/Game/ImportedAssets/Office/carpet_floor/floor_corner/Materials/carpet1.carpet1"
+    ],
+    "OFFICE/OFFICE/carpet_floor/floor_corner_half.fbx": [
+      "/Game/ImportedAssets/Office/carpet_floor/floor_corner_half/Materials/carpet1.carpet1"
+    ],
+    "OFFICE/OFFICE/carpet_floor/floor_corner_round.fbx": [
+      "/Game/ImportedAssets/Office/carpet_floor/floor_corner_round/Materials/carpet1.carpet1"
+    ],
+    "OFFICE/OFFICE/carpet_floor/floor_corner_round_half.fbx": [
+      "/Game/ImportedAssets/Office/carpet_floor/floor_corner_round_half/Materials/carpet1.carpet1"
+    ],
+    "OFFICE/OFFICE/chairs/conference_chair.fbx": [
+      "/Game/ImportedAssets/Office/chairs/conference_chair/Materials/office_chair1.office_chair1"
+    ],
+    "OFFICE/OFFICE/chairs/conference_chair_black.fbx": [
+      "/Game/ImportedAssets/Office/chairs/conference_chair_black/Materials/office_chair_black1.office_chair_black1"
+    ],
+    "OFFICE/OFFICE/chairs/conference_chair_blue.fbx": [
+      "/Game/ImportedAssets/Office/chairs/conference_chair_blue/Materials/office_chair_blue.office_chair_blue"
+    ],
+    "OFFICE/OFFICE/chairs/conference_chair_grey.fbx": [
+      "/Game/ImportedAssets/Office/chairs/conference_chair_grey/Materials/office_chair_grey1.office_chair_grey1"
+    ],
+    "OFFICE/OFFICE/chairs/office_chair_alt.fbx": [
+      "/Game/ImportedAssets/Office/chairs/office_chair_alt/Materials/office_chair1.office_chair1"
+    ],
+    "OFFICE/OFFICE/chairs/office_chair_black.fbx": [
+      "/Game/ImportedAssets/Office/chairs/office_chair_black/Materials/office_chair_black1.office_chair_black1"
+    ],
+    "OFFICE/OFFICE/chairs/office_chair_black_alt.fbx": [
+      "/Game/ImportedAssets/Office/chairs/office_chair_black_alt/Materials/office_chair_black1.office_chair_black1"
+    ],
+    "OFFICE/OFFICE/chairs/office_chair_blue.fbx": [
+      "/Game/ImportedAssets/Office/chairs/office_chair_blue/Materials/office_chair_blue.office_chair_blue"
+    ],
+    "OFFICE/OFFICE/chairs/office_chair_blue_alt.fbx": [
+      "/Game/ImportedAssets/Office/chairs/office_chair_blue_alt/Materials/office_chair_blue.office_chair_blue"
+    ],
+    "OFFICE/OFFICE/chairs/office_chair_fancy.fbx": [
+      "/Game/ImportedAssets/Office/chairs/office_chair_fancy/Materials/leather_office_chair1.leather_office_chair1"
+    ],
+    "OFFICE/OFFICE/chairs/office_chair_grey.fbx": [
+      "/Game/ImportedAssets/Office/chairs/office_chair_grey/Materials/office_chair_grey1.office_chair_grey1"
+    ],
+    "OFFICE/OFFICE/chairs/office_chair_grey_alt.fbx": [
+      "/Game/ImportedAssets/Office/chairs/office_chair_grey_alt/Materials/office_chair_grey1.office_chair_grey1"
+    ],
+    "OFFICE/OFFICE/chairs/office_chair_orange.fbx": [
+      "/Game/ImportedAssets/Office/chairs/office_chair_orange/Materials/office_chair1.office_chair1"
+    ],
+    "OFFICE/OFFICE/computers/computer_keyboard.fbx": [
+      "/Game/ImportedAssets/Office/computers/computer_keyboard/Materials/computer1.computer1"
+    ],
+    "OFFICE/OFFICE/computers/computer_monitor.fbx": [
+      "/Game/ImportedAssets/Office/computers/computer_monitor/Materials/computer1.computer1"
+    ],
+    "OFFICE/OFFICE/computers/computer_mouse.fbx": [
+      "/Game/ImportedAssets/Office/computers/computer_mouse/Materials/computer1.computer1"
+    ],
+    "OFFICE/OFFICE/computers/computer_tower.fbx": [
+      "/Game/ImportedAssets/Office/computers/computer_tower/Materials/computer1.computer1"
+    ],
+    "OFFICE/OFFICE/computers/computer_tower_alt.fbx": [
+      "/Game/ImportedAssets/Office/computers/computer_tower_alt/Materials/computer1.computer1"
+    ],
+    "OFFICE/OFFICE/computers/desktop_brick.fbx": [
+      "/Game/ImportedAssets/Office/computers/desktop_brick/Materials/computer1.computer1"
+    ],
+    "OFFICE/OFFICE/computers/horizontal_desktop.fbx": [
+      "/Game/ImportedAssets/Office/computers/horizontal_desktop/Materials/computer1.computer1"
+    ],
+    "OFFICE/OFFICE/computers/TV.fbx": [
+      "/Game/ImportedAssets/Office/computers/TV/Materials/tv1.tv1"
+    ],
+    "OFFICE/OFFICE/couches/armchair_blue.fbx": [
+      "/Game/ImportedAssets/Office/couches/armchair_blue/Materials/couches1.couches1"
+    ],
+    "OFFICE/OFFICE/couches/armchair_green.fbx": [
+      "/Game/ImportedAssets/Office/couches/armchair_green/Materials/couches1.couches1"
+    ],
+    "OFFICE/OFFICE/couches/armchair_pattern.fbx": [
+      "/Game/ImportedAssets/Office/couches/armchair_pattern/Materials/couches1.couches1"
+    ],
+    "OFFICE/OFFICE/couches/armchair_red.fbx": [
+      "/Game/ImportedAssets/Office/couches/armchair_red/Materials/couches1.couches1"
+    ],
+    "OFFICE/OFFICE/couches/beanbag_blue.fbx": [
+      "/Game/ImportedAssets/Office/couches/beanbag_blue/Materials/couches1.couches1"
+    ],
+    "OFFICE/OFFICE/couches/beanbag_green.fbx": [
+      "/Game/ImportedAssets/Office/couches/beanbag_green/Materials/couches1.couches1"
+    ],
+    "OFFICE/OFFICE/couches/beanbag_red.fbx": [
+      "/Game/ImportedAssets/Office/couches/beanbag_red/Materials/couches1.couches1"
+    ],
+    "OFFICE/OFFICE/couches/couch_blue.fbx": [
+      "/Game/ImportedAssets/Office/couches/couch_blue/Materials/couches1.couches1"
+    ],
+    "OFFICE/OFFICE/couches/couch_green.fbx": [
+      "/Game/ImportedAssets/Office/couches/couch_green/Materials/couches1.couches1"
+    ],
+    "OFFICE/OFFICE/couches/couch_large_blue.fbx": [
+      "/Game/ImportedAssets/Office/couches/couch_large_blue/Materials/couches1.couches1"
+    ],
+    "OFFICE/OFFICE/couches/couch_large_green.fbx": [
+      "/Game/ImportedAssets/Office/couches/couch_large_green/Materials/couches1.couches1"
+    ],
+    "OFFICE/OFFICE/couches/couch_large_pattern.fbx": [
+      "/Game/ImportedAssets/Office/couches/couch_large_pattern/Materials/couches1.couches1"
+    ],
+    "OFFICE/OFFICE/couches/couch_large_red.fbx": [
+      "/Game/ImportedAssets/Office/couches/couch_large_red/Materials/couches1.couches1"
+    ],
+    "OFFICE/OFFICE/couches/couch_pattern.fbx": [
+      "/Game/ImportedAssets/Office/couches/couch_pattern/Materials/couches1.couches1"
+    ],
+    "OFFICE/OFFICE/couches/couch_red.fbx": [
+      "/Game/ImportedAssets/Office/couches/couch_red/Materials/couches1.couches1"
+    ],
+    "OFFICE/OFFICE/desks/conference_desk.fbx": [
+      "/Game/ImportedAssets/Office/desks/conference_desk/Materials/conference_table.conference_table"
+    ],
+    "OFFICE/OFFICE/desks/conference_desk_alt.fbx": [
+      "/Game/ImportedAssets/Office/desks/conference_desk_alt/Materials/conference_table.conference_table"
+    ],
+    "OFFICE/OFFICE/desks/conference_desk_squared.fbx": [
+      "/Game/ImportedAssets/Office/desks/conference_desk_squared/Materials/conference_table.conference_table"
+    ],
+    "OFFICE/OFFICE/desks/conference_desk_squared_alt.fbx": [
+      "/Game/ImportedAssets/Office/desks/conference_desk_squared_alt/Materials/conference_table.conference_table"
+    ],
+    "OFFICE/OFFICE/desks/desk1.fbx": [
+      "/Game/ImportedAssets/Office/desks/desk1/Materials/desk_11.desk_11"
+    ],
+    "OFFICE/OFFICE/desks/desk1_alt.fbx": [
+      "/Game/ImportedAssets/Office/desks/desk1_alt/Materials/desk_11.desk_11"
+    ],
+    "OFFICE/OFFICE/desks/desk1_alt2.fbx": [
+      "/Game/ImportedAssets/Office/desks/desk1_alt2/Materials/desk_11.desk_11"
+    ],
+    "OFFICE/OFFICE/desks/desk1_alt2_weathered.fbx": [
+      "/Game/ImportedAssets/Office/desks/desk1_alt2_weathered/Materials/desk_1_timeworn.desk_1_timeworn"
+    ],
+    "OFFICE/OFFICE/desks/desk1_alt3.fbx": [
+      "/Game/ImportedAssets/Office/desks/desk1_alt3/Materials/desk_11.desk_11"
+    ],
+    "OFFICE/OFFICE/desks/desk1_alt3_weathered.fbx": [
+      "/Game/ImportedAssets/Office/desks/desk1_alt3_weathered/Materials/desk_1_timeworn.desk_1_timeworn"
+    ],
+    "OFFICE/OFFICE/desks/desk1_alt4.fbx": [
+      "/Game/ImportedAssets/Office/desks/desk1_alt4/Materials/desk_11.desk_11"
+    ],
+    "OFFICE/OFFICE/desks/desk1_alt4_weathered.fbx": [
+      "/Game/ImportedAssets/Office/desks/desk1_alt4_weathered/Materials/desk_1_timeworn.desk_1_timeworn"
+    ],
+    "OFFICE/OFFICE/desks/desk1_alt_weathered.fbx": [
+      "/Game/ImportedAssets/Office/desks/desk1_alt_weathered/Materials/desk_1_timeworn.desk_1_timeworn"
+    ],
+    "OFFICE/OFFICE/desks/desk1_corner.fbx": [
+      "/Game/ImportedAssets/Office/desks/desk1_corner/Materials/desk_11.desk_11"
+    ],
+    "OFFICE/OFFICE/desks/desk1_corner_weathered.fbx": [
+      "/Game/ImportedAssets/Office/desks/desk1_corner_weathered/Materials/desk_1_timeworn.desk_1_timeworn"
+    ],
+    "OFFICE/OFFICE/desks/desk1_weathered.fbx": [
+      "/Game/ImportedAssets/Office/desks/desk1_weathered/Materials/desk_1_timeworn.desk_1_timeworn"
+    ],
+    "OFFICE/OFFICE/desks/desk2.fbx": [
+      "/Game/ImportedAssets/Office/desks/desk2/Materials/desk_21.desk_21"
+    ],
+    "OFFICE/OFFICE/desks/desk2_alt.fbx": [
+      "/Game/ImportedAssets/Office/desks/desk2_alt/Materials/desk_21.desk_21"
+    ],
+    "OFFICE/OFFICE/desks/desk2_alt2.fbx": [
+      "/Game/ImportedAssets/Office/desks/desk2_alt2/Materials/desk_21.desk_21"
+    ],
+    "OFFICE/OFFICE/desks/desk2_alt2_weathered.fbx": [
+      "/Game/ImportedAssets/Office/desks/desk2_alt2_weathered/Materials/desk_2_timeworn.desk_2_timeworn"
+    ],
+    "OFFICE/OFFICE/desks/desk2_alt3.fbx": [
+      "/Game/ImportedAssets/Office/desks/desk2_alt3/Materials/desk_21.desk_21"
+    ],
+    "OFFICE/OFFICE/desks/desk2_alt3_weathered.fbx": [
+      "/Game/ImportedAssets/Office/desks/desk2_alt3_weathered/Materials/desk_2_timeworn.desk_2_timeworn"
+    ],
+    "OFFICE/OFFICE/desks/desk2_alt4.fbx": [
+      "/Game/ImportedAssets/Office/desks/desk2_alt4/Materials/desk_21.desk_21"
+    ],
+    "OFFICE/OFFICE/desks/desk2_alt4_weathered.fbx": [
+      "/Game/ImportedAssets/Office/desks/desk2_alt4_weathered/Materials/desk_2_timeworn.desk_2_timeworn"
+    ],
+    "OFFICE/OFFICE/desks/desk2_alt_weathered.fbx": [
+      "/Game/ImportedAssets/Office/desks/desk2_alt_weathered/Materials/desk_2_timeworn.desk_2_timeworn"
+    ],
+    "OFFICE/OFFICE/desks/desk2_corner.fbx": [
+      "/Game/ImportedAssets/Office/desks/desk2_corner/Materials/desk_21.desk_21"
+    ],
+    "OFFICE/OFFICE/desks/desk2_corner_weathered.fbx": [
+      "/Game/ImportedAssets/Office/desks/desk2_corner_weathered/Materials/desk_2_timeworn.desk_2_timeworn"
+    ],
+    "OFFICE/OFFICE/desks/desk2_weathered.fbx": [
+      "/Game/ImportedAssets/Office/desks/desk2_weathered/Materials/desk_2_timeworn.desk_2_timeworn"
+    ],
+    "OFFICE/OFFICE/dividers/divider_black.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_black/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_black_blue.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_black_blue/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_black_blue_half.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_black_blue_half/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_black_blue_low.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_black_blue_low/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_black_blue_low_half.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_black_blue_low_half/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_black_half.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_black_half/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_black_low.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_black_low/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_black_low_half.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_black_low_half/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_black_red.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_black_red/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_black_red_half.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_black_red_half/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_black_red_low.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_black_red_low/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_black_red_low_half.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_black_red_low_half/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_full_c.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_full_c/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_full_c_blue.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_full_c_blue/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_full_c_desk.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_full_c_desk/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_full_c_desk_blue.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_full_c_desk_blue/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_full_c_desk_red.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_full_c_desk_red/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_full_c_red.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_full_c_red/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_full_h.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_full_h/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_full_h_blue.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_full_h_blue/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_full_h_desk.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_full_h_desk/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_full_h_lue_desk.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_full_h_lue_desk/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_full_h_red.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_full_h_red/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_full_h_red_desk.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_full_h_red_desk/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_veneer.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_veneer/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_veneer_blue.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_veneer_blue/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_veneer_blue_half.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_veneer_blue_half/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_veneer_blue_low.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_veneer_blue_low/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_veneer_blue_low_half.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_veneer_blue_low_half/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_veneer_half.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_veneer_half/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_veneer_low.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_veneer_low/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_veneer_low_half.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_veneer_low_half/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_veneer_red.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_veneer_red/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_veneer_red_half.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_veneer_red_half/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_veneer_red_low.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_veneer_red_low/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_veneer_red_low_half.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_veneer_red_low_half/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_wood.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_wood/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_wood_blue.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_wood_blue/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_wood_blue_half.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_wood_blue_half/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_wood_blue_low.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_wood_blue_low/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_wood_blue_low_half.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_wood_blue_low_half/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_wood_half.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_wood_half/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_wood_low.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_wood_low/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_wood_low_half.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_wood_low_half/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_wood_red.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_wood_red/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_wood_red_half.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_wood_red_half/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_wood_red_low.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_wood_red_low/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/dividers/divider_wood_red_low_half.fbx": [
+      "/Game/ImportedAssets/Office/dividers/divider_wood_red_low_half/Materials/dividers1.dividers1"
+    ],
+    "OFFICE/OFFICE/extras/circular_desklamp.fbx": [
+      "/Game/ImportedAssets/Office/extras/circular_desklamp/Materials/desklamp.desklamp"
+    ],
+    "OFFICE/OFFICE/extras/circular_desklamp_alt.fbx": [
+      "/Game/ImportedAssets/Office/extras/circular_desklamp_alt/Materials/desklamp.desklamp"
+    ],
+    "OFFICE/OFFICE/extras/coffee_machine.fbx": [
+      "/Game/ImportedAssets/Office/extras/coffee_machine/Materials/coffee_machine1.coffee_machine1"
+    ],
+    "OFFICE/OFFICE/extras/desk_phone.fbx": [
+      "/Game/ImportedAssets/Office/extras/desk_phone/Materials/desk_phone.desk_phone"
+    ],
+    "OFFICE/OFFICE/extras/desk_phone_with_cable.fbx": [
+      "/Game/ImportedAssets/Office/extras/desk_phone_with_cable/Materials/desk_phone.desk_phone"
+    ],
+    "OFFICE/OFFICE/extras/glass.fbx": [
+      "/Game/ImportedAssets/Office/extras/glass/Materials/mug.mug"
+    ],
+    "OFFICE/OFFICE/extras/glass2.fbx": [
+      "/Game/ImportedAssets/Office/extras/glass2/Materials/mug.mug"
+    ],
+    "OFFICE/OFFICE/extras/mug.fbx": [
+      "/Game/ImportedAssets/Office/extras/mug/Materials/mug.mug"
+    ],
+    "OFFICE/OFFICE/extras/mug_alt.fbx": [
+      "/Game/ImportedAssets/Office/extras/mug_alt/Materials/mug.mug"
+    ],
+    "OFFICE/OFFICE/extras/mug_alt2.fbx": [
+      "/Game/ImportedAssets/Office/extras/mug_alt2/Materials/mug.mug"
+    ],
+    "OFFICE/OFFICE/extras/mug_alt3.fbx": [
+      "/Game/ImportedAssets/Office/extras/mug_alt3/Materials/mug.mug"
+    ],
+    "OFFICE/OFFICE/extras/square_desklamp.fbx": [
+      "/Game/ImportedAssets/Office/extras/square_desklamp/Materials/desklamp.desklamp"
+    ],
+    "OFFICE/OFFICE/extras/square_desklamp_alt.fbx": [
+      "/Game/ImportedAssets/Office/extras/square_desklamp_alt/Materials/desklamp.desklamp"
+    ],
+    "OFFICE/OFFICE/extras/wall_clock.fbx": [
+      "/Game/ImportedAssets/Office/extras/wall_clock/Materials/clock1.clock1"
+    ],
+    "OFFICE/OFFICE/extras/water_cooler.fbx": [
+      "/Game/ImportedAssets/Office/extras/water_cooler/Materials/watercooler1.watercooler1"
+    ],
+    "OFFICE/OFFICE/extras/water_cooler_bottle.fbx": [
+      "/Game/ImportedAssets/Office/extras/water_cooler_bottle/Materials/watercooler1.watercooler1"
+    ],
+    "OFFICE/OFFICE/extras/water_cooler_bottle_attached.fbx": [
+      "/Game/ImportedAssets/Office/extras/water_cooler_bottle_attached/Materials/watercooler1.watercooler1"
+    ],
+    "OFFICE/OFFICE/extras/whiteboard.fbx": [
+      "/Game/ImportedAssets/Office/extras/whiteboard/Materials/whiteboard1.whiteboard1",
+      "/Game/ImportedAssets/Office/extras/whiteboard/Materials/whiteboard_text1.whiteboard_text1"
+    ],
+    "OFFICE/OFFICE/file_cabinets/file_cabinet_large.fbx": [
+      "/Game/ImportedAssets/Office/file_cabinets/file_cabinet_large/Materials/file_cabinet_large.file_cabinet_large"
+    ],
+    "OFFICE/OFFICE/file_cabinets/file_cabinet_large_open.fbx": [
+      "/Game/ImportedAssets/Office/file_cabinets/file_cabinet_large_open/Materials/file_cabinet_large.file_cabinet_large"
+    ],
+    "OFFICE/OFFICE/file_cabinets/file_cabinet_large_shelf.fbx": [
+      "/Game/ImportedAssets/Office/file_cabinets/file_cabinet_large_shelf/Materials/file_cabinet_large.file_cabinet_large"
+    ],
+    "OFFICE/OFFICE/file_cabinets/file_cabinet_large_shelf_fancy.fbx": [
+      "/Game/ImportedAssets/Office/file_cabinets/file_cabinet_large_shelf_fancy/Materials/file_cabinet_large.file_cabinet_large"
+    ],
+    "OFFICE/OFFICE/file_cabinets/file_cabinet_larger.fbx": [
+      "/Game/ImportedAssets/Office/file_cabinets/file_cabinet_larger/Materials/file_cabinet_large.file_cabinet_large"
+    ],
+    "OFFICE/OFFICE/file_cabinets/file_cabinet_larger_open.fbx": [
+      "/Game/ImportedAssets/Office/file_cabinets/file_cabinet_larger_open/Materials/file_cabinet_large.file_cabinet_large"
+    ],
+    "OFFICE/OFFICE/file_cabinets/file_cabinet_largest.fbx": [
+      "/Game/ImportedAssets/Office/file_cabinets/file_cabinet_largest/Materials/file_cabinet_large.file_cabinet_large"
+    ],
+    "OFFICE/OFFICE/file_cabinets/file_cabinet_largest_open.fbx": [
+      "/Game/ImportedAssets/Office/file_cabinets/file_cabinet_largest_open/Materials/file_cabinet_large.file_cabinet_large"
+    ],
+    "OFFICE/OFFICE/file_cabinets/file_cabinet_small.fbx": [
+      "/Game/ImportedAssets/Office/file_cabinets/file_cabinet_small/Materials/file_cabinet.file_cabinet"
+    ],
+    "OFFICE/OFFICE/file_cabinets/file_cabinet_small_open.fbx": [
+      "/Game/ImportedAssets/Office/file_cabinets/file_cabinet_small_open/Materials/file_cabinet.file_cabinet"
+    ],
+    "OFFICE/OFFICE/file_cabinets/file_cabinet_small_shelf.fbx": [
+      "/Game/ImportedAssets/Office/file_cabinets/file_cabinet_small_shelf/Materials/file_cabinet.file_cabinet"
+    ],
+    "OFFICE/OFFICE/file_cabinets/file_cabinet_small_shelf_fancy.fbx": [
+      "/Game/ImportedAssets/Office/file_cabinets/file_cabinet_small_shelf_fancy/Materials/file_cabinet.file_cabinet"
+    ],
+    "OFFICE/OFFICE/file_cabinets/file_cabinet_small_with_shelfs.fbx": [
+      "/Game/ImportedAssets/Office/file_cabinets/file_cabinet_small_with_shelfs/Materials/file_cabinet.file_cabinet"
+    ],
+    "OFFICE/OFFICE/file_cabinets/file_cabinet_smaller.fbx": [
+      "/Game/ImportedAssets/Office/file_cabinets/file_cabinet_smaller/Materials/file_cabinet.file_cabinet"
+    ],
+    "OFFICE/OFFICE/file_cabinets/file_cabinet_smaller_open.fbx": [
+      "/Game/ImportedAssets/Office/file_cabinets/file_cabinet_smaller_open/Materials/file_cabinet.file_cabinet"
+    ],
+    "OFFICE/OFFICE/file_cabinets/file_cabinet_smaller_with_shelfs.fbx": [
+      "/Game/ImportedAssets/Office/file_cabinets/file_cabinet_smaller_with_shelfs/Materials/file_cabinet.file_cabinet"
+    ],
+    "OFFICE/OFFICE/file_cabinets/file_cabinet_smallest.fbx": [
+      "/Game/ImportedAssets/Office/file_cabinets/file_cabinet_smallest/Materials/file_cabinet.file_cabinet"
+    ],
+    "OFFICE/OFFICE/file_cabinets/file_cabinet_smallest_open.fbx": [
+      "/Game/ImportedAssets/Office/file_cabinets/file_cabinet_smallest_open/Materials/file_cabinet.file_cabinet"
+    ],
+    "OFFICE/OFFICE/file_cabinets/file_cabinet_smallest_with_shelfs.fbx": [
+      "/Game/ImportedAssets/Office/file_cabinets/file_cabinet_smallest_with_shelfs/Materials/file_cabinet.file_cabinet"
+    ],
+    "OFFICE/OFFICE/stationary/elastic_ball.fbx": [
+      "/Game/ImportedAssets/Office/stationary/elastic_ball/Materials/elastic_ball1.elastic_ball1"
+    ],
+    "OFFICE/OFFICE/stationary/paper_single_sheet.fbx": [
+      "/Game/ImportedAssets/Office/stationary/paper_single_sheet/Materials/Material.Material"
+    ],
+    "OFFICE/OFFICE/stationary/paper_stack.fbx": [
+      "/Game/ImportedAssets/Office/stationary/paper_stack/Materials/Material.Material"
+    ],
+    "OFFICE/OFFICE/stationary/paper_stack_large.fbx": [
+      "/Game/ImportedAssets/Office/stationary/paper_stack_large/Materials/Material.Material"
+    ],
+    "OFFICE/OFFICE/stationary/pen.fbx": [
+      "/Game/ImportedAssets/Office/stationary/pen/Materials/mug.mug"
+    ],
+    "OFFICE/OFFICE/stationary/pen2.fbx": [
+      "/Game/ImportedAssets/Office/stationary/pen2/Materials/mug.mug"
+    ],
+    "OFFICE/OFFICE/stationary/pen3.fbx": [
+      "/Game/ImportedAssets/Office/stationary/pen3/Materials/mug.mug"
+    ],
+    "OFFICE/OFFICE/stationary/pen4.fbx": [
+      "/Game/ImportedAssets/Office/stationary/pen4/Materials/mug.mug"
+    ],
+    "OFFICE/OFFICE/stationary/pen5.fbx": [
+      "/Game/ImportedAssets/Office/stationary/pen5/Materials/mug.mug"
+    ],
+    "OFFICE/OFFICE/stationary/pen6.fbx": [
+      "/Game/ImportedAssets/Office/stationary/pen6/Materials/mug.mug"
+    ],
+    "Pack of 7 Posters/Pack of 7 Posters/FenixapplePosters.fbx": [
+      "/Game/ImportedAssets/Posters/PackOf7/AppliedMaterials/MI_Poster_01.MI_Poster_01",
+      "/Game/ImportedAssets/Posters/PackOf7/AppliedMaterials/MI_Poster_02.MI_Poster_02",
+      "/Game/ImportedAssets/Posters/PackOf7/AppliedMaterials/MI_Poster_03.MI_Poster_03",
+      "/Game/ImportedAssets/Posters/PackOf7/AppliedMaterials/MI_Poster_04.MI_Poster_04",
+      "/Game/ImportedAssets/Posters/PackOf7/AppliedMaterials/MI_Poster_05.MI_Poster_05",
+      "/Game/ImportedAssets/Posters/PackOf7/AppliedMaterials/MI_Poster_06.MI_Poster_06",
+      "/Game/ImportedAssets/Posters/PackOf7/AppliedMaterials/MI_Poster_07.MI_Poster_07"
+    ],
+    "psx-first-person-arms-free-game-assets/arms_rig.fbx": [
+      "/Game/ImportedAssets/FirstPersonArms/arms_rig/Materials/Arms.Arms"
+    ],
+    "psx-first-person-arms-free-game-assets/Old Versions/PSX_First_Person_Arms_Free (2024)/PSX_First_Person_Arms.fbx": [
+      "/Game/ImportedAssets/FirstPersonArms/Old_Versions/PSX_First_Person_Arms_Free_2024/PSX_First_Person_Arms/Materials/arms1.arms1"
+    ]
+  }
+}

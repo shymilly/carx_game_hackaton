@@ -1,11 +1,16 @@
 #include "StreetTraffic.h"
 #include "Components/BoxComponent.h"
+#include "Components/AudioComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "Sound/SoundBase.h"
+#include "Sound/SoundConcurrency.h"
 #include "Components/SplineComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "GameFramework/Character.h"
+#include "GameFramework/PlayerController.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 namespace
@@ -69,6 +74,24 @@ AStreetTrafficCar::AStreetTrafficCar()
     BodyMesh->SetGenerateOverlapEvents(false);
     BodyMesh->SetCanEverAffectNavigation(false);
     BodyMesh->bAffectDistanceFieldLighting=false;
+    DriveByAudio=CreateDefaultSubobject<UAudioComponent>(TEXT("DriveByAudio"));
+    HornAudio=CreateDefaultSubobject<UAudioComponent>(TEXT("HornAudio"));
+    for (UAudioComponent* Audio : {DriveByAudio.Get(),HornAudio.Get()})
+    {
+        Audio->SetupAttachment(RoadBody);
+        Audio->bAutoActivate=false;
+        Audio->bAutoDestroy=false;
+        Audio->bStopWhenOwnerDestroyed=true;
+        Audio->bOverrideAttenuation=true;
+        Audio->AttenuationOverrides.bAttenuate=true;
+        Audio->AttenuationOverrides.bSpatialize=true;
+        Audio->AttenuationOverrides.AttenuationShape=EAttenuationShape::Sphere;
+        Audio->AttenuationOverrides.AttenuationShapeExtents=FVector(180,0,0);
+        Audio->AttenuationOverrides.FalloffDistance=4700;
+        Audio->AttenuationOverrides.DistanceAlgorithm=EAttenuationDistanceModel::Logarithmic;
+    }
+    DriveByAudio->SetVolumeMultiplier(.48f);
+    HornAudio->SetVolumeMultiplier(.33f);
 }
 FVector AStreetTrafficCar::CollisionExtent(const UStaticMesh* Model)
 {
@@ -87,10 +110,47 @@ void AStreetTrafficCar::Configure(UStaticMesh* Model,int32 Slot,UMaterialInterfa
     RoadBody->SetBoxExtent(CollisionExtent(Model),false);
     if (Slot!=INDEX_NONE) BodyMesh->SetMaterial(Slot,Paint);
 }
-void AStreetTrafficCar::SetOnRoad(bool bOnRoad)
+void AStreetTrafficCar::ConfigureAudio(USoundBase* DriveBy,USoundBase* Horn,USoundConcurrency* DriveLimit,USoundConcurrency* HornLimit)
 {
-    SetActorEnableCollision(bOnRoad);
-    SetActorHiddenInGame(!bOnRoad);
+    DriveByAudio->SetSound(DriveBy);
+    HornAudio->SetSound(Horn);
+    if (DriveLimit) DriveByAudio->ConcurrencySet.Add(DriveLimit);
+    if (HornLimit) HornAudio->ConcurrencySet.Add(HornLimit);
+}
+void AStreetTrafficCar::SetOnRoad(bool bActive)
+{
+    bOnRoad=bActive;
+    bDriveByStarted=false;
+    bHornStarted=false;
+    DriveByAudio->Stop();
+    HornAudio->Stop();
+    SetActorEnableCollision(bActive);
+    SetActorHiddenInGame(!bActive);
+}
+void AStreetTrafficCar::UpdateRoadAudio(float Speed,const FVector& Listener)
+{
+    if (!bOnRoad) return;
+    const FVector ToListener=(Listener-GetActorLocation()).GetSafeNormal2D();
+    const float Distance=FVector::Dist2D(Listener,GetActorLocation());
+    if (!bDriveByStarted && Speed>180 && Distance<3200 && FVector::DotProduct(ToListener,GetActorForwardVector())>-.15f && DriveByAudio->Sound)
+    {
+        bDriveByStarted=true;
+        DriveByAudio->SetPitchMultiplier(FMath::Clamp(Speed/820.f,.90f,1.08f));
+        DriveByAudio->Play();
+        ++DriveByCount;
+        UE_LOG(LogTemp,Display,TEXT("TRAFFIC_AUDIO_DRIVE car=%s distance=%.0f"),*GetName(),Distance);
+    }
+    const FVector Delta=Listener-GetActorLocation();
+    const FVector Forward=GetActorForwardVector().GetSafeNormal2D();
+    const float Ahead=FVector::DotProduct(Delta,Forward);
+    const FVector Side=Delta-Forward*Ahead;
+    if (!bHornStarted && Speed>180 && Ahead>220 && Ahead<1350 && Side.SizeSquared2D()<FMath::Square(145.f) && HornAudio->Sound)
+    {
+        bHornStarted=true;
+        HornAudio->Play();
+        ++HornCount;
+        UE_LOG(LogTemp,Display,TEXT("TRAFFIC_AUDIO_HORN car=%s ahead=%.0f"),*GetName(),Ahead);
+    }
 }
 void AStreetTrafficCar::Impact(const FHitResult& Hit,float Speed)
 {
@@ -139,6 +199,12 @@ void AStreetTrafficFlow::BeginPlay()
     if (!CarMesh || Eastbound->GetSplineLength()<100.f || Westbound->GetSplineLength()<100.f) {SetActorTickEnabled(false);return;}
     ValidateRouteClearance();
     DrivingRandom.Initialize(1994);
+    DriveConcurrency=NewObject<USoundConcurrency>(this);
+    DriveConcurrency->Concurrency.MaxCount=3;
+    DriveConcurrency->Concurrency.ResolutionRule=EMaxConcurrentResolutionRule::StopFarthestThenOldest;
+    HornConcurrency=NewObject<USoundConcurrency>(this);
+    HornConcurrency->Concurrency.MaxCount=2;
+    HornConcurrency->Concurrency.ResolutionRule=EMaxConcurrentResolutionRule::StopFarthestThenOldest;
     FActorSpawnParameters Parameters;
     Parameters.Owner=this;
     Parameters.SpawnCollisionHandlingOverride=ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
@@ -146,6 +212,7 @@ void AStreetTrafficFlow::BeginPlay()
     {
         AStreetTrafficCar* Car=GetWorld()->SpawnActor<AStreetTrafficCar>(GetActorLocation(),GetActorRotation(),Parameters);
         if (!Car) continue;
+        Car->ConfigureAudio(DriveBySound,HornSound,DriveConcurrency,HornConcurrency);
         Car->SetOnRoad(false);
         Fleet.AddDefaulted_GetRef().Car=Car;
     }
@@ -159,6 +226,18 @@ int32 AStreetTrafficFlow::GetActiveCount() const
 {
     int32 Count=0;
     for (const FVehicle& V:Fleet) if (V.Car.IsValid() && V.Lane!=INDEX_NONE) ++Count;
+    return Count;
+}
+int32 AStreetTrafficFlow::GetDriveByCount() const
+{
+    int32 Count=0;
+    for (const FVehicle& V:Fleet) if (V.Car.IsValid()) Count+=V.Car->GetDriveByCount();
+    return Count;
+}
+int32 AStreetTrafficFlow::GetHornCount() const
+{
+    int32 Count=0;
+    for (const FVehicle& V:Fleet) if (V.Car.IsValid()) Count+=V.Car->GetHornCount();
     return Count;
 }
 int32 AStreetTrafficFlow::GetImpactCount() const
@@ -263,7 +342,13 @@ void AStreetTrafficFlow::Tick(float DeltaSeconds)
     TimeUntilSpawn-=DeltaSeconds;
     if (TimeUntilSpawn<=0) {SpawnNext();TimeUntilSpawn=FMath::Max(SpawnInterval,MinimumTrafficInterval);}
     const float Step=FMath::Min(DeltaSeconds,.045f);
-    for (FVehicle& V:Fleet) if (V.Lane!=INDEX_NONE) Advance(V,Step);
+    const APlayerController* Player=UGameplayStatics::GetPlayerController(this,0);
+    const APawn* Listener=Player ? Player->GetPawn() : nullptr;
+    for (FVehicle& V:Fleet) if (V.Lane!=INDEX_NONE)
+    {
+        Advance(V,Step);
+        if (Listener && V.Lane!=INDEX_NONE && V.Car.IsValid()) V.Car->UpdateRoadAudio(V.Speed,Listener->GetActorLocation());
+    }
 }
 void AStreetTrafficFlow::EndPlay(const EEndPlayReason::Type Reason)
 {

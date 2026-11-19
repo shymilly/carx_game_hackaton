@@ -1,0 +1,271 @@
+{
+  "engine": "5.8.4",
+  "date": "2026-11-19",
+  "geometry": {
+    "houses": 28,
+    "uniform_new_instances": 44,
+    "posters": 17,
+    "stack_segments": 6,
+    "trees": 12,
+    "audio_bound": true,
+    "smoke_unchanged": true
+  },
+  "wall_adverts": [
+    {
+      "poster": "Vintage wall advert 00",
+      "wall": "Grocery walk-up",
+      "wall_id": "StaticMeshActor_294",
+      "position": [
+        -1815.0,
+        -2218.0,
+        310.0
+      ],
+      "half_height": 28.666669845581055,
+      "rendered_obstacles": 843,
+      "clear": true
+    },
+    {
+      "poster": "Vintage wall advert 01",
+      "wall": "Pharmacy walk-up",
+      "wall_id": "StaticMeshActor_296",
+      "position": [
+        -782.0,
+        -2218.0,
+        310.0
+      ],
+      "half_height": 28.666669845581055,
+      "rendered_obstacles": 843,
+      "clear": true
+    },
+    {
+      "poster": "Vintage wall advert 02",
+      "wall": "Corner row house",
+      "wall_id": "StaticMeshActor_298",
+      "position": [
+        200.0,
+        -2218.0,
+        151.0
+      ],
+      "half_height": 28.204750061035156,
+      "rendered_obstacles": 843,
+      "clear": true
+    },
+    {
+      "poster": "Vintage wall advert 03",
+      "wall": "South block brownstones",
+      "wall_id": "StaticMeshActor_299",
+      "position": [
+        -3240.0,
+        -2218.0,
+        151.0
+      ],
+      "half_height": 28.666669845581055,
+      "rendered_obstacles": 843,
+      "clear": true
+    },
+    {
+      "poster": "Vintage wall advert 04",
+      "wall": "South block walk-up",
+      "wall_id": "StaticMeshActor_301",
+      "position": [
+        -4370.0,
+        -2218.0,
+        151.0
+      ],
+      "half_height": 28.666669845581055,
+      "rendered_obstacles": 843,
+      "clear": true
+    },
+    {
+      "poster": "Vintage wall advert 05",
+      "wall": "South fork left residence",
+      "wall_id": "StaticMeshActor_302",
+      "position": [
+        -6040.0,
+        -2218.0,
+        151.0
+      ],
+      "half_height": 28.666669845581055,
+      "rendered_obstacles": 843,
+      "clear": true
+    },
+    {
+      "poster": "Vintage wall advert 06",
+      "wall": "Opposite press end wall",
+      "wall_id": "StaticMeshActor_304",
+      "position": [
+        -2275.999999999998,
+        -411.99999999999966,
+        151.0
+      ],
+      "half_height": 28.666669845581055,
+      "rendered_obstacles": 1801,
+      "clear": true
+    },
+    {
+      "poster": "Vintage wall advert 07",
+      "wall": "South extension brick walk-up",
+      "wall_id": "StaticMeshActor_305",
+      "position": [
+        -4049.999999999997,
+        -411.99999999999966,
+        175.0
+      ],
+      "half_height": 28.666669845581055,
+      "rendered_obstacles": 1801,
+      "clear": true
+    },
+    {
+      "poster": "Vintage wall advert 08",
+      "wall": "South extension brownstone",
+      "wall_id": "StaticMeshActor_306",
+      "position": [
+        -5574.999999999995,
+        -411.9999999999997,
+        310.0
+      ],
+      "half_height": 28.666669845581055,
+      "rendered_obstacles": 1801,
+      "clear": true
+    },
+    {
+      "poster": "Vintage wall advert 09",
+      "wall": "Fork perspective townhouses",
+      "wall_id": "StaticMeshActor_307",
+      "position": [
+        -7644.999999999994,
+        -411.99999999999966,
+        310.0
+      ],
+      "half_height": 28.666669845581055,
+      "rendered_obstacles": 1801,
+      "clear": true
+    },
+    {
+      "poster": "Vintage wall advert 10",
+      "wall": "Weathered tenement east",
+      "wall_id": "StaticMeshActor_309",
+      "position": [
+        3635.0,
+        -2747.0,
+        151.0
+      ],
+      "half_height": 28.666669845581055,
+      "rendered_obstacles": 74,
+      "clear": true
+    },
+    {
+      "poster": "Vintage wall advert 11",
+      "wall": "Weathered tenement east",
+      "wall_id": "StaticMeshActor_309",
+      "position": [
+        3685.0,
+        -2747.0,
+        151.0
+      ],
+      "half_height": 28.666669845581055,
+      "rendered_obstacles": 75,
+      "clear": true
+    },
+    {
+      "poster": "Vintage wall advert 12",
+      "wall": "Tall apartment opposite Neptune",
+      "wall_id": "StaticMeshActor_310",
+      "position": [
+        3388.0000000000014,
+        -1494.000000000001,
+        151.0
+      ],
+      "half_height": 28.666669845581055,
+      "rendered_obstacles": 1080,
+      "clear": true
+    },
+    {
+      "poster": "Vintage wall advert 13",
+      "wall": "Cross-street apartments",
+      "wall_id": "StaticMeshActor_311",
+      "position": [
+        3388.000000000002,
+        -121.50000000000038,
+        151.0
+      ],
+      "half_height": 28.666669845581055,
+      "rendered_obstacles": 1080,
+      "clear": true
+    },
+    {
+      "poster": "Vintage wall advert 14",
+      "wall": "Far east cross-street block",
+      "wall_id": "StaticMeshActor_314",
+      "position": [
+        3388.0000000000014,
+        2202.0000000000005,
+        175.0
+      ],
+      "half_height": 28.666669845581055,
+      "rendered_obstacles": 1080,
+      "clear": true
+    },
+    {
+      "poster": "Vintage wall advert 15",
+      "wall": "Eastbound perspective row",
+      "wall_id": "StaticMeshActor_315",
+      "position": [
+        3388.0000000000014,
+        3900.000000000002,
+        151.0
+      ],
+      "half_height": 28.666669845581055,
+      "rendered_obstacles": 1080,
+      "clear": true
+    },
+    {
+      "poster": "Vintage wall advert 16",
+      "wall": "Cross-street depth row",
+      "wall_id": "StaticMeshActor_317",
+      "position": [
+        1075.0,
+        -4688.0,
+        151.0
+      ],
+      "half_height": 26.581050872802734,
+      "rendered_obstacles": 59,
+      "clear": true
+    }
+  ],
+  "pie": {
+    "all_four_routes_clear": true,
+    "drive_by_triggered": true,
+    "horn_triggered": true,
+    "spatial_attenuation": true,
+    "audio_device_enabled": true
+  },
+  "renderer": {
+    "materials_compiled": true,
+    "gpu_captures_completed": true
+  },
+  "weak_pc_fps_benchmark_performed": false,
+  "markers": {
+    "apply": [
+      "[2026.11.19-17.13.28:698][  2]LogPython: STREET_ART_APPLIED {'house_volumes_authored': 28, 'background_houses_uniform': 138, 'road_components': 18, 'trees': 12, 'street_details': 12, 'wall_adverts': 17, 'replaced_stacks': 3, 'imported_stack_segments': 6, 'smoke_material_sha256': 'd7f04ad7edc9375d89a21ac6ae56bae651564e339e1b889aa2a46b88af64dbca', 'sign_reference': 'T_BeaconSign.png'}",
+      "[2026.11.19-17.13.29:895][  2]LogPython: STREET_ART_POLISH_PASSED UV orientation, illuminated BEACON, distant ground"
+    ],
+    "audio": [
+      "[2026.11.19-17.08.31:758][  2]LogPython: STREET_ART_VALIDATION_PASSED {'houses': 28, 'uniform_new_instances': 44, 'posters': 17, 'stack_segments': 6, 'trees': 12, 'audio_bound': True, 'smoke_unchanged': True}",
+      "[2026.11.19-17.08.34:023][ 95]LogPython: TRAFFIC_AUDIO_APPROACH_OK count=1",
+      "[2026.11.19-17.08.34:030][ 96]LogPython: TRAFFIC_AUDIO_HORN_OK count=1",
+      "[2026.11.19-17.08.34:030][ 96]LogPython: TRAFFIC_AUDIO_PIE_PASSED"
+    ],
+    "render": [
+      "[2026.11.19-17.14.26:824][  2]LogPython: STREET_ART_VALIDATION_PASSED {'houses': 28, 'uniform_new_instances': 44, 'posters': 17, 'stack_segments': 6, 'trees': 12, 'audio_bound': True, 'smoke_unchanged': True}",
+      "[2026.11.19-17.15.27:042][ 75]LogPython: STREET_ART_RENDER_PASSED"
+    ],
+    "posters": [
+      "[2026.11.19-17.24.10:924][  2]LogPython: STREET_ART_VALIDATION_PASSED {'houses': 28, 'uniform_new_instances': 44, 'posters': 17, 'stack_segments': 6, 'trees': 12, 'audio_bound': True, 'smoke_unchanged': True}",
+      "[2026.11.19-17.24.20:668][ 19]LogPython: STREET_ART_RENDER_PASSED"
+    ],
+    "placement": [
+      "[2026.11.19-17.23.17:035][  2]LogPython: WALL_ADVERT_PLACEMENT_PASSED 17"
+    ]
+  }
+}

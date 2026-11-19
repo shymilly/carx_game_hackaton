@@ -75,3 +75,9 @@ powershell -File Scripts/BuildEditor.ps1 -EngineRoot "D:\UE_5.8" -GenerateVSCode
 Сценарий квартиры Димы, реплики, звуки и условия звонка: [Docs/DimaApartmentScenario.md](Docs/DimaApartmentScenario.md).
 
 Доработка улицы, завода, кириллических вывесок, столкновений трафика и безопасных дверей: [Docs/StreetRefinement.md](Docs/StreetRefinement.md).
+
+Библиотека моделей и текстур с рабочего стола: **Content/ImportedAssets**. [Расположение и использование](Docs/AssetLibrary.md).
+
+## Оформление улицы
+
+[Доработка улицы: материалы, ассеты и звук машин](Docs/StreetArtPass.md) — пропорции домов, асфальт, BEACON, деревья, постеры и завод.

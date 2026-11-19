@@ -1,0 +1,76 @@
+{
+  "house_volumes_authored": 28,
+  "background_houses_uniform": 138,
+  "road_components": 18,
+  "trees": 12,
+  "street_details": 12,
+  "wall_adverts": 17,
+  "replaced_stacks": 3,
+  "imported_stack_segments": 6,
+  "smoke": [
+    {
+      "label": "Animated factory stack plume 1",
+      "values": [
+        5748.4,
+        -3245.021875,
+        4433.894140625,
+        0.0,
+        0.0,
+        0.0,
+        1.45,
+        18.27,
+        16.82
+      ],
+      "material": "/Game/Prologue/Street/Materials/M_AegisSmoke.M_AegisSmoke"
+    },
+    {
+      "label": "Animated factory stack plume 2",
+      "values": [
+        5745.5,
+        -1688.7640625,
+        4083.1187499999996,
+        0.0,
+        0.0,
+        0.0,
+        1.45,
+        14.645,
+        16.965
+      ],
+      "material": "/Game/Prologue/Street/Materials/M_AegisSmoke.M_AegisSmoke"
+    },
+    {
+      "label": "Animated factory stack plume 3",
+      "values": [
+        5742.6,
+        1030.4617187499998,
+        4342.816015625,
+        0.0,
+        0.0,
+        0.0,
+        1.45,
+        17.11,
+        18.994999999999997
+      ],
+      "material": "/Game/Prologue/Street/Materials/M_AegisSmoke.M_AegisSmoke"
+    }
+  ],
+  "smoke_material_sha256": "d7f04ad7edc9375d89a21ac6ae56bae651564e339e1b889aa2a46b88af64dbca",
+  "instance_counts": {
+    "Imported tree bark _001": 3,
+    "Imported tree canopy _001": 3,
+    "Imported tree bark _004": 3,
+    "Imported tree canopy _004": 3,
+    "Imported tree bark _003": 2,
+    "Imported tree canopy _003": 2,
+    "Imported tree bark ": 2,
+    "Imported tree canopy ": 2,
+    "Imported tree bark _002": 2,
+    "Imported tree canopy _002": 2,
+    "Street reclaimed Box_wood": 4,
+    "Street reclaimed Barrel_1": 4,
+    "Street reclaimed Barrel_2": 4,
+    "Imported Aegis stacks": 6,
+    "Factory imported service buildings": 2
+  },
+  "sign_reference": "T_BeaconSign.png"
+}

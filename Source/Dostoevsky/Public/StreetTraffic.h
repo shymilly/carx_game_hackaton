@@ -8,6 +8,9 @@ class USplineComponent;
 class UStaticMesh;
 class UStaticMeshComponent;
 class ACharacter;
+class UAudioComponent;
+class USoundBase;
+class USoundConcurrency;
 
 UCLASS()
 class DOSTOEVSKY_API AStreetTrafficCar : public AActor
@@ -17,6 +20,10 @@ public:
     AStreetTrafficCar();
     void Configure(UStaticMesh* Model,int32 PaintSlot,UMaterialInterface* Paint);
     void SetOnRoad(bool bOnRoad);
+    void ConfigureAudio(USoundBase* DriveBy,USoundBase* Horn,USoundConcurrency* DriveLimit,USoundConcurrency* HornLimit);
+    void UpdateRoadAudio(float Speed,const FVector& Listener);
+    UFUNCTION(BlueprintPure, Category="Traffic|Audio") int32 GetDriveByCount() const { return DriveByCount; }
+    UFUNCTION(BlueprintPure, Category="Traffic|Audio") int32 GetHornCount() const { return HornCount; }
     bool MoveOnRoad(const FTransform& Pose,float Speed,float& Fraction);
     UFUNCTION(BlueprintPure, Category="Traffic") int32 GetImpactCount() const { return ImpactCount; }
     UFUNCTION(BlueprintPure, Category="Traffic") float GetLastImpactSpeed() const { return LastImpactSpeed; }
@@ -24,6 +31,13 @@ public:
 private:
     UPROPERTY(VisibleAnywhere, Category="Traffic") TObjectPtr<UBoxComponent> RoadBody;
     UPROPERTY(VisibleAnywhere, Category="Traffic") TObjectPtr<UStaticMeshComponent> BodyMesh;
+    UPROPERTY(VisibleAnywhere, Category="Traffic|Audio") TObjectPtr<UAudioComponent> DriveByAudio;
+    UPROPERTY(VisibleAnywhere, Category="Traffic|Audio") TObjectPtr<UAudioComponent> HornAudio;
+    bool bDriveByStarted=false;
+    bool bHornStarted=false;
+    bool bOnRoad=false;
+    int32 DriveByCount=0;
+    int32 HornCount=0;
     TWeakObjectPtr<ACharacter> LastHitCharacter;
     double LastHitAt=-10;
     int32 ImpactCount=0;
@@ -45,6 +59,10 @@ public:
     UFUNCTION(BlueprintPure, Category="Traffic") int32 GetRouteCount() const { return bUseCrossStreetRoutes ? 4 : 2; }
     UFUNCTION(BlueprintPure, Category="Traffic") USplineComponent* GetLane(int32 Lane) const;
     UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category="Traffic") TObjectPtr<UStaticMesh> CarMesh;
+    UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category="Traffic|Audio") TObjectPtr<USoundBase> DriveBySound;
+    UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category="Traffic|Audio") TObjectPtr<USoundBase> HornSound;
+    UFUNCTION(BlueprintPure, Category="Traffic|Audio") int32 GetDriveByCount() const;
+    UFUNCTION(BlueprintPure, Category="Traffic|Audio") int32 GetHornCount() const;
     UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category="Traffic") int32 PaintSlot=INDEX_NONE;
     UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category="Traffic") TArray<TObjectPtr<UMaterialInterface>> Paints;
     UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category="Traffic",meta=(ClampMin="6.0")) float SpawnInterval=7.f;
@@ -71,6 +89,8 @@ private:
     };
     TArray<FVehicle> Fleet;
     FRandomStream DrivingRandom;
+    UPROPERTY(Transient) TObjectPtr<USoundConcurrency> DriveConcurrency;
+    UPROPERTY(Transient) TObjectPtr<USoundConcurrency> HornConcurrency;
     bool LaneAllowed[4]={};
     float TimeUntilSpawn=1.5f;
     int32 NextLane=0;

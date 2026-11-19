@@ -3,7 +3,9 @@
 /Intermediate/
 /Saved/
 /Builds/
-/SourceAssets/
+/SourceAssets/*
+!/SourceAssets/DesktopAssets/
+!/SourceAssets/AssetLibraryProcessed/
 /Build/Windows/FileOpenOrder/
 /.vs/
 *.sln

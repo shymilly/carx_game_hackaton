@@ -1,0 +1,2795 @@
+[
+  {
+    "label": "Upper walk-up dwelling",
+    "cls": "StaticMeshActor",
+    "folder": "Street/02 Apartment facade",
+    "p": [
+      0.0,
+      49.5,
+      622.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      7.8,
+      9.07,
+      6.56
+    ],
+    "b": [
+      -390.0,
+      390.0,
+      -404.0,
+      503.0,
+      294.0,
+      950.0
+    ],
+    "tags": [
+      "StreetVisuals1994_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Street/Materials/M_brick.M_brick"
+    ],
+    "collision": "BlockAll"
+  },
+  {
+    "label": "Upper walk-up dwelling",
+    "cls": "StaticMeshActor",
+    "folder": "Street/02 Apartment facade",
+    "p": [
+      599.0,
+      -120.5,
+      622.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      4.18,
+      5.67,
+      6.56
+    ],
+    "b": [
+      390.0,
+      808.0,
+      -404.0,
+      163.0,
+      294.0,
+      950.0
+    ],
+    "tags": [
+      "StreetVisuals1994_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Street/Materials/M_brick.M_brick"
+    ],
+    "collision": "BlockAll"
+  },
+  {
+    "label": "Upper walk-up dwelling",
+    "cls": "StaticMeshActor",
+    "folder": "Street/02 Apartment facade",
+    "p": [
+      -583.5,
+      291.5,
+      622.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      3.87,
+      4.23,
+      6.56
+    ],
+    "b": [
+      -777.0,
+      -390.0,
+      80.0,
+      503.0,
+      294.0,
+      950.0
+    ],
+    "tags": [
+      "StreetVisuals1994_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Street/Materials/M_brick.M_brick"
+    ],
+    "collision": "BlockAll"
+  },
+  {
+    "label": "Grocery walk-up",
+    "cls": "StaticMeshActor",
+    "folder": "Street/03 Shops and cross street",
+    "p": [
+      -1630.0,
+      -2507.5,
+      471.5
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      9.0,
+      5.75,
+      9.67
+    ],
+    "b": [
+      -2080.0,
+      -1180.0,
+      -2795.0,
+      -2220.0,
+      -12.0,
+      955.0
+    ],
+    "tags": [
+      "StreetVisuals1994_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/StreetRefinement/Materials/M_FadedOchreRender.M_FadedOchreRender"
+    ],
+    "collision": "BlockAll"
+  },
+  {
+    "label": "Pharmacy walk-up",
+    "cls": "StaticMeshActor",
+    "folder": "Street/03 Shops and cross street",
+    "p": [
+      -597.0,
+      -2542.5,
+      550.5
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      9.0,
+      6.45,
+      11.25
+    ],
+    "b": [
+      -1047.0,
+      -147.0,
+      -2865.0,
+      -2220.0,
+      -12.0,
+      1113.0
+    ],
+    "tags": [
+      "StreetVisuals1994_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_PaintedSage.M_PaintedSage"
+    ],
+    "collision": "BlockAll"
+  },
+  {
+    "label": "Corner row house",
+    "cls": "StaticMeshActor",
+    "folder": "Street/03 Shops and cross street",
+    "p": [
+      290.0,
+      -2517.5,
+      446.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      7.3,
+      5.95,
+      9.16
+    ],
+    "b": [
+      -75.0,
+      655.0,
+      -2815.0,
+      -2220.0,
+      -12.0,
+      904.0
+    ],
+    "tags": [
+      "StreetVisuals1994_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_CreamClapboard.M_CreamClapboard"
+    ],
+    "collision": "BlockAll"
+  },
+  {
+    "label": "South block brownstones",
+    "cls": "StaticMeshActor",
+    "folder": "Street/03 Shops and cross street",
+    "p": [
+      -2780.0,
+      -2535.0,
+      459.5
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      11.3,
+      6.3,
+      9.43
+    ],
+    "b": [
+      -3345.0,
+      -2215.0,
+      -2850.0,
+      -2220.0,
+      -12.0,
+      931.0
+    ],
+    "tags": [
+      "StreetVisuals1994_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/StreetRefinement/Materials/M_AgedRedBrick.M_AgedRedBrick"
+    ],
+    "collision": "BlockAll"
+  },
+  {
+    "label": "South block walk-up",
+    "cls": "StaticMeshActor",
+    "folder": "Street/03 Shops and cross street",
+    "p": [
+      -4010.0,
+      -2575.0,
+      528.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      11.9,
+      7.1,
+      10.8
+    ],
+    "b": [
+      -4605.0,
+      -3415.0,
+      -2930.0,
+      -2220.0,
+      -12.0,
+      1068.0
+    ],
+    "tags": [
+      "StreetVisuals1994_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_BlueClapboard.M_BlueClapboard"
+    ],
+    "collision": "BlockAll"
+  },
+  {
+    "label": "South fork left residence",
+    "cls": "StaticMeshActor",
+    "folder": "Street/03 Shops and cross street",
+    "p": [
+      -5590.0,
+      -2620.0,
+      503.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      13.7,
+      8.0,
+      10.3
+    ],
+    "b": [
+      -6275.0,
+      -4905.0,
+      -3020.0,
+      -2220.0,
+      -12.0,
+      1018.0
+    ],
+    "tags": [
+      "StreetVisuals1994_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_Wet_WeatheredConcrete.M_Wet_WeatheredConcrete"
+    ],
+    "collision": "BlockAll"
+  },
+  {
+    "label": "Corner apartments beside Dima",
+    "cls": "StaticMeshActor",
+    "folder": "Street/03 Shops and cross street",
+    "p": [
+      1235.5,
+      20.999999999999943,
+      505.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      7.29,
+      8.62,
+      10.34
+    ],
+    "b": [
+      871.0,
+      1600.0,
+      -410.0,
+      451.9999999999999,
+      -12.0,
+      1022.0
+    ],
+    "tags": [
+      "StreetVisuals1994_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_WarmPaintedMasonry.M_WarmPaintedMasonry"
+    ],
+    "collision": "BlockAll"
+  },
+  {
+    "label": "Opposite press end wall",
+    "cls": "StaticMeshActor",
+    "folder": "Street/03 Shops and cross street",
+    "p": [
+      -2095.0,
+      -97.5,
+      444.5
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      8.68,
+      6.25,
+      9.13
+    ],
+    "b": [
+      -2529.0,
+      -1661.0,
+      -410.0,
+      215.0,
+      -12.000000000000057,
+      901.0
+    ],
+    "tags": [
+      "StreetVisuals1994_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/StreetRefinement/Materials/M_SootBrownBrick.M_SootBrownBrick"
+    ],
+    "collision": "BlockAll"
+  },
+  {
+    "label": "South extension brick walk-up",
+    "cls": "StaticMeshActor",
+    "folder": "Street/03 Shops and cross street",
+    "p": [
+      -3415.0,
+      -40.0,
+      530.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      14.4,
+      7.4,
+      10.84
+    ],
+    "b": [
+      -4135.0,
+      -2695.0,
+      -410.0,
+      330.0,
+      -12.0,
+      1072.0
+    ],
+    "tags": [
+      "StreetVisuals1994_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/StreetRefinement/Materials/M_FadedOchreRender.M_FadedOchreRender"
+    ],
+    "collision": "BlockAll"
+  },
+  {
+    "label": "South extension brownstone",
+    "cls": "StaticMeshActor",
+    "folder": "Street/03 Shops and cross street",
+    "p": [
+      -5125.0,
+      -38.0,
+      439.5
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      13.9,
+      7.44,
+      9.03
+    ],
+    "b": [
+      -5820.0,
+      -4430.0,
+      -410.0,
+      334.0,
+      -11.999999999999943,
+      891.0
+    ],
+    "tags": [
+      "StreetVisuals1994_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_PaintedSage.M_PaintedSage"
+    ],
+    "collision": "BlockAll"
+  },
+  {
+    "label": "Fork perspective townhouses",
+    "cls": "StaticMeshActor",
+    "folder": "Street/03 Shops and cross street",
+    "p": [
+      -7200.0,
+      26.000000000000057,
+      407.5
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      13.8,
+      8.72,
+      8.39
+    ],
+    "b": [
+      -7890.0,
+      -6510.0,
+      -410.0,
+      462.0000000000001,
+      -12.0,
+      827.0
+    ],
+    "tags": [
+      "StreetVisuals1994_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_CreamClapboard.M_CreamClapboard"
+    ],
+    "collision": "BlockAll"
+  },
+  {
+    "label": "Weathered tenement west",
+    "cls": "StaticMeshActor",
+    "folder": "Street/03 Shops and cross street",
+    "p": [
+      3716.0,
+      -4320.0,
+      406.5
+    ],
+    "r": [
+      0.0,
+      89.99999999999999,
+      -0.0
+    ],
+    "s": [
+      9.7,
+      6.52,
+      8.37
+    ],
+    "b": [
+      3390.0,
+      4042.0,
+      -4805.0,
+      -3835.0,
+      -11.999999999999943,
+      825.0
+    ],
+    "tags": [
+      "StreetVisuals1994_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/StreetRefinement/Materials/M_AgedRedBrick.M_AgedRedBrick"
+    ],
+    "collision": "BlockAll"
+  },
+  {
+    "label": "Weathered tenement east",
+    "cls": "StaticMeshActor",
+    "folder": "Street/03 Shops and cross street",
+    "p": [
+      3735.0,
+      -3240.0,
+      496.5
+    ],
+    "r": [
+      0.0,
+      89.99999999999999,
+      -0.0
+    ],
+    "s": [
+      9.82,
+      6.9,
+      10.17
+    ],
+    "b": [
+      3390.0,
+      4080.0,
+      -3731.0,
+      -2749.0,
+      -12.0,
+      1005.0
+    ],
+    "tags": [
+      "StreetVisuals1994_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_BlueClapboard.M_BlueClapboard"
+    ],
+    "collision": "BlockAll"
+  },
+  {
+    "label": "Tall apartment opposite Neptune",
+    "cls": "StaticMeshActor",
+    "folder": "Street/03 Shops and cross street",
+    "p": [
+      3785.0,
+      -1040.0,
+      730.0
+    ],
+    "r": [
+      0.0,
+      89.99999999999999,
+      -0.0
+    ],
+    "s": [
+      10.18,
+      7.9,
+      14.84
+    ],
+    "b": [
+      3390.0,
+      4180.0,
+      -1549.0000000000002,
+      -530.9999999999998,
+      -12.0,
+      1472.0
+    ],
+    "tags": [
+      "StreetVisuals1994_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_Wet_WeatheredConcrete.M_Wet_WeatheredConcrete"
+    ],
+    "collision": "BlockAll"
+  },
+  {
+    "label": "Cross-street apartments",
+    "cls": "StaticMeshActor",
+    "folder": "Street/03 Shops and cross street",
+    "p": [
+      3840.0,
+      146.0,
+      550.5
+    ],
+    "r": [
+      0.0,
+      89.99999999999999,
+      -0.0
+    ],
+    "s": [
+      10.65,
+      9.0,
+      11.25
+    ],
+    "b": [
+      3390.0,
+      4290.0,
+      -386.5000000000002,
+      678.5000000000002,
+      -12.0,
+      1113.0
+    ],
+    "tags": [
+      "StreetVisuals1994_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_WarmPaintedMasonry.M_WarmPaintedMasonry"
+    ],
+    "collision": "BlockAll"
+  },
+  {
+    "label": "Bar Lighthouse shell",
+    "cls": "StaticMeshActor",
+    "folder": "Street/03 Shops and cross street",
+    "p": [
+      3817.0,
+      1290.0,
+      355.0
+    ],
+    "r": [
+      0.0,
+      89.99999999999999,
+      -0.0
+    ],
+    "s": [
+      8.24,
+      8.54,
+      7.34
+    ],
+    "b": [
+      3390.0,
+      4244.0,
+      877.9999999999998,
+      1702.0000000000002,
+      -12.0,
+      722.0
+    ],
+    "tags": [
+      "StreetVisuals1994_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/StreetRefinement/Materials/M_SootBrownBrick.M_SootBrownBrick"
+    ],
+    "collision": "BlockAll"
+  },
+  {
+    "label": "Far east cross-street block",
+    "cls": "StaticMeshActor",
+    "folder": "Street/03 Shops and cross street",
+    "p": [
+      3794.0000000000005,
+      2735.0,
+      472.0
+    ],
+    "r": [
+      0.0,
+      89.99999999999999,
+      -0.0
+    ],
+    "s": [
+      15.36,
+      8.08,
+      9.68
+    ],
+    "b": [
+      3390.0,
+      4198.000000000001,
+      1967.0,
+      3503.0,
+      -12.0,
+      956.0
+    ],
+    "tags": [
+      "StreetVisuals1994_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/StreetRefinement/Materials/M_FadedOchreRender.M_FadedOchreRender"
+    ],
+    "collision": "BlockAll"
+  },
+  {
+    "label": "Eastbound perspective row",
+    "cls": "StaticMeshActor",
+    "folder": "Street/03 Shops and cross street",
+    "p": [
+      3812.5,
+      4530.0,
+      449.5
+    ],
+    "r": [
+      0.0,
+      89.99999999999999,
+      -0.0
+    ],
+    "s": [
+      17.7,
+      8.45,
+      9.23
+    ],
+    "b": [
+      3390.0,
+      4235.0,
+      3645.0,
+      5415.0,
+      -12.0,
+      911.0
+    ],
+    "tags": [
+      "StreetVisuals1994_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_PaintedSage.M_PaintedSage"
+    ],
+    "collision": "BlockAll"
+  },
+  {
+    "label": "Cross-street depth row",
+    "cls": "StaticMeshActor",
+    "folder": "Street/03 Shops and cross street",
+    "p": [
+      1170.0,
+      -5070.0,
+      426.5
+    ],
+    "r": [
+      0.0,
+      89.99999999999999,
+      -0.0
+    ],
+    "s": [
+      7.6,
+      6.6,
+      8.77
+    ],
+    "b": [
+      840.0,
+      1500.0,
+      -5450.0,
+      -4690.0,
+      -12.0,
+      865.0
+    ],
+    "tags": [
+      "StreetVisuals1994_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_CreamClapboard.M_CreamClapboard"
+    ],
+    "collision": "BlockAll"
+  },
+  {
+    "label": "Cross-street depth row",
+    "cls": "StaticMeshActor",
+    "folder": "Street/03 Shops and cross street",
+    "p": [
+      1169.9999999999998,
+      3980.0,
+      426.5
+    ],
+    "r": [
+      0.0,
+      89.99999999999999,
+      -0.0
+    ],
+    "s": [
+      9.5,
+      6.6,
+      8.77
+    ],
+    "b": [
+      839.9999999999995,
+      1500.0,
+      3505.0,
+      4455.0,
+      -12.0,
+      865.0
+    ],
+    "tags": [
+      "StreetVisuals1994_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/StreetRefinement/Materials/M_AgedRedBrick.M_AgedRedBrick"
+    ],
+    "collision": "BlockAll"
+  },
+  {
+    "label": "Cross-street depth row",
+    "cls": "StaticMeshActor",
+    "folder": "Street/03 Shops and cross street",
+    "p": [
+      1169.9999999999998,
+      5100.0,
+      426.5
+    ],
+    "r": [
+      0.0,
+      89.99999999999999,
+      -0.0
+    ],
+    "s": [
+      11.0,
+      6.6,
+      8.77
+    ],
+    "b": [
+      839.9999999999995,
+      1500.0,
+      4550.0,
+      5650.0,
+      -12.0,
+      865.0
+    ],
+    "tags": [
+      "StreetVisuals1994_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_BlueClapboard.M_BlueClapboard"
+    ],
+    "collision": "BlockAll"
+  },
+  {
+    "label": "Park east perimeter walk-up",
+    "cls": "StaticMeshActor",
+    "folder": "Street/05 Enclosed courtyard",
+    "p": [
+      -944.0,
+      2857.0,
+      415.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      8.3,
+      5.68,
+      8.54
+    ],
+    "b": [
+      -1359.0,
+      -529.0,
+      2573.0,
+      3141.0,
+      -11.999999999999943,
+      842.0
+    ],
+    "tags": [
+      "StreetVisuals1994_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_Wet_WeatheredConcrete.M_Wet_WeatheredConcrete"
+    ],
+    "collision": "BlockAll"
+  },
+  {
+    "label": "Park east perimeter walk-up",
+    "cls": "StaticMeshActor",
+    "folder": "Street/05 Enclosed courtyard",
+    "p": [
+      -9.0,
+      2870.5,
+      587.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.41,
+      5.95,
+      11.98
+    ],
+    "b": [
+      -529.5,
+      511.5,
+      2573.0,
+      3168.0,
+      -12.0,
+      1186.0
+    ],
+    "tags": [
+      "StreetVisuals1994_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_WarmPaintedMasonry.M_WarmPaintedMasonry"
+    ],
+    "collision": "BlockAll"
+  },
+  {
+    "label": "Park east perimeter walk-up",
+    "cls": "StaticMeshActor",
+    "folder": "Street/05 Enclosed courtyard",
+    "p": [
+      1059.25,
+      2909.0,
+      490.5
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      11.215000000000002,
+      6.72,
+      10.05
+    ],
+    "b": [
+      498.5,
+      1620.0,
+      2573.0,
+      3245.0,
+      -12.000000000000057,
+      993.0
+    ],
+    "tags": [
+      "StreetVisuals1994_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/StreetRefinement/Materials/M_SootBrownBrick.M_SootBrownBrick"
+    ],
+    "collision": "BlockAll"
+  },
+  {
+    "label": "Park south perimeter terrace",
+    "cls": "StaticMeshActor",
+    "folder": "Street/05 Enclosed courtyard",
+    "p": [
+      -1608.0,
+      1652.0,
+      397.0
+    ],
+    "r": [
+      0.0,
+      89.99999999999999,
+      -0.0
+    ],
+    "s": [
+      18.35,
+      4.8,
+      8.18
+    ],
+    "b": [
+      -1848.0000000000002,
+      -1367.9999999999998,
+      734.4999999999999,
+      2569.5,
+      -12.0,
+      806.0
+    ],
+    "tags": [
+      "StreetVisuals1994_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_PaintedSage.M_PaintedSage"
+    ],
+    "collision": "BlockAll"
+  },
+  {
+    "label": "Courtyard birch",
+    "cls": "StaticMeshActor",
+    "folder": "Street/05 Enclosed courtyard",
+    "p": [
+      -915.0,
+      944.0,
+      -10.705437480056185
+    ],
+    "r": [
+      0.0,
+      33.000000000000014,
+      -0.0
+    ],
+    "s": [
+      5.1670543748005615,
+      5.1670543748005615,
+      5.1670543748005615
+    ],
+    "b": [
+      -1079.844009053393,
+      -803.7373695215633,
+      843.7239779738768,
+      1128.2655126264997,
+      -12.000000000000028,
+      506.0
+    ],
+    "tags": [
+      "StreetVisuals1994_v1"
+    ],
+    "mesh": "/Game/Prologue/Street/Meshes/SM_CourtyardBirch.SM_CourtyardBirch",
+    "materials": [
+      "/Game/Prologue/Street/Materials/M_Prop_White_001.M_Prop_White_001",
+      "/Game/Prologue/Street/Materials/M_Prop_Black_001.M_Prop_Black_001",
+      "/Game/Prologue/Street/Materials/M_Prop_Green_001.M_Prop_Green_001",
+      "/Game/Prologue/Street/Materials/M_Prop_DarkGreen_001.M_Prop_DarkGreen_001"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Courtyard birch",
+    "cls": "StaticMeshActor",
+    "folder": "Street/05 Enclosed courtyard",
+    "p": [
+      -506.0,
+      1188.0,
+      -10.400540515899534
+    ],
+    "r": [
+      0.0,
+      101.00000000000004,
+      -0.0
+    ],
+    "s": [
+      6.384005405158995,
+      6.384005405158995,
+      6.384005405158995
+    ],
+    "b": [
+      -720.2887363434829,
+      -412.7251785123633,
+      1036.97927925465,
+      1316.5135118945882,
+      -12.0,
+      628.0
+    ],
+    "tags": [
+      "StreetVisuals1994_v1"
+    ],
+    "mesh": "/Game/Prologue/Street/Meshes/SM_CourtyardBirch.SM_CourtyardBirch",
+    "materials": [
+      "/Game/Prologue/Street/Materials/M_Prop_White_001.M_Prop_White_001",
+      "/Game/Prologue/Street/Materials/M_Prop_Black_001.M_Prop_Black_001",
+      "/Game/Prologue/Street/Materials/M_Prop_Green_001.M_Prop_Green_001",
+      "/Game/Prologue/Street/Materials/M_Prop_DarkGreen_001.M_Prop_DarkGreen_001"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Courtyard birch",
+    "cls": "StaticMeshActor",
+    "folder": "Street/05 Enclosed courtyard",
+    "p": [
+      -739.0,
+      2161.0,
+      -10.540493220758325
+    ],
+    "r": [
+      0.0,
+      45.00000000000003,
+      -0.0
+    ],
+    "s": [
+      5.825404932207583,
+      5.825404932207583,
+      5.825404932207583
+    ],
+    "b": [
+      -939.9386093680905,
+      -616.8370084637045,
+      2039.480214453039,
+      2362.581815357425,
+      -12.0,
+      572.0
+    ],
+    "tags": [
+      "StreetVisuals1994_v1"
+    ],
+    "mesh": "/Game/Prologue/Street/Meshes/SM_CourtyardBirch.SM_CourtyardBirch",
+    "materials": [
+      "/Game/Prologue/Street/Materials/M_Prop_White_001.M_Prop_White_001",
+      "/Game/Prologue/Street/Materials/M_Prop_Black_001.M_Prop_Black_001",
+      "/Game/Prologue/Street/Materials/M_Prop_Green_001.M_Prop_Green_001",
+      "/Game/Prologue/Street/Materials/M_Prop_DarkGreen_001.M_Prop_DarkGreen_001"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Courtyard birch",
+    "cls": "StaticMeshActor",
+    "folder": "Street/05 Enclosed courtyard",
+    "p": [
+      564.0,
+      915.0,
+      -10.473016023772837
+    ],
+    "r": [
+      0.0,
+      119.99999999999999,
+      -0.0
+    ],
+    "s": [
+      6.094730160237728,
+      6.094730160237728,
+      6.094730160237728
+    ],
+    "b": [
+      346.5228061972998,
+      679.2365838240987,
+      725.8709226835945,
+      1046.199345352863,
+      -12.000000000000057,
+      599.0
+    ],
+    "tags": [
+      "StreetVisuals1994_v1"
+    ],
+    "mesh": "/Game/Prologue/Street/Meshes/SM_CourtyardBirch.SM_CourtyardBirch",
+    "materials": [
+      "/Game/Prologue/Street/Materials/M_Prop_White_001.M_Prop_White_001",
+      "/Game/Prologue/Street/Materials/M_Prop_Black_001.M_Prop_Black_001",
+      "/Game/Prologue/Street/Materials/M_Prop_Green_001.M_Prop_Green_001",
+      "/Game/Prologue/Street/Materials/M_Prop_DarkGreen_001.M_Prop_DarkGreen_001"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Courtyard birch",
+    "cls": "StaticMeshActor",
+    "folder": "Street/05 Enclosed courtyard",
+    "p": [
+      1170.0,
+      989.0,
+      -10.630462816738977
+    ],
+    "r": [
+      0.0,
+      -150.0,
+      0.0
+    ],
+    "s": [
+      5.46630462816739,
+      5.46630462816739,
+      5.46630462816739
+    ],
+    "b": [
+      1052.3285740534059,
+      1339.6280431577582,
+      793.9468049036336,
+      1092.354579272678,
+      -12.0,
+      536.0
+    ],
+    "tags": [
+      "StreetVisuals1994_v1"
+    ],
+    "mesh": "/Game/Prologue/Street/Meshes/SM_CourtyardBirch.SM_CourtyardBirch",
+    "materials": [
+      "/Game/Prologue/Street/Materials/M_Prop_White_001.M_Prop_White_001",
+      "/Game/Prologue/Street/Materials/M_Prop_Black_001.M_Prop_Black_001",
+      "/Game/Prologue/Street/Materials/M_Prop_Green_001.M_Prop_Green_001",
+      "/Game/Prologue/Street/Materials/M_Prop_DarkGreen_001.M_Prop_DarkGreen_001"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Courtyard birch",
+    "cls": "StaticMeshActor",
+    "folder": "Street/05 Enclosed courtyard",
+    "p": [
+      1185.0,
+      2451.0,
+      -10.732928189939162
+    ],
+    "r": [
+      0.0,
+      30.000000000000025,
+      -0.0
+    ],
+    "s": [
+      5.057329281899392,
+      5.057329281899392,
+      5.057329281899392
+    ],
+    "b": [
+      1028.0631060565997,
+      1293.867541888546,
+      2355.3781538480885,
+      2631.459799112879,
+      -12.000000000000028,
+      495.0
+    ],
+    "tags": [
+      "StreetVisuals1994_v1"
+    ],
+    "mesh": "/Game/Prologue/Street/Meshes/SM_CourtyardBirch.SM_CourtyardBirch",
+    "materials": [
+      "/Game/Prologue/Street/Materials/M_Prop_White_001.M_Prop_White_001",
+      "/Game/Prologue/Street/Materials/M_Prop_Black_001.M_Prop_Black_001",
+      "/Game/Prologue/Street/Materials/M_Prop_Green_001.M_Prop_Green_001",
+      "/Game/Prologue/Street/Materials/M_Prop_DarkGreen_001.M_Prop_DarkGreen_001"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Courtyard birch",
+    "cls": "StaticMeshActor",
+    "folder": "Street/05 Enclosed courtyard",
+    "p": [
+      -1071.0,
+      2355.0,
+      -10.745423967158697
+    ],
+    "r": [
+      0.0,
+      129.99999999999997,
+      -0.0
+    ],
+    "s": [
+      5.007454239671587,
+      5.007454239671587,
+      5.007454239671587
+    ],
+    "b": [
+      -1247.425671200101,
+      -969.0346109630632,
+      2186.7883556992333,
+      2461.7527580871406,
+      -12.0,
+      489.99999999999994
+    ],
+    "tags": [
+      "StreetVisuals1994_v1"
+    ],
+    "mesh": "/Game/Prologue/Street/Meshes/SM_CourtyardBirch.SM_CourtyardBirch",
+    "materials": [
+      "/Game/Prologue/Street/Materials/M_Prop_White_001.M_Prop_White_001",
+      "/Game/Prologue/Street/Materials/M_Prop_Black_001.M_Prop_Black_001",
+      "/Game/Prologue/Street/Materials/M_Prop_Green_001.M_Prop_Green_001",
+      "/Game/Prologue/Street/Materials/M_Prop_DarkGreen_001.M_Prop_DarkGreen_001"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      -9492.857142857143,
+      -2855.0,
+      443.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.6,
+      11.0,
+      9.1
+    ],
+    "b": [
+      -10022.857142857143,
+      -8962.857142857143,
+      -3405.0,
+      -2305.0,
+      -12.0,
+      898.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/StreetRefinement/Materials/M_FadedOchreRender.M_FadedOchreRender"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      -10878.571428571428,
+      -2855.0,
+      533.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.6,
+      11.0,
+      10.9
+    ],
+    "b": [
+      -11408.571428571428,
+      -10348.571428571428,
+      -3405.0,
+      -2305.0,
+      -12.0,
+      1078.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_BlueClapboard.M_BlueClapboard"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      -12264.285714285714,
+      -2855.0,
+      623.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.6,
+      11.0,
+      12.7
+    ],
+    "b": [
+      -12794.285714285714,
+      -11734.285714285714,
+      -3405.0,
+      -2305.0,
+      -12.0,
+      1258.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_CreamClapboard.M_CreamClapboard"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      -13650.0,
+      -2855.0,
+      443.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.6,
+      11.0,
+      9.1
+    ],
+    "b": [
+      -14180.0,
+      -13120.0,
+      -3405.0,
+      -2305.0,
+      -12.0,
+      898.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/StreetRefinement/Materials/M_FadedOchreRender.M_FadedOchreRender"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      -15035.714285714286,
+      -2855.0,
+      533.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.6,
+      11.0,
+      10.9
+    ],
+    "b": [
+      -15565.714285714286,
+      -14505.714285714286,
+      -3405.0,
+      -2305.0,
+      -12.0,
+      1078.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_BlueClapboard.M_BlueClapboard"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      -16421.428571428572,
+      -2855.0,
+      623.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.6,
+      11.0,
+      12.7
+    ],
+    "b": [
+      -16951.428571428572,
+      -15891.428571428572,
+      -3405.0,
+      -2305.0,
+      -12.0,
+      1258.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_CreamClapboard.M_CreamClapboard"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      -17807.142857142855,
+      -2855.0,
+      443.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.6,
+      11.0,
+      9.1
+    ],
+    "b": [
+      -18337.142857142855,
+      -17277.142857142855,
+      -3405.0,
+      -2305.0,
+      -12.0,
+      898.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/StreetRefinement/Materials/M_FadedOchreRender.M_FadedOchreRender"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      -9492.857142857143,
+      5.0,
+      443.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.6,
+      11.0,
+      9.1
+    ],
+    "b": [
+      -10022.857142857143,
+      -8962.857142857143,
+      -545.0,
+      555.0,
+      -12.0,
+      898.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/StreetRefinement/Materials/M_FadedOchreRender.M_FadedOchreRender"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      -10878.571428571428,
+      5.0,
+      533.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.6,
+      11.0,
+      10.9
+    ],
+    "b": [
+      -11408.571428571428,
+      -10348.571428571428,
+      -545.0,
+      555.0,
+      -12.0,
+      1078.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_BlueClapboard.M_BlueClapboard"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      -12264.285714285714,
+      5.0,
+      623.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.6,
+      11.0,
+      12.7
+    ],
+    "b": [
+      -12794.285714285714,
+      -11734.285714285714,
+      -545.0,
+      555.0,
+      -12.0,
+      1258.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_CreamClapboard.M_CreamClapboard"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      -13650.0,
+      5.0,
+      443.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.6,
+      11.0,
+      9.1
+    ],
+    "b": [
+      -14180.0,
+      -13120.0,
+      -545.0,
+      555.0,
+      -12.0,
+      898.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/StreetRefinement/Materials/M_FadedOchreRender.M_FadedOchreRender"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      -15035.714285714286,
+      5.0,
+      533.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.6,
+      11.0,
+      10.9
+    ],
+    "b": [
+      -15565.714285714286,
+      -14505.714285714286,
+      -545.0,
+      555.0,
+      -12.0,
+      1078.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_BlueClapboard.M_BlueClapboard"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      -16421.428571428572,
+      5.0,
+      623.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.6,
+      11.0,
+      12.7
+    ],
+    "b": [
+      -16951.428571428572,
+      -15891.428571428572,
+      -545.0,
+      555.0,
+      -12.0,
+      1258.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_CreamClapboard.M_CreamClapboard"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      -17807.142857142855,
+      5.0,
+      443.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.6,
+      11.0,
+      9.1
+    ],
+    "b": [
+      -18337.142857142855,
+      -17277.142857142855,
+      -545.0,
+      555.0,
+      -12.0,
+      898.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/StreetRefinement/Materials/M_FadedOchreRender.M_FadedOchreRender"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      850.0,
+      7192.857142857143,
+      443.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.0,
+      10.6,
+      9.1
+    ],
+    "b": [
+      350.0,
+      1350.0,
+      6662.857142857143,
+      7722.857142857143,
+      -12.0,
+      898.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_BlueClapboard.M_BlueClapboard"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      850.0,
+      8578.571428571428,
+      533.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.0,
+      10.6,
+      10.9
+    ],
+    "b": [
+      350.0,
+      1350.0,
+      8048.5714285714275,
+      9108.571428571428,
+      -12.0,
+      1078.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_CreamClapboard.M_CreamClapboard"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      850.0,
+      9964.285714285714,
+      623.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.0,
+      10.6,
+      12.7
+    ],
+    "b": [
+      350.0,
+      1350.0,
+      9434.285714285714,
+      10494.285714285714,
+      -12.0,
+      1258.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/StreetRefinement/Materials/M_FadedOchreRender.M_FadedOchreRender"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      850.0,
+      11350.0,
+      443.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.0,
+      10.6,
+      9.1
+    ],
+    "b": [
+      350.0,
+      1350.0,
+      10820.0,
+      11880.0,
+      -12.0,
+      898.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_BlueClapboard.M_BlueClapboard"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      850.0,
+      12735.714285714286,
+      533.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.0,
+      10.6,
+      10.9
+    ],
+    "b": [
+      350.0,
+      1350.0,
+      12205.714285714286,
+      13265.714285714286,
+      -12.0,
+      1078.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_CreamClapboard.M_CreamClapboard"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      850.0,
+      14121.428571428572,
+      623.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.0,
+      10.6,
+      12.7
+    ],
+    "b": [
+      350.0,
+      1350.0,
+      13591.428571428572,
+      14651.428571428572,
+      -12.0,
+      1258.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/StreetRefinement/Materials/M_FadedOchreRender.M_FadedOchreRender"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      850.0,
+      15507.142857142857,
+      443.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.0,
+      10.6,
+      9.1
+    ],
+    "b": [
+      350.0,
+      1350.0,
+      14977.142857142857,
+      16037.142857142857,
+      -12.0,
+      898.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_BlueClapboard.M_BlueClapboard"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      3950.0,
+      7192.857142857143,
+      443.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.0,
+      10.6,
+      9.1
+    ],
+    "b": [
+      3450.0,
+      4450.0,
+      6662.857142857143,
+      7722.857142857143,
+      -12.0,
+      898.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_BlueClapboard.M_BlueClapboard"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      3950.0,
+      8578.571428571428,
+      533.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.0,
+      10.6,
+      10.9
+    ],
+    "b": [
+      3450.0,
+      4450.0,
+      8048.5714285714275,
+      9108.571428571428,
+      -12.0,
+      1078.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_CreamClapboard.M_CreamClapboard"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      3950.0,
+      9964.285714285714,
+      623.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.0,
+      10.6,
+      12.7
+    ],
+    "b": [
+      3450.0,
+      4450.0,
+      9434.285714285714,
+      10494.285714285714,
+      -12.0,
+      1258.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/StreetRefinement/Materials/M_FadedOchreRender.M_FadedOchreRender"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      3950.0,
+      11350.0,
+      443.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.0,
+      10.6,
+      9.1
+    ],
+    "b": [
+      3450.0,
+      4450.0,
+      10820.0,
+      11880.0,
+      -12.0,
+      898.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_BlueClapboard.M_BlueClapboard"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      3950.0,
+      12735.714285714286,
+      533.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.0,
+      10.6,
+      10.9
+    ],
+    "b": [
+      3450.0,
+      4450.0,
+      12205.714285714286,
+      13265.714285714286,
+      -12.0,
+      1078.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_CreamClapboard.M_CreamClapboard"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      3950.0,
+      14121.428571428572,
+      623.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.0,
+      10.6,
+      12.7
+    ],
+    "b": [
+      3450.0,
+      4450.0,
+      13591.428571428572,
+      14651.428571428572,
+      -12.0,
+      1258.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/StreetRefinement/Materials/M_FadedOchreRender.M_FadedOchreRender"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      3950.0,
+      15507.142857142857,
+      443.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.0,
+      10.6,
+      9.1
+    ],
+    "b": [
+      3450.0,
+      4450.0,
+      14977.142857142857,
+      16037.142857142857,
+      -12.0,
+      898.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_BlueClapboard.M_BlueClapboard"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      850.0,
+      -7135.714285714285,
+      443.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.0,
+      10.6,
+      9.1
+    ],
+    "b": [
+      350.0,
+      1350.0,
+      -7665.714285714285,
+      -6605.714285714285,
+      -12.0,
+      898.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_CreamClapboard.M_CreamClapboard"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      850.0,
+      -8407.142857142857,
+      533.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.0,
+      10.6,
+      10.9
+    ],
+    "b": [
+      350.0,
+      1350.0,
+      -8937.142857142857,
+      -7877.142857142857,
+      -12.0,
+      1078.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/StreetRefinement/Materials/M_FadedOchreRender.M_FadedOchreRender"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      850.0,
+      -9678.571428571428,
+      623.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.0,
+      10.6,
+      12.7
+    ],
+    "b": [
+      350.0,
+      1350.0,
+      -10208.571428571428,
+      -9148.571428571428,
+      -12.0,
+      1258.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_BlueClapboard.M_BlueClapboard"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      850.0,
+      -10950.0,
+      443.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.0,
+      10.6,
+      9.1
+    ],
+    "b": [
+      350.0,
+      1350.0,
+      -11480.0,
+      -10420.0,
+      -12.0,
+      898.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_CreamClapboard.M_CreamClapboard"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      850.0,
+      -12221.428571428572,
+      533.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.0,
+      10.6,
+      10.9
+    ],
+    "b": [
+      350.0,
+      1350.0,
+      -12751.428571428572,
+      -11691.428571428572,
+      -12.0,
+      1078.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/StreetRefinement/Materials/M_FadedOchreRender.M_FadedOchreRender"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      850.0,
+      -13492.857142857143,
+      623.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.0,
+      10.6,
+      12.7
+    ],
+    "b": [
+      350.0,
+      1350.0,
+      -14022.857142857143,
+      -12962.857142857143,
+      -12.0,
+      1258.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_BlueClapboard.M_BlueClapboard"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      850.0,
+      -14764.285714285714,
+      443.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.0,
+      10.6,
+      9.1
+    ],
+    "b": [
+      350.0,
+      1350.0,
+      -15294.285714285714,
+      -14234.285714285714,
+      -12.0,
+      898.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_CreamClapboard.M_CreamClapboard"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      3950.0,
+      -7135.714285714285,
+      443.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.0,
+      10.6,
+      9.1
+    ],
+    "b": [
+      3450.0,
+      4450.0,
+      -7665.714285714285,
+      -6605.714285714285,
+      -12.0,
+      898.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_CreamClapboard.M_CreamClapboard"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      3950.0,
+      -8407.142857142857,
+      533.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.0,
+      10.6,
+      10.9
+    ],
+    "b": [
+      3450.0,
+      4450.0,
+      -8937.142857142857,
+      -7877.142857142857,
+      -12.0,
+      1078.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/StreetRefinement/Materials/M_FadedOchreRender.M_FadedOchreRender"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      3950.0,
+      -9678.571428571428,
+      623.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.0,
+      10.6,
+      12.7
+    ],
+    "b": [
+      3450.0,
+      4450.0,
+      -10208.571428571428,
+      -9148.571428571428,
+      -12.0,
+      1258.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_BlueClapboard.M_BlueClapboard"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      3950.0,
+      -10950.0,
+      443.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.0,
+      10.6,
+      9.1
+    ],
+    "b": [
+      3450.0,
+      4450.0,
+      -11480.0,
+      -10420.0,
+      -12.0,
+      898.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_CreamClapboard.M_CreamClapboard"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      3950.0,
+      -12221.428571428572,
+      533.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.0,
+      10.6,
+      10.9
+    ],
+    "b": [
+      3450.0,
+      4450.0,
+      -12751.428571428572,
+      -11691.428571428572,
+      -12.0,
+      1078.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/StreetRefinement/Materials/M_FadedOchreRender.M_FadedOchreRender"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      3950.0,
+      -13492.857142857143,
+      623.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.0,
+      10.6,
+      12.7
+    ],
+    "b": [
+      3450.0,
+      4450.0,
+      -14022.857142857143,
+      -12962.857142857143,
+      -12.0,
+      1258.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_BlueClapboard.M_BlueClapboard"
+    ],
+    "collision": "NoCollision"
+  },
+  {
+    "label": "Distant Brighton residential block",
+    "cls": "StaticMeshActor",
+    "folder": "Brighton/Distant city",
+    "p": [
+      3950.0,
+      -14764.285714285714,
+      443.0
+    ],
+    "r": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "s": [
+      10.0,
+      10.6,
+      9.1
+    ],
+    "b": [
+      3450.0,
+      4450.0,
+      -15294.285714285714,
+      -14234.285714285714,
+      -12.0,
+      898.0
+    ],
+    "tags": [
+      "BrightonUpgrade_v1"
+    ],
+    "mesh": "/Engine/BasicShapes/Cube.Cube",
+    "materials": [
+      "/Game/Prologue/Brighton/Materials/M_CreamClapboard.M_CreamClapboard"
+    ],
+    "collision": "NoCollision"
+  }
+]
