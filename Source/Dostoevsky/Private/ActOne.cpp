@@ -229,11 +229,11 @@ void UActOneSubsystem::RefreshScene()
     Director->SetRain(IsRain());
 }
 
-bool UActOneSubsystem::Travel(const TCHAR* To,const TCHAR* Title,FName Spawn)
+bool UActOneSubsystem::Travel(const TCHAR* To,const TCHAR* Title,FName Spawn,const AActor* OpeningDoor)
 {
     const TObjectPtr<UTexture2D>* Photo=Data ? Data->Photos.Find(FName(To)) : nullptr;
     const FString Asset=FString::Printf(TEXT("/Game/Locations/%s.%s"),To,To);
-    if (UI()->TravelToStreet(TSoftObjectPtr<UWorld>(FSoftObjectPath(Asset)),Text(Title),Photo ? Photo->Get() : nullptr,Spawn))
+    if (UI()->TravelToStreet(TSoftObjectPtr<UWorld>(FSoftObjectPath(Asset)),Text(Title),Photo ? Photo->Get() : nullptr,Spawn,OpeningDoor))
         return true;
     Hint(Text(TEXT("Переход недоступен. Повторите попытку.")));
     return false;
@@ -379,7 +379,7 @@ bool UActOneSubsystem::HandlePortal(const AStreetPortal& Portal)
     }
     if (Portal.ActorHasTag(TEXT("ActPrecinctExit")) && Phase==EActOnePhase::CaptainDone)
     {
-        if (Travel(TEXT("L_NeptuneStreet"),TEXT("4th Brighton beach"),TEXT("FromPrecinct")))
+        if (Travel(TEXT("L_NeptuneStreet"),TEXT("4th Brighton beach"),TEXT("FromPrecinct"),&Portal))
             Phase=EActOnePhase::MeetIvan;
         return true;
     }
@@ -417,10 +417,10 @@ bool UActOneSubsystem::Use(const AActOneInteraction& Item,APlayerController* Use
         break;
     case EActOneAction::Veteran: if (!bVeteranDone) AskVeteran(); else Hint(Text(TEXT("Старик больше ничего не говорит."))); break;
     case EActOneAction::Grocery:
-        if (Phase==EActOnePhase::Cigarettes) Travel(TEXT("L_BrightonGrocery"),TEXT("Продукты"),TEXT("ActEntry"));
+        if (Phase==EActOnePhase::Cigarettes) Travel(TEXT("L_BrightonGrocery"),TEXT("Продукты"),TEXT("ActEntry"),&Item);
         else Hint(Text(TEXT("Сигареты уже куплены.")));
         break;
-    case EActOneAction::LeaveGrocery: Travel(TEXT("L_NeptuneStreet"),TEXT("4th Brighton beach"),TEXT("FromGrocery")); break;
+    case EActOneAction::LeaveGrocery: Travel(TEXT("L_NeptuneStreet"),TEXT("4th Brighton beach"),TEXT("FromGrocery"),&Item); break;
     case EActOneAction::Cigarettes:
         if (Phase==EActOnePhase::Cigarettes && Travel(TEXT("L_NeptuneStreet"),TEXT("4th Brighton beach"),TEXT("FromGrocery")))
             Phase=EActOnePhase::Smoke;
@@ -428,12 +428,12 @@ bool UActOneSubsystem::Use(const AActOneInteraction& Item,APlayerController* Use
     case EActOneAction::Bar:
         if (Phase==EActOnePhase::BarCall || Phase==EActOnePhase::Bar)
         {
-            if (Travel(TEXT("L_LighthouseBar"),TEXT("Бар «Маяк»"),TEXT("ActEntry"))) Phase=EActOnePhase::Bar;
+            if (Travel(TEXT("L_LighthouseBar"),TEXT("Бар «Маяк»"),TEXT("ActEntry"),&Item)) Phase=EActOnePhase::Bar;
         }
         else Hint(Objective());
         break;
     case EActOneAction::LeaveBar:
-        if (Phase==EActOnePhase::Precinct) Travel(TEXT("L_NeptuneStreet"),TEXT("4th Brighton beach"),TEXT("FromBar"));
+        if (Phase==EActOnePhase::Precinct) Travel(TEXT("L_NeptuneStreet"),TEXT("4th Brighton beach"),TEXT("FromBar"),&Item);
         else Hint(Text(TEXT("Сначала нужно разобраться с дебошем.")));
         break;
     case EActOneAction::Guard: if (Phase==EActOnePhase::Bar && !bGuardResolved) StartBar(); break;
@@ -469,7 +469,7 @@ bool UActOneSubsystem::Use(const AActOneInteraction& Item,APlayerController* Use
     case EActOneAction::LeaveFedor:
         if (bBankKey)
         {
-            if (Travel(TEXT("L_BrightonAlley"),TEXT("Переулки Брайтон-Бич"),TEXT("ActEntry"))) Phase=EActOnePhase::Chase;
+            if (Travel(TEXT("L_BrightonAlley"),TEXT("Переулки Брайтон-Бич"),TEXT("ActEntry"),&Item)) Phase=EActOnePhase::Chase;
         }
         else Hint(Objective());
         break;

@@ -246,10 +246,6 @@ class Scene:
             right=parts[ue.Name("ArmR")]
             shape("Green glass bottle",(8,24,85+shift),(8,8,19),"glass",group=right,form="Cylinder",ang=30)
             shape("Bottle neck",(11,24,96+shift),(4,4,10),"glass",group=right,form="Cylinder",ang=30)
-        if detail=="ivan":
-            right=parts[ue.Name("ArmR")]
-            shape("Cigarette",(11,25,89+shift),(2,2,9),"ivory",group=right,form="Cylinder",ang=62)
-            shape("Cigarette ember",(15,25,91+shift),(2,2,2),"alarmed",group=right)
         a.set_editor_properties({"parts":parts,"default_pose":
             ue.ActOnePose.SEATED if seated else ue.ActOnePose.SMOKING if detail=="ivan" else
             ue.ActOnePose.WALKING if detail=="patrol" else ue.ActOnePose.IDLE})
@@ -260,16 +256,11 @@ class Scene:
         component.set_static_mesh(self.shapes["Cube"])
         component.set_material(0,self.mat("rain"))
 
-    def smoking(self):
-        for name,shape,key,offset,scale,angle in (
-            ("smoke_hand","Sphere","flesh",(0,0,0),(.30,.13,.16),0),
-            ("cigarette","Cylinder","ivory",(6,-6,1),(.019,.019,.114),-65),
-            ("ember","Sphere","alarmed",(9,-6,5),(.022,.02,.02),0),
-        ):
-            c=self.director.get_editor_property(name)
-            c.set_static_mesh(self.shapes[shape])
-            c.set_material(0,self.mat(key))
-            c.set_editor_properties({"relative_location":V(*offset),"relative_scale3d":V(*scale),"relative_rotation":rot(0,angle)})
+    def recorder_hand(self):
+        hand=self.director.get_editor_property("smoke_hand")
+        hand.set_static_mesh(self.shapes["Sphere"])
+        hand.set_material(0,self.mat("flesh"))
+        hand.set_editor_property("relative_scale3d",V(.30,.13,.16))
 
 
 def picture_material(texture,crop):
@@ -296,7 +287,7 @@ def picture_material(texture,crop):
 
 def page_speakers(spec):
     roles={"Guard":"BarGuard","Veteran":"Veteran","Captain":"Krill","Ivan":"IvanStreet"}
-    result={key:roles[row["voice"]] for key,row in spec["documents"].items() if row.get("voice") in roles}
+    result={key:roles[row["speaker_role"]] for key,row in spec["documents"].items() if row.get("speaker_role") in roles}
     result.update(OldManThanks="OldMan",IvanFedor="IvanFedor")
     return {ue.Name(page):ue.Name(role) for page,role in result.items()}
 
@@ -350,7 +341,7 @@ def apartment(s, portrait):
     shot=s.camera("Finale at the desk",xyz(p),(prop[0]-12,prop[1],prop[2]+9),66)
     s.director.set_editor_property("finale_camera",shot)
     s.target("Tape playback button",(prop[0]-10,prop[1],prop[2]+5),cue="FinaleTapeButton")
-    s.smoking()
+    s.recorder_hand()
     pistol=(prop[0]-41,prop[1]-17,prop[2]-1)
     weapon(s,"Dima's service pistol",pistol,"Pistol",12)
     s.use("Optional service pistol","PISTOL","Взять служебный пистолет",(pistol[0],pistol[1],pistol[2]+4),(12,15,7))
@@ -359,7 +350,6 @@ def apartment(s, portrait):
 
 def neptune(s, portrait):
     s.rain()
-    s.smoking()
     placed=ACTORS.get_all_level_actors()
     for actor in placed:
         if isinstance(actor,ue.StreetPortal):

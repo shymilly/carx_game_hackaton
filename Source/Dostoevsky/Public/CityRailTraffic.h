@@ -28,6 +28,8 @@ public:
     UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category="Train", meta=(ClampMin="0")) float FirstPassDelay = 55;
     UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category="Train", meta=(ClampMin="100")) float Speed = 1510;
     UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category="Train", meta=(ClampMin="1000")) float HalfRoute = 17160;
+    // The route ends inside covered approaches. Cars become visible only once on the modeled track.
+    UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category="Train") bool bCoveredEnds = false;
     UFUNCTION(BlueprintPure, Category="Train") bool IsPassing() const { return bPassing; }
 protected:
     void BeginPlay() override;

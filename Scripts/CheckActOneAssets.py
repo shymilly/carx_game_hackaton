@@ -16,9 +16,6 @@ for key,source in spec['documents'].items():
     document=documents[ue.Name(key)]
     for field in ('title','body'):
         assert str(document.get_editor_property(field))==source[field],(key,field)
-    voice=document.get_editor_property('voice')
-    if source.get('voice'):
-        assert voice and voice.get_editor_property('duration')>0,key
     if source.get('illustration'):
         assert document.get_editor_property('illustration'),key
     if source.get('layout')=='newspaper':
@@ -27,6 +24,9 @@ for key,source in spec['documents'].items():
                 assert str(article.get_editor_property(field))==value,(key,index,field)
 for name,sound in data.get_editor_property('sounds').items():
     assert isinstance(sound,ue.SoundWave) and sound.get_editor_property('duration')>0,name
+registry=ue.AssetRegistryHelpers.get_asset_registry()
+assert not any(str(asset.asset_name).startswith('Voice_')
+               for asset in registry.get_assets_by_path('/Game/Story/ActOne/Audio',recursive=True)), 'Legacy TTS packages'
 photos=data.get_editor_property('photos')
 assert len(photos)==5
 for area in ('Grocery','Bar','Entrance','Fedor','Alley'):

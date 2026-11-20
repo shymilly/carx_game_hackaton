@@ -1,4 +1,7 @@
-param([string]$Version)
+param(
+    [string]$Version,
+    [ValidateSet('d3d11','d3d12')][string]$Rhi = 'd3d12'
+)
 $ErrorActionPreference = 'Stop'
 $smokeRoot = Split-Path $PSScriptRoot -Parent
 if (!$Version) {
@@ -14,10 +17,12 @@ New-Item -ItemType Directory -Path $smokeFolder -Force | Out-Null
 $smokeMaps = @('L_DimaApartmentInterior','L_NeptuneStreet','L_BrightonGrocery','L_LighthouseBar',
     'L_PolicePrecinct','L_FedorEntry','L_FedorApartment','L_BrightonAlley')
 $smokeResults = @()
+$smokeFallbackMaps = @()
 foreach ($smokeMap in $smokeMaps) {
     $smokeLog = Join-Path $smokeFolder "$smokeMap.log"
     $smokeArgs = @("/Game/Locations/$smokeMap",'-unattended','-windowed','-nosplash','-nosound',
-        '-d3d11','-NoTrace','-ResX=1280','-ResY=720',('-abslog="'+$smokeLog+'"'),'-ExecCmds="quit"')
+        "-$Rhi",'-RenderOffScreen','-NoTrace','-ResX=1280','-ResY=720',('-abslog="'+$smokeLog+'"'),
+        '-csvCaptureFrames=180','-ExitAfterCsvProfiling','-ExecCmds="csv.ForceExit 1"')
     $smokeTimer = [System.Diagnostics.Stopwatch]::StartNew()
     $smokeProcess = Start-Process -FilePath $smokeExe -ArgumentList $smokeArgs -WindowStyle Hidden -PassThru
     if (!$smokeProcess.WaitForExit(45000)) {
@@ -32,15 +37,19 @@ foreach ($smokeMap in $smokeMaps) {
     if ($smokeText -notmatch ('Bringing World.*'+[regex]::Escape($smokeMap))) {
         throw "The requested world did not start: $smokeMap"
     }
+    if ($smokeText -notmatch 'Frames : 180') { throw "The packaged frame capture did not complete: $smokeMap" }
     if ($smokeText -match 'Fatal error:|Critical error:|Assertion failed:|ACT_MISSING') {
         throw "Runtime error in packaged map: $smokeMap"
     }
-    if ($smokeText -match 'missing usage flag .*Default Material will be used in game') {
-        throw "An object rendered with the default material in packaged map: $smokeMap"
-    }
+    $smokeFallbacks = [regex]::Matches($smokeText,'missing usage flag [^!]+! Default Material will be used in game\.').Count
+    if ($smokeFallbacks -gt 0) { $smokeFallbackMaps += $smokeMap }
     $smokeResults += [pscustomobject]@{Map=$smokeMap;ExitCode=$smokeProcess.ExitCode;
-        Seconds=[math]::Round($smokeTimer.Elapsed.TotalSeconds,2);Log=$smokeLog}
-    Write-Output "PACKAGED_MAP_OK $smokeMap"
+        Seconds=[math]::Round($smokeTimer.Elapsed.TotalSeconds,2);RenderedFrames=180;
+        Termination='ProfilerForceExit';MaterialFallbacks=$smokeFallbacks;Log=$smokeLog}
+    Write-Output "PACKAGED_MAP_RENDERED $smokeMap material_fallbacks=$smokeFallbacks"
 }
 $smokeResults | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $smokeFolder 'Smoke.json') -Encoding utf8
+if ($smokeFallbackMaps.Count -gt 0) {
+    throw ('Default material fallback on packaged maps: ' + ($smokeFallbackMaps -join ', '))
+}
 Write-Output "PACKAGED_LOCATIONS_OK $Version maps=$($smokeResults.Count)"

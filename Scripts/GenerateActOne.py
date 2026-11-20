@@ -60,7 +60,7 @@ def art_and_dialogue():
         sound.set_editor_property("looping",file.stem in ("Music90","Rain"))
         save(sound)
         sounds[file.stem]=sound
-    assert "Voice_FedorRecording" in sounds and "Music90" in sounds and "Rain" in sounds
+    assert "Music90" in sounds and "Rain" in sounds
     documents={}
     for key,row in spec["documents"].items():
         item=data_asset(ue.InteractionDocument,ROOT+"/Documents","D_"+key)
@@ -68,7 +68,7 @@ def art_and_dialogue():
         close=row.get("close_label","Закрыть · E / Esc" if layout=="newspaper" else "Продолжить · E")
         item.set_editor_properties({"title":row["title"],"body":row["body"],"close_label":close,
                                     "layout":getattr(ue.DocumentLayout,layout.upper()),
-                                    "voice":sounds.get("Voice_"+key),"open_sound":sounds.get(row.get("open_sound")),
+                                    "open_sound":sounds.get(row.get("open_sound")),
                                     "illustration":portrait if row.get("illustration") else None,
                                     "crop_to_portrait":row.get("crop",False)})
         if layout=="newspaper":
@@ -80,27 +80,20 @@ def art_and_dialogue():
             item.set_editor_properties({"edition":row["edition"],"articles":items})
         save(item)
         documents[key]=item
-    configure_apartment_audio(sounds)
+    configure_apartment_audio()
     append_to_journal(documents)
     data=data_asset(ue.ActOneData,ROOT,"DA_ActOne")
     data.set_editor_property("page_speakers",page_speakers(spec))
     data.set_editor_properties({"documents":{ue.Name(key):doc for key,doc in documents.items()},
-                                "sounds":{ue.Name(key):sound for key,sound in sounds.items() if not key.startswith("Voice_")}})
+                                "sounds":{ue.Name(key):sound for key,sound in sounds.items()}})
     save(data)
     return data,portrait
 
 
-def configure_apartment_audio(sounds):
+def configure_apartment_audio():
     apartment=ue.load_asset("/Game/Story/DimaApartment/DA_DimaApartmentScenario")
     assert apartment
     apartment.set_editor_properties({"ambient":ue.load_asset('/Game/Audio/DimaApartment/S_DimaApartmentAmbient'),"ambient_volume":.4})
-    for prop,key in (("television","Television"),("fridge","Fridge"),("wardrobe","Wardrobe"),("floor_lamp","FloorLamp")):
-        item=apartment.get_editor_property(prop)
-        item.set_editor_property("voice",sounds["Voice_Apartment_"+key])
-        save(item)
-    for index,doc in enumerate(apartment.get_editor_property("phone_conversation"),1):
-        doc.set_editor_property("voice",sounds.get(f"Voice_Apartment_Phone{index:02}"))
-        save(doc)
     save(apartment)
 
 

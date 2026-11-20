@@ -8,6 +8,7 @@
 class AActOneDirector;
 class ACharacter;
 class ASpotLight;
+class APrologueTimeOfDay;
 class UMaterialParameterCollection;
 class USoundBase;
 class UCityCharacterProfile;
@@ -46,6 +47,7 @@ private:
     UPROPERTY() TObjectPtr<UBrightonEnvironmentData> Data;
     TWeakObjectPtr<AActOneDirector> Director;
     TArray<TWeakObjectPtr<ASpotLight>> WindowLights;
+    TWeakObjectPtr<APrologueTimeOfDay> StreetClock;
     FVector PreviousPosition=FVector::ZeroVector;
     TWeakObjectPtr<ACharacter> PreviousCharacter;
     TWeakObjectPtr<USkeletalMeshComponent> PlayerMesh;
@@ -56,6 +58,7 @@ private:
     int32 LastVariation=-1;
     float DistanceSinceStep=0;
     float Wetness=0;
+    float PreviousWetness=-1.f;
     float LightTimer=0;
     bool bWasGrounded=true;
     bool bWeatherInitialized=false;

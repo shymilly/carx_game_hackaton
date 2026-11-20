@@ -11,6 +11,9 @@ class UAnimSequence;
 class UMaterialInterface;
 class USkeletalMesh;
 class USkeletalMeshComponent;
+class UStaticMesh;
+class USkeleton;
+class UAnimBlueprint;
 
 UCLASS(Transient)
 class DOSTOEVSKY_API UCityClipInstance : public UAnimSingleNodeInstance
@@ -43,6 +46,7 @@ public:
     UPROPERTY(EditAnywhere, Category="Character") float ModelScale = 1.0f;
     UPROPERTY(EditAnywhere, Category="Character") float FacingYaw = 0.0f;
     UPROPERTY(EditAnywhere, Category="Character") float FeetOffset = 0.0f;
+    UPROPERTY(EditAnywhere, Category="Character") TObjectPtr<UStaticMesh> CigaretteMesh;
 
     void Configure(USkeletalMeshComponent& Component) const;
     float Play(USkeletalMeshComponent& Component, FName Motion, bool bLoop, float Rate = 1.0f) const;
@@ -58,4 +62,8 @@ public:
 
     UFUNCTION(BlueprintCallable, Category="City|Authoring")
     static bool AuthorGesture(USkeletalMesh* Mesh,UAnimSequence* Idle,UCityGestureSequence* Destination,FName Gesture);
+    UFUNCTION(BlueprintCallable, Category="City|Authoring")
+    static bool AuthorFirstPersonSmoke(USkeletalMesh* Mesh,USkeleton* Skeleton,UCityGestureSequence* Destination);
+    UFUNCTION(BlueprintCallable, Category="City|Authoring")
+    static bool InstallSmokingSlot(UAnimBlueprint* Blueprint);
 };

@@ -24,6 +24,7 @@ class DOSTOEVSKY_API AActOneCast : public AActor
     GENERATED_BODY()
 public:
     AActOneCast();
+    void SetActorHiddenInGame(bool bNewHidden) override;
     UPROPERTY(VisibleAnywhere,BlueprintReadOnly) TObjectPtr<USceneComponent> PoseRoot;
     UPROPERTY(VisibleAnywhere,BlueprintReadOnly) TObjectPtr<UCapsuleComponent> Body;
     UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Character") TObjectPtr<USkeletalMeshComponent> CharacterMesh;
@@ -47,11 +48,12 @@ private:
     float NodTime = 1;
     float NodRemaining = 0;
     UPROPERTY(Transient) TObjectPtr<UCigaretteSmokeComponent> SmokeTrail;
-    TWeakObjectPtr<AActor> CigaretteTip;
+    UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> HeldCigarette;
     bool bSpeaking = false;
     FVector WalkTarget = FVector::ZeroVector;
     void Part(FName Name,float Pitch,float Roll=0);
     void PlayCharacterPose();
+    void UpdateActorTick();
 };
 
 UCLASS()
@@ -105,6 +107,8 @@ private:
     UPROPERTY(Transient) TObjectPtr<UAudioComponent> RainLoop;
     UPROPERTY() TObjectPtr<USceneComponent> SmokeRig;
     UPROPERTY(Transient) TObjectPtr<UCigaretteSmokeComponent> SmokeTrail;
+    UPROPERTY(Transient) TObjectPtr<USkeletalMeshComponent> SmokingArms;
+    UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> HeldCigarette;
     TWeakObjectPtr<AActor> PreviousBarView;
     TWeakObjectPtr<AActor> FallingBarWeapon;
     FTransform ReleaseTransform, LandingTransform;

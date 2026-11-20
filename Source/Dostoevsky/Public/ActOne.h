@@ -14,6 +14,10 @@ class AActOneInteraction;
 class AHUD;
 class UNarrativeSubsystem;
 class USoundBase;
+class UAnimInstance;
+class UAnimMontage;
+class USkeletalMesh;
+class UStaticMesh;
 
 UENUM(BlueprintType)
 enum class EActOneLocation : uint8 { Apartment, Street, Grocery, Bar, Precinct, Entrance, Fedor, Alley };
@@ -53,6 +57,10 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly) TMap<FName,TObjectPtr<USoundBase>> Sounds;
     UPROPERTY(EditAnywhere, BlueprintReadOnly) TMap<FName,TObjectPtr<UTexture2D>> Photos;
     UPROPERTY(EditAnywhere, BlueprintReadOnly) TMap<FName,FName> PageSpeakers;
+    UPROPERTY(EditAnywhere, Category="Smoking") TObjectPtr<USkeletalMesh> SmokingArms;
+    UPROPERTY(EditAnywhere, Category="Smoking") TSubclassOf<UAnimInstance> SmokingAnimClass;
+    UPROPERTY(EditAnywhere, Category="Smoking") TObjectPtr<UAnimMontage> SmokingMontage;
+    UPROPERTY(EditAnywhere, Category="Smoking") TObjectPtr<UStaticMesh> CigaretteMesh;
 };
 
 UCLASS()
@@ -140,7 +148,7 @@ private:
     UNarrativeSubsystem* UI() const;
     UInteractionDocument* Doc(FName Id) const;
     EActOneLocation Place() const;
-    bool Travel(const TCHAR* To,const TCHAR* Title,FName Spawn);
+    bool Travel(const TCHAR* To,const TCHAR* Title,FName Spawn,const AActor* OpeningDoor=nullptr);
     void Hint(const FText& Text,float Duration=3.5f) const;
     void AddEvidence(FName Id,bool bShow=true);
     void Say(TArray<FName> Pages,FSimpleDelegate Done={});

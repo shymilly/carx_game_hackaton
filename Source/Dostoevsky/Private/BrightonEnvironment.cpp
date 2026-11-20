@@ -30,6 +30,7 @@ void UBrightonEnvironmentComponent::BeginPlay()
     Super::BeginPlay();
     Director=Cast<AActOneDirector>(GetOwner());
     Data=LoadObject<UBrightonEnvironmentData>(nullptr,TEXT("/Game/Prologue/Brighton/DA_Environment.DA_Environment"));
+    StreetClock=Cast<APrologueTimeOfDay>(UGameplayStatics::GetActorOfClass(this,APrologueTimeOfDay::StaticClass()));
     for (TActorIterator<ASpotLight> Light(GetWorld());Light;++Light)
         if (Light->ActorHasTag(TEXT("WindowProjection"))) WindowLights.Add(*Light);
 }
@@ -53,13 +54,16 @@ void UBrightonEnvironmentComponent::TickComponent(float Delta,ELevelTick Type,FA
         bWeatherInitialized=true;
     }
     Wetness=FMath::FInterpConstantTo(Wetness,bRainOutside ? 1.f : 0.f,Delta,bRainOutside ? .16f : .025f);
-    if (Data->WeatherParameters)
+    if (Data->WeatherParameters && Wetness!=PreviousWetness)
+    {
         UKismetMaterialLibrary::SetScalarParameterValue(this,Data->WeatherParameters,TEXT("Wetness"),Wetness);
+        PreviousWetness=Wetness;
+    }
     LightTimer-=Delta;
     if (LightTimer<=0)
     {
-        LightTimer=.25f;
-        UpdateWindowLights(Character->GetActorLocation());
+        LightTimer=.35f;
+        if (!WindowLights.IsEmpty()) UpdateWindowLights(Character->GetActorLocation());
     }
 }
 
@@ -182,9 +186,29 @@ void UBrightonEnvironmentComponent::Step(ACharacter* Character,bool bLanding)
 
 void UBrightonEnvironmentComponent::UpdateWindowLights(const FVector& View)
 {
-    const APrologueTimeOfDay* Clock=Cast<APrologueTimeOfDay>(UGameplayStatics::GetActorOfClass(this,APrologueTimeOfDay::StaticClass()));
+    const APrologueTimeOfDay* Clock=StreetClock.Get();
     const float Hour=Clock ? Clock->GetClockHour() : 22.f;
     const bool bNight=Hour>=17.f || Hour<7.f;
-    for (const TWeakObjectPtr<ASpotLight>& Entry:WindowLights)
-        if (Entry.IsValid()) Entry->GetLightComponent()->SetVisibility(bNight && FVector::DistSquared(View,Entry->GetActorLocation())<FMath::Square(2600.f));
+    constexpr int32 MaxVisible=8;
+    struct FNearbyWindow { ULightComponent* Light; double DistanceSquared; };
+    TArray<FNearbyWindow,TInlineAllocator<80>> Nearby;
+    for (const TWeakObjectPtr<ASpotLight>& Entry : WindowLights)
+    {
+        if (!Entry.IsValid()) continue;
+        ULightComponent* Light=Entry->GetLightComponent();
+        const double Distance=FVector::DistSquared(View,Entry->GetActorLocation());
+        if (bNight && Distance<FMath::Square(2600.f))
+        {
+            // A small bias for already visible windows prevents alternating lights at the cutoff.
+            Nearby.Add({Light,Distance*(Light->IsVisible() ? .94 : 1.)});
+        }
+        else if (Light->IsVisible()) Light->SetVisibility(false);
+    }
+    Nearby.Sort([](const FNearbyWindow& A,const FNearbyWindow& B) {return A.DistanceSquared<B.DistanceSquared;});
+    for (int32 Index=0;Index<Nearby.Num();++Index)
+    {
+        ULightComponent* Light=Nearby[Index].Light;
+        const bool bVisible=Index<MaxVisible;
+        if (Light->IsVisible()!=bVisible) Light->SetVisibility(bVisible);
+    }
 }

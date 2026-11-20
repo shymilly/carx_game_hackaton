@@ -134,7 +134,7 @@ def run_life():
     yield from photograph("Freight")
     yield from wait(lambda: not rail.is_passing(),"Train clears the city",28)
     assert not locomotive().is_visible()
-    yield from look((2540,-4960,90),(2550,-7650,650))
+    yield from look((2540,-4960,90),(2550,branch.get_actor_location().y,650))
     yield from wait(branch.is_passing,"Industrial train departed",55)
     engine=next(c for c in branch.get_components_by_class(ue.StaticMeshComponent)
                 if c.static_mesh and c.static_mesh.get_name()=="SM_FreightEngine")

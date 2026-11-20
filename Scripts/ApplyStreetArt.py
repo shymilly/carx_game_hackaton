@@ -131,9 +131,9 @@ def brick_path(number):
  assert len(matches)==1,matches
  return matches[0]
 for key,texture,span,tint in (
- ('AgedRedBrick',brick_path(2),(105,75),(1.10,.76,.64)),
- ('SootBrownBrick',brick_path(3),(105,75),(.74,.67,.62)),
- ('PaleLimeBrick',brick_path(3),(105,75),(1.36,1.25,1.03))):
+ ('AgedRedBrick',brick_path(2),(90,90),(1.10,.76,.64)),
+ ('SootBrownBrick',brick_path(3),(90,90),(.74,.67,.62)),
+ ('PaleLimeBrick',brick_path(3),(90,90),(1.36,1.25,1.03))):
  palette.append(world_surface('M_Wall_'+key,texture,span=span,tint=tint))
 concrete='/Game/ImportedAssets/RetroUrban/Concrete/Concrete_02/T_Concrete_02_'
 for key,tint in (('GreyPaintedPlaster',(.77,.81,.80)),('FadedOchreRender',(1.00,.72,.43)),('WeatheredConcrete',(.66,.68,.70))):
@@ -252,7 +252,7 @@ for i,(x,y) in enumerate(((7800,3400),(7850,-6680))):
  instance('Factory imported service buildings',mesh,(x,y,25),scale,180 if i==0 else 0,foot(mesh),cull=42000)
 brick_candidates=[str(a.package_name) for a in ue.AssetRegistryHelpers.get_asset_registry().get_assets_by_path('/Game/ImportedAssets/TinyTextures/Size512',recursive=True) if str(a.asset_class_path.asset_name)=='Texture2D' and 'Bricks_02_' in str(a.asset_name)]
 assert brick_candidates,'No imported brick texture'
-factory_materials=[world_surface('M_FactoryBrick',brick_candidates[0],span=(120,90),tint=(.86,.65,.52))]
+factory_materials=[world_surface('M_FactoryBrick',brick_candidates[0],span=(90,90),tint=(.86,.65,.52))]
 for a in actors:
  if a.get_actor_label() in ('Factory depth brick Cube','Factory depth ochre Cube','Factory depth soot Cube'):
   a.get_component_by_class(ue.InstancedStaticMeshComponent).set_material(0,factory_materials[0])
