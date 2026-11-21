@@ -65,5 +65,7 @@ public:
     UFUNCTION(BlueprintCallable, Category="City|Authoring")
     static bool AuthorFirstPersonSmoke(USkeletalMesh* Mesh,USkeleton* Skeleton,UCityGestureSequence* Destination);
     UFUNCTION(BlueprintCallable, Category="City|Authoring")
+    static bool AuthorFirstPersonTrip(USkeletalMesh* Mesh,UCityGestureSequence* Destination);
+    UFUNCTION(BlueprintCallable, Category="City|Authoring")
     static bool InstallSmokingSlot(UAnimBlueprint* Blueprint);
 };

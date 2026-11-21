@@ -6,7 +6,9 @@
 #include "DostoevskyGameSettings.h"
 
 #include "Animation/AnimMontage.h"
+#include "Animation/AnimSequence.h"
 #include "Animation/AnimSingleNodeInstance.h"
+#include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Components/LightComponent.h"
@@ -21,6 +23,7 @@
 #include "EngineUtils.h"
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
+#include "Math/RotationMatrix.h"
 #include "ProfilingDebugging/CsvProfiler.h"
 #include "Sound/SoundBase.h"
 
@@ -31,6 +34,11 @@ namespace
 const FName CigaretteGrip(TEXT("CigaretteGrip"));
 const FName SmokeMouth(TEXT("SmokeMouth"));
 constexpr double CigaretteTip=5.35;
+constexpr int32 RainCount=740;
+constexpr int32 SplashCount=112;
+constexpr int32 RainGridRadius=4;
+constexpr int32 RainGridWidth=RainGridRadius*2+1;
+constexpr float RainGridStep=185.f;
 
 UStaticMeshComponent* AttachCigarette(USkeletalMeshComponent& Hand,UStaticMesh* Model)
 {
@@ -162,9 +170,17 @@ void AActOneCast::Face(const FVector& Target)
 
 void AActOneCast::WalkAway(const FVector& Destination,float Speed)
 {
+    WalkTo(Destination,Speed);
+    bHideAtWalkEnd=true;
+}
+
+void AActOneCast::WalkTo(const FVector& Destination,float Speed)
+{
+    bHideAtWalkEnd=false;
     WalkTarget=Destination;
     WalkSpeed=Speed;
     Pose(Speed>=330.f ? EActOnePose::Running : EActOnePose::Walking);
+    UpdateActorTick();
 }
 
 void AActOneCast::Nod()
@@ -225,11 +241,15 @@ void AActOneCast::Tick(float DeltaSeconds)
         {
             WalkSpeed=0;
             CurrentWalkSpeed=0;
-            SetActorHiddenInGame(true);
-            SetActorEnableCollision(false);
-            TArray<AActor*> Attached;
-            GetAttachedActors(Attached,false,true);
-            for (AActor* Child:Attached) Child->SetActorHiddenInGame(true);
+            if (bHideAtWalkEnd)
+            {
+                SetActorHiddenInGame(true);
+                SetActorEnableCollision(false);
+                TArray<AActor*> Attached;
+                GetAttachedActors(Attached,false,true);
+                for (AActor* Child:Attached) Child->SetActorHiddenInGame(true);
+            }
+            else Pose(EActOnePose::Idle);
         }
     }
     if (CharacterProfile && CharacterProfile->Mesh)
@@ -288,6 +308,7 @@ AActOneDirector::AActOneDirector()
     RainSplashes->SetCastShadow(false);
     RainSplashes->SetCanEverAffectNavigation(false);
     RainSplashes->bAffectDistanceFieldLighting=false;
+    RainSplashes->SetNumCustomDataFloats(1);
     Environment=CreateDefaultSubobject<UBrightonEnvironmentComponent>(TEXT("Environment"));
     SmokeRig=CreateDefaultSubobject<USceneComponent>(TEXT("SmokeRig"));
     SmokeRig->SetupAttachment(RootComponent);
@@ -416,6 +437,73 @@ void AActOneDirector::EndBarShot()
     Show(TEXT("BarDima"),false);
 }
 
+void AActOneDirector::StartPursuitTrip(const FVector& Direction)
+{
+    APlayerController* PC=UGameplayStatics::GetPlayerController(this,0);
+    if (!PC || !PC->PlayerCameraManager || !PC->GetPawn() || TripCamera) return;
+    FActorSpawnParameters Parameters;
+    Parameters.Owner=this;
+    Parameters.ObjectFlags|=RF_Transient;
+    TripEye=PC->PlayerCameraManager->GetCameraLocation();
+    TripView=PC->PlayerCameraManager->GetCameraRotation();
+    TripDirection=Direction.GetSafeNormal2D();
+    TripCamera=GetWorld()->SpawnActor<ACameraActor>(TripEye,TripView,Parameters);
+    if (!TripCamera) return;
+    PreviousTripView=PC->GetViewTarget();
+    UCameraComponent* Camera=TripCamera->GetCameraComponent();
+    Camera->SetFieldOfView(PC->PlayerCameraManager->GetFOVAngle());
+    FCollisionQueryParams Query(SCENE_QUERY_STAT(PursuitTripFloor),false,PC->GetPawn());
+    FHitResult Ground;
+    const bool bOnGround=GetWorld()->LineTraceSingleByChannel(Ground,TripEye,TripEye-FVector(0,0,245),ECC_Visibility,Query);
+    TripDrop=bOnGround ? FMath::Clamp(TripEye.Z-Ground.ImpactPoint.Z-50.0,45.0,146.0) : 115.f;
+    TripElapsed=0;
+    if (Data && Data->SmokingArms && Data->TripArms)
+    {
+        USkeletalMeshComponent* Arms=NewObject<USkeletalMeshComponent>(TripCamera,TEXT("FirstPersonTripArms"));
+        Arms->SetSkeletalMeshAsset(Data->SmokingArms);
+        Arms->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        Arms->SetCanEverAffectNavigation(false);
+        Arms->SetCastShadow(false);
+        Arms->bAffectDistanceFieldLighting=false;
+        Arms->VisibilityBasedAnimTickOption=EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
+        Arms->SetupAttachment(Camera);
+        Arms->SetRelativeLocationAndRotation(FVector(0,0,-174.32),FRotator(0,-90,0));
+        Arms->RegisterComponent();
+        Arms->PlayAnimation(Data->TripArms,false);
+    }
+    PC->SetViewTarget(TripCamera);
+}
+
+void AActOneDirector::UpdatePursuitTrip(float DeltaSeconds)
+{
+    const float Before=TripElapsed;
+    TripElapsed+=DeltaSeconds;
+    const float Throw=FMath::SmoothStep(.05f,.39f,TripElapsed);
+    const float Drop=FMath::SmoothStep(.12f,.56f,TripElapsed);
+    const float GetUp=FMath::SmoothStep(1.05f,1.88f,TripElapsed);
+    const float Low=Drop*(1.f-GetUp);
+    const float Jolt=FMath::Sin(PI*FMath::Clamp((TripElapsed-.48f)/.17f,0.f,1.f));
+    const FVector Position=TripEye+TripDirection*(Throw*(1.f-GetUp)*55.f)-FVector(0,0,TripDrop*Low+4.f*Jolt);
+    const float Align=FMath::SmoothStep(0.f,.30f,TripElapsed)*(1.f-GetUp);
+    const float Yaw=TripView.Yaw+FMath::FindDeltaAngleDegrees(TripView.Yaw,TripDirection.Rotation().Yaw)*Align;
+    FRotator Look(FMath::Lerp(TripView.Pitch,-24.f,Low)-4.f*Jolt,Yaw,7.f*Low+5.f*Jolt);
+    TripCamera->SetActorLocationAndRotation(Position,Look);
+    if (Before<.52f && TripElapsed>=.52f)
+        if (USoundBase* Contact=LoadObject<USoundBase>(nullptr,TEXT("/Game/Prologue/Brighton/Audio/Wet2.Wet2")))
+            UGameplayStatics::PlaySoundAtLocation(this,Contact,Position-FVector(0,0,55),.66f,.80f);
+}
+
+void AActOneDirector::EndPursuitTrip()
+{
+    if (!TripCamera) return;
+    if (APlayerController* PC=UGameplayStatics::GetPlayerController(this,0))
+        if (AActor* Previous=PreviousTripView.IsValid() ? PreviousTripView.Get() : PC->GetPawn())
+            PC->SetViewTargetWithBlend(Previous,.08f);
+    TripCamera->SetLifeSpan(.12f);
+    TripCamera=nullptr;
+    PreviousTripView.Reset();
+}
+
 bool AActOneDirector::PatrolCanSeePlayer(APlayerController* Player) const
 {
     const AActor* Patrol=Cue(TEXT("Patrol"));
@@ -488,7 +576,8 @@ void AActOneDirector::OpenDoor(FName Hinge,float Yaw)
         DoorTo=DoorFrom+FMath::FindDeltaAngleDegrees(DoorFrom,Yaw);
         DoorProgress=0;
         MovingDoor=Actor;
-        DoorOpeningAudio::Play(Actor,Hinge==TEXT("SealedLeaf") ? EDoorOpeningSound::Entry : EDoorOpeningSound::Wood);
+        const bool bEntry=Hinge==TEXT("SealedLeaf") || Hinge==TEXT("FedorBuildingLeaf");
+        DoorOpeningAudio::Play(Actor,bEntry ? EDoorOpeningSound::Entry : EDoorOpeningSound::Wood);
     }
 }
 
@@ -506,7 +595,7 @@ void AActOneDirector::SetRain(bool bOn)
         Rain->ClearInstances();
         RainSplashes->ClearInstances();
         Drops.Reset();
-        DropFloors.Reset();
+        DropSpeeds.Reset();
         SplashAges.Reset();
         SplashLocations.Reset();
         SplashTransforms.Reset();
@@ -525,16 +614,21 @@ void AActOneDirector::StatusKey()
 void AActOneDirector::UpdateRain(const FVector& Around,float DeltaSeconds)
 {
     if (!Rain->GetStaticMesh()) return;
-    constexpr int32 Count=480;
-    constexpr int32 SplashCount=72;
     SampleRainGround(Around);
     if (Drops.IsEmpty())
     {
-        Drops.Reserve(Count);
-        DropFloors.Init(Around.Z-100,Count);
-        for (int32 Index=0;Index<Count;++Index)
-            Drops.Emplace(FRotator(-7,15,7),Around+FVector(Random.FRandRange(-650,650),Random.FRandRange(-650,650),Random.FRandRange(-120,770)),
-                         FVector(.0025,.0025,Random.FRandRange(.12,.30)));
+        Drops.Reserve(RainCount);
+        DropSpeeds.Reserve(RainCount);
+        for (int32 Index=0;Index<RainCount;++Index)
+        {
+            const float Speed=Random.FRandRange(1040,1770);
+            DropSpeeds.Add(Speed);
+            const float Radius=Index<RainCount/2 ? 490.f : 820.f;
+            const float Thickness=Random.FRandRange(.0016,.0034);
+            Drops.Emplace(FRotationMatrix::MakeFromZ(FVector(-150,-52,Speed)).ToQuat(),Around+FVector(Random.FRandRange(-Radius,Radius),
+                Random.FRandRange(-Radius,Radius),Random.FRandRange(-115,910)),
+                FVector(Thickness,Thickness,Random.FRandRange(.105,.32)));
+        }
         Rain->AddInstances(Drops,false,true,false);
         SplashAges.Init(1.f,SplashCount);
         SplashLocations.Init(FVector::ZeroVector,SplashCount);
@@ -544,19 +638,23 @@ void AActOneDirector::UpdateRain(const FVector& Around,float DeltaSeconds)
     for (int32 Index=0;Index<Drops.Num();++Index)
     {
         FTransform& Drop=Drops[Index];
-        FVector At=Drop.GetLocation()+FVector(125,36,-925)*DeltaSeconds;
-        const int32 X=FMath::Clamp(FMath::RoundToInt((At.X-GroundGridCenter.X)/160)+4,0,8);
-        const int32 Y=FMath::Clamp(FMath::RoundToInt((At.Y-GroundGridCenter.Y)/160)+4,0,8);
-        DropFloors[Index]=GroundGrid[Y*9+X];
-        if (At.Z<DropFloors[Index] || FVector::DistSquared2D(At,Around)>FMath::Square(900))
+        const FVector Velocity(150,52,-DropSpeeds[Index]);
+        FVector At=Drop.GetLocation()+Velocity*DeltaSeconds;
+        const int32 X=FMath::Clamp(FMath::RoundToInt((At.X-GroundGridCenter.X)/RainGridStep)+RainGridRadius,0,RainGridWidth-1);
+        const int32 Y=FMath::Clamp(FMath::RoundToInt((At.Y-GroundGridCenter.Y)/RainGridStep)+RainGridRadius,0,RainGridWidth-1);
+        const float Floor=GroundGrid[Y*RainGridWidth+X];
+        const bool bHit=(At.Z<Floor && Drop.GetLocation().Z>=Floor);
+        if (At.Z<Floor || FVector::DistSquared2D(At,Around)>FMath::Square(1150.f))
         {
-            if (At.Z<DropFloors[Index] && At.Z>Around.Z-270)
+            if (bHit && Floor>Around.Z-280 && Floor<Around.Z+80 && Index%2==0)
             {
-                SplashLocations[NextSplash]=FVector(At.X,At.Y,DropFloors[Index]+1.5f);
+                SplashLocations[NextSplash]=FVector(At.X,At.Y,Floor+.8f);
                 SplashAges[NextSplash]=0;
                 NextSplash=(NextSplash+1)%SplashCount;
             }
-            At=Around+FVector(Random.FRandRange(-650,650),Random.FRandRange(-650,650),Random.FRandRange(580,840));
+            const float Radius=Index<RainCount/2 ? 490.f : 820.f;
+            At=Around+FVector(Random.FRandRange(-Radius,Radius),Random.FRandRange(-Radius,Radius),
+                Random.FRandRange(625,960));
         }
         Drop.SetLocation(At);
     }
@@ -566,8 +664,11 @@ void AActOneDirector::UpdateRain(const FVector& Around,float DeltaSeconds)
         for (int32 Index=0;Index<SplashCount;++Index)
         {
             SplashAges[Index]+=DeltaSeconds;
-            const float Size=SplashAges[Index]<.34f ? .04f+.42f*SplashAges[Index] : 0.f;
+            const float Age=SplashAges[Index];
+            const float Size=Age<.36f ? .043f+.47f*Age : 0.f;
+            const float Fade=(1.f-FMath::SmoothStep(.035f,.35f,Age))*(.73f+(Index%6)*.06f);
             SplashTransforms[Index]=FTransform(FQuat::Identity,SplashLocations[Index],FVector(Size,Size,Size));
+            RainSplashes->SetCustomDataValue(Index,0,Fade,false);
         }
         RainSplashes->BatchUpdateInstancesTransforms(0,SplashTransforms,true,true,true);
     }
@@ -575,19 +676,25 @@ void AActOneDirector::UpdateRain(const FVector& Around,float DeltaSeconds)
 
 void AActOneDirector::SampleRainGround(const FVector& Around)
 {
-    if (!GroundGrid.IsEmpty() && FVector::DistSquared2D(Around,GroundGridCenter)<FMath::Square(150.f)) return;
+    if (!GroundGrid.IsEmpty() && FVector::DistSquared2D(Around,GroundGridCenter)<FMath::Square(140.f) &&
+        FMath::Abs(Around.Z-GroundGridCenter.Z)<85.f) return;
     GroundGridCenter=Around;
-    GroundGrid.Reset(81);
+    GroundGrid.Reset(RainGridWidth*RainGridWidth);
     FCollisionObjectQueryParams Objects(ECC_WorldStatic);
     FCollisionQueryParams Query(SCENE_QUERY_STAT(BrightonRainGround),false,this);
-    for (int32 Y=-4;Y<=4;++Y)
-        for (int32 X=-4;X<=4;++X)
+    for (int32 Y=-RainGridRadius;Y<=RainGridRadius;++Y)
+        for (int32 X=-RainGridRadius;X<=RainGridRadius;++X)
         {
-            const FVector At=Around+FVector(X*160,Y*160,0);
+            const FVector At=Around+FVector(X*RainGridStep,Y*RainGridStep,0);
             FHitResult Hit;
             const bool bHit=GetWorld()->LineTraceSingleByObjectType(Hit,At+FVector(0,0,1150),At-FVector(0,0,310),Objects,Query);
             GroundGrid.Add(bHit && !Hit.bStartPenetrating ? Hit.ImpactPoint.Z : Around.Z+1100);
         }
+    if (RainLoop)
+    {
+        const float NearbyRoof=GroundGrid[RainGridRadius*RainGridWidth+RainGridRadius];
+        RainLoop->SetVolumeMultiplier(NearbyRoof>Around.Z+100.f && NearbyRoof<Around.Z+1080.f ? .23f : .48f);
+    }
 }
 
 void AActOneDirector::UpdateSmoke(APlayerController* Player,float DeltaSeconds)
@@ -635,6 +742,7 @@ void AActOneDirector::Tick(float DeltaSeconds)
     }
     if (UActOneSubsystem* Act=UActOneSubsystem::Find(this)) Act->Update(DeltaSeconds);
     if (bRain) UpdateRain(Player->GetPawn()->GetActorLocation(),DeltaSeconds);
+    if (TripCamera) UpdatePursuitTrip(DeltaSeconds);
     if (bSmoking) UpdateSmoke(Player,DeltaSeconds);
     if (AActor* Prop=FallingBarWeapon.Get())
     {
@@ -667,7 +775,8 @@ void AActOneDirector::Tick(float DeltaSeconds)
             if (AActor* Marker=Cue(TEXT("PatrolOrigin")))
             {
                 const FVector Prev=Patrol->GetActorLocation();
-                const FVector Next=Marker->GetActorLocation()+FVector(0,185*Sweep,0);
+                const float Range=Marker->GetActorLocation().Z>500 ? 56.f : 185.f;
+                const FVector Next=Marker->GetActorLocation()+FVector(0,Range*Sweep,0);
                 Patrol->SetActorLocation(Next);
                 if (FVector::DistSquared(Prev,Next)>.01) Patrol->SetActorRotation(FRotator(0,Next.Y>Prev.Y ? 76.f : -76.f,0));
             }

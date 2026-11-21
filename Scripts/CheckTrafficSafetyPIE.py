@@ -6,7 +6,7 @@ levels=ue.get_editor_subsystem(ue.LevelEditorSubsystem)
 editor=ue.get_editor_subsystem(ue.UnrealEditorSubsystem)
 assert levels.load_level('/Game/Locations/L_NeptuneStreet')
 ue.EditorPythonScripting.set_keep_python_script_alive(True)
-state=dict(step='ready',deadline=time.monotonic()+100,positions={},lanes=set(),finished=set())
+state=dict(step='ready',deadline=time.monotonic()+125,positions={},lanes=set(),finished=set(),models=set(),right_sides=set())
 
 def place(pawn,pos):
     motion=pawn.get_component_by_class(ue.CharacterMovementComponent)
@@ -56,20 +56,31 @@ def tick(delta):
                     state['positions'].pop(name,None)
                     continue
                 location=car.get_actor_location()
-                # Remove the fixed collider center offset to compare with actual lane centerlines.
-                road=ue.Vector(location.x,location.y,location.z-75)
+                body=car.get_component_by_class(ue.BoxComponent)
+                road=ue.Vector(location.x,location.y,location.z-body.get_scaled_box_extent().z-11)
+                forward=ue.MathLibrary.get_forward_vector(car.get_actor_rotation())
+                state['models'].add(car.get_component_by_class(ue.StaticMeshComponent).static_mesh.get_name())
+                if road.x<-2500 and abs(forward.x)>.99:
+                    assert (road.y>-1210)==(forward.x>0),(road,forward)
+                    state['right_sides'].add('east' if forward.x>0 else 'west')
+                if (road.y>2200 or road.y<-3700) and abs(forward.y)>.99 and abs(road.x-2390)<290:
+                    assert (road.x<2390)==(forward.y>0),(road,forward)
+                    state['right_sides'].add('north' if forward.y>0 else 'south')
                 lanes=[flow.get_lane(index) for index in range(flow.get_route_count())]
                 distances=[lane.find_location_closest_to_world_location(road,ue.SplineCoordinateSpace.WORLD).distance(road) for lane in lanes]
                 assert min(distances)<3.5,('Vehicle drifted off its route',name,location,distances)
                 state['lanes'].add(distances.index(min(distances)))
                 state['positions'][name]=(location.x,location.y)
             assert flow.get_blocked_moves()==state['prior_blocks'],'A car hit static scenery or another car on an empty road'
-            if ue.GameplayStatics.get_time_seconds(world)-state['started']<60:return
+            assert flow.get_impact_count()==0,'A moving car hit a pedestrian on its normal route'
+            if ue.GameplayStatics.get_time_seconds(world)-state['started']<88:return
             assert state['lanes']=={0,1,2,3},state['lanes']
             assert len(state['finished'])>=2,('Both lanes did not finish a route',state['finished'])
-            assert flow.get_total_spawned()-state['prior_spawns']>=7
+            assert flow.get_total_spawned()-state['prior_spawns']>=9
+            assert len(state['models'])==5,state['models']
+            assert state['right_sides']=={'east','west','north','south'},state['right_sides']
             ue.GameplayStatics.set_global_time_dilation(world,1)
-            ue.log('TRAFFIC_ROUTES_OK: full static swept audit, 60 game seconds, four active routes, pooled cars, no scenery contact')
+            ue.log('TRAFFIC_ROUTES_OK: 88 game seconds, five models, four right-hand routes, no vehicle contact or stalls')
             state['step']='choose_impact'
         elif step=='choose_impact':
             cars=ue.GameplayStatics.get_all_actors_of_class(world,ue.StreetTrafficCar)

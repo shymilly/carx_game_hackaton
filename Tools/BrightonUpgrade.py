@@ -42,13 +42,13 @@ def factory_asset(folder,name,cls,factory):
     return result
 
 
-def media(file,folder,name=None):
+def media(file,folder,name=None,replace_existing=False):
     name=name or file.stem
     destination=folder+'/'+name
-    if ASSETS.does_asset_exist(destination):return ue.load_asset(destination)
+    if ASSETS.does_asset_exist(destination) and not replace_existing:return ue.load_asset(destination)
     task=ue.AssetImportTask()
     task.set_editor_properties(dict(filename=str(file),destination_path=folder,destination_name=name,
-                                    automated=True,save=False))
+                                    automated=True,save=False,replace_existing=replace_existing))
     if file.suffix=='.obj':
         options=ue.FbxImportUI()
         options.set_editor_properties(dict(import_materials=False,import_textures=False,import_as_skeletal=False))
@@ -143,20 +143,22 @@ return smoothstep(0.05,0.61,n);
     return material
 
 
-def custom_alpha_material(name,code,tint):
-    path=ROOT+'/Materials/M_'+name
-    if ASSETS.does_asset_exist(path):
-        material=ue.load_asset(path)
-        LIB.set_material_usage(material,ue.MaterialUsage.MATUSAGE_INSTANCED_STATIC_MESHES)
-        save(material)
-        return material
+def custom_alpha_material(name,code,tint,instance_fade=False):
     material=make_material(ROOT,name,tint,.3)
+    LIB.delete_all_material_expressions(material)
     material.set_editor_properties(dict(blend_mode=ue.BlendMode.BLEND_TRANSLUCENT,
         shading_model=ue.MaterialShadingModel.MSM_UNLIT,two_sided=True))
     uv=node(material,ue.MaterialExpressionTextureCoordinate)
-    alpha=node(material,ue.MaterialExpressionCustom,inputs=[custom_input('UV')],
+    inputs=[custom_input('UV')]
+    if instance_fade: inputs.append(custom_input('Coverage'))
+    alpha=node(material,ue.MaterialExpressionCustom,inputs=inputs,
         code=code,output_type=ue.CustomMaterialOutputType.CMOT_FLOAT1)
     connect(uv,alpha,'UV')
+    if instance_fade:
+        opacity=node(material,ue.MaterialExpressionPerInstanceCustomData,data_index=0,const_default_value=0.)
+        interpolator=node(material,ue.MaterialExpressionVertexInterpolator)
+        assert LIB.connect_material_expressions(opacity,'',interpolator,'') or LIB.connect_material_expressions(opacity,'',interpolator,'VS')
+        connect(interpolator,alpha,'Coverage')
     output(alpha,material,P.MP_OPACITY)
     output(color(material,tint),material,P.MP_EMISSIVE_COLOR)
     LIB.set_material_usage(material,ue.MaterialUsage.MATUSAGE_INSTANCED_STATIC_MESHES)
@@ -167,13 +169,18 @@ def custom_alpha_material(name,code,tint):
 
 def weather_effects():
     splash=custom_alpha_material('RainRing','''
-float radius=length((UV-0.5)*2);
-return (1-smoothstep(0.035,0.095,abs(radius-0.75)))*0.30;
-''',(.37,.45,.50))
+float2 p = (UV-.5)*2;
+float r = length(p);
+float outer = 1-smoothstep(.024,.075,abs(r-.79));
+float inner = (1-smoothstep(.017,.045,abs(r-.49)))*.22;
+float irregular = .82+.18*sin(atan2(p.y,p.x)*7+2*r);
+float glint = (1-smoothstep(.03,.17,r))*.13;
+return ((outer+inner)*irregular*.27+glint)*Coverage;
+''',(.43,.51,.60),True)
     streak=custom_alpha_material('RainStreak','''
-float tip=smoothstep(0.0,0.12,UV.y)*(1-smoothstep(0.72,1.0,UV.y));
-return tip*0.36;
-''',(.34,.43,.54))
+float tip=smoothstep(0,.17,UV.y)*(1-smoothstep(.52,1,UV.y));
+return tip*(.32+.12*smoothstep(.12,.48,UV.x));
+''',(.49,.59,.71))
     return splash,streak
 
 

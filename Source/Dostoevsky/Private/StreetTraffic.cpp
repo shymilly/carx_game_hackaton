@@ -19,7 +19,7 @@ CSV_DEFINE_CATEGORY(Brighton,true);
 namespace
 {
 // Clear the road by 11 cm but catch curbs. The visual mesh origin stays on the road.
-constexpr float BodyCenterHeight=75.f;
+constexpr float RoadGroundClearance=11.f;
 constexpr float BodyHalfHeight=64.f;
 constexpr float MinimumTrafficInterval=6.05f;
 constexpr float MinimumSpawnGap=880.f;
@@ -30,14 +30,14 @@ constexpr float FollowingGap=155.f;
 constexpr float Acceleration=440.f;
 constexpr float Braking=630.f;
 constexpr float MaxSimulationStep=1.f/30.f;
-FTransform RoadTransform(const USplineComponent& Lane,float Distance)
+FTransform RoadTransform(const USplineComponent& Lane,float Distance,float CenterHeight)
 {
     using Coordinate=ESplineCoordinateSpace::Type;
     const float Length=Lane.GetSplineLength();
     const FVector Location=Lane.GetLocationAtDistanceAlongSpline(Distance,Coordinate::World);
     const FVector Before=Lane.GetLocationAtDistanceAlongSpline(FMath::Max(0.f,Distance-SteeringLookahead),Coordinate::World);
     const FVector After=Lane.GetLocationAtDistanceAlongSpline(FMath::Min(Length,Distance+SteeringLookahead),Coordinate::World);
-    return FTransform((After-Before).Rotation(),Location+FVector(0,0,BodyCenterHeight));
+    return FTransform((After-Before).Rotation(),Location+FVector(0,0,CenterHeight));
 }
 FVector SweptExtent(FVector Extent,const FQuat& Start,const FQuat& End,float Margin)
 {
@@ -76,7 +76,7 @@ AStreetTrafficCar::AStreetTrafficCar()
     RoadBody->SetCanEverAffectNavigation(false);
     BodyMesh=CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BodyMesh"));
     BodyMesh->SetupAttachment(RoadBody);
-    BodyMesh->SetRelativeLocation(FVector(0,0,-BodyCenterHeight));
+    BodyMesh->SetRelativeLocation(FVector(0,0,-BodyHalfHeight-RoadGroundClearance));
     BodyMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     BodyMesh->SetGenerateOverlapEvents(false);
     BodyMesh->SetCanEverAffectNavigation(false);
@@ -108,15 +108,19 @@ FVector AStreetTrafficCar::CollisionExtent(const UStaticMesh* Model)
         const FBoxSphereBounds& Bounds=Model->GetBounds();
         Extent.X=FMath::Max(Extent.X,FMath::Abs(Bounds.Origin.X)+Bounds.BoxExtent.X);
         Extent.Y=FMath::Max(Extent.Y,FMath::Abs(Bounds.Origin.Y)+Bounds.BoxExtent.Y);
+        Extent.Z=FMath::Max(Extent.Z,(Bounds.Origin.Z+Bounds.BoxExtent.Z-RoadGroundClearance)*.5);
     }
     return Extent;
 }
 void AStreetTrafficCar::Configure(UStaticMesh* Model,int32 Slot,UMaterialInterface* Paint)
 {
+    BodyMesh->EmptyOverrideMaterials();
     BodyMesh->SetStaticMesh(Model);
     RoadBody->SetBoxExtent(CollisionExtent(Model),false);
-    if (Slot!=INDEX_NONE) BodyMesh->SetMaterial(Slot,Paint);
+    BodyMesh->SetRelativeLocation(FVector(0,0,-RoadCenterHeight()));
+    if (Slot!=INDEX_NONE && Paint) BodyMesh->SetMaterial(Slot,Paint);
 }
+float AStreetTrafficCar::RoadCenterHeight() const { return RoadBody->GetUnscaledBoxExtent().Z+RoadGroundClearance; }
 void AStreetTrafficCar::ConfigureAudio(USoundBase* DriveBy,USoundBase* Horn,USoundConcurrency* DriveLimit,USoundConcurrency* HornLimit)
 {
     DriveByAudio->SetSound(DriveBy);
@@ -203,9 +207,10 @@ AStreetTrafficFlow::AStreetTrafficFlow()
 void AStreetTrafficFlow::BeginPlay()
 {
     Super::BeginPlay();
-    if (!CarMesh || Eastbound->GetSplineLength()<100.f || Westbound->GetSplineLength()<100.f) {SetActorTickEnabled(false);return;}
+    if ((!CarMesh && !FleetMeshes.ContainsByPredicate([](const auto& Model){return IsValid(Model.Get());})) ||
+        Eastbound->GetSplineLength()<100.f || Westbound->GetSplineLength()<100.f) {SetActorTickEnabled(false);return;}
     ValidateRouteClearance();
-    BodyExtent=AStreetTrafficCar::CollisionExtent(CarMesh);
+    BodyExtent=FleetExtent();
     MeasureJunction();
     DrivingRandom.Initialize(1994);
     DriveConcurrency=NewObject<USoundConcurrency>(this);
@@ -255,10 +260,17 @@ int32 AStreetTrafficFlow::GetImpactCount() const
     for (const FVehicle& V:Fleet) if (V.Car.IsValid()) Count+=V.Car->GetImpactCount();
     return Count;
 }
+FVector AStreetTrafficFlow::FleetExtent() const
+{
+    FVector Largest=AStreetTrafficCar::CollisionExtent(CarMesh);
+    for (UStaticMesh* Model:FleetMeshes) Largest=Largest.ComponentMax(AStreetTrafficCar::CollisionExtent(Model));
+    return Largest;
+}
 bool AStreetTrafficFlow::ValidateRouteClearance()
 {
     RouteObstructions=0;
-    const FVector Extent=AStreetTrafficCar::CollisionExtent(CarMesh);
+    const FVector Extent=FleetExtent();
+    const float CenterHeight=Extent.Z+RoadGroundClearance;
     FCollisionQueryParams Query(SCENE_QUERY_STAT(StreetTrafficRouteAudit),false,this);
     for (const FVehicle& V:Fleet) if (V.Car.IsValid()) Query.AddIgnoredActor(V.Car.Get());
     // Pedestrians are moving obstacles, not an invalid road. Runtime sweeps still hit them.
@@ -269,12 +281,12 @@ bool AStreetTrafficFlow::ValidateRouteClearance()
         const USplineComponent& Lane=*GetLane(Index);
         LaneAllowed[Index]=Lane.GetSplineLength()>=100.f;
         int32 SamplesBlocked=0;
-        FTransform Before=RoadTransform(Lane,0);
+        FTransform Before=RoadTransform(Lane,0,CenterHeight);
         const int32 Steps=FMath::CeilToInt(Lane.GetSplineLength()/AuditStep);
         for (int32 Step=0;Step<=Steps;++Step)
         {
             const float Distance=FMath::Min(Step*AuditStep,Lane.GetSplineLength());
-            const FTransform After=RoadTransform(Lane,Distance);
+            const FTransform After=RoadTransform(Lane,Distance,CenterHeight);
             FHitResult Hit;
             if (GetWorld()->SweepSingleByChannel(Hit,Before.GetLocation(),After.GetLocation(),After.GetRotation(),ECC_WorldDynamic,FCollisionShape::MakeBox(SweptExtent(Extent,Before.GetRotation(),After.GetRotation(),SafetyMargin)),Query,VehicleResponses()))
             {
@@ -376,13 +388,21 @@ void AStreetTrafficFlow::SpawnNext()
     if (!LaneAllowed[LaneIndex] || Fleet.ContainsByPredicate([LaneIndex](const FVehicle& V) {return V.Lane==LaneIndex && V.Distance<MinimumSpawnGap;})) return;
     FVehicle* Slot=Fleet.FindByPredicate([](const FVehicle& V) {return V.Car.IsValid() && V.Lane==INDEX_NONE;});
     if (!Slot) return;
-    const FTransform Pose=RoadTransform(*GetLane(LaneIndex),0);
+    const int32 MeshIndex=FleetMeshes.IsEmpty() ? INDEX_NONE : (TotalSpawned<FleetMeshes.Num() ?
+        TotalSpawned : DrivingRandom.RandRange(0,FleetMeshes.Num()-1));
+    UStaticMesh* Model=FleetMeshes.IsValidIndex(MeshIndex) ? FleetMeshes[MeshIndex].Get() : nullptr;
+    const bool bUseLegacyPaint=Model==nullptr;
+    if (!Model) Model=CarMesh;
+    if (!Model) return;
+    const FVector Extent=AStreetTrafficCar::CollisionExtent(Model);
+    const FTransform Pose=RoadTransform(*GetLane(LaneIndex),0,Extent.Z+RoadGroundClearance);
     FCollisionQueryParams Query(SCENE_QUERY_STAT(StreetTrafficSpawn),false,this);
     Query.AddIgnoredActor(Slot->Car.Get());
-    if (GetWorld()->OverlapBlockingTestByChannel(Pose.GetLocation(),Pose.GetRotation(),ECC_WorldDynamic,FCollisionShape::MakeBox(AStreetTrafficCar::CollisionExtent(CarMesh)+FVector(SafetyMargin,SafetyMargin,0)),Query,VehicleResponses())) return;
-    const int32 Variant=Paints.IsEmpty() ? INDEX_NONE : (TotalSpawned<Paints.Num() ? TotalSpawned : DrivingRandom.RandRange(0,Paints.Num()-1));
+    if (GetWorld()->OverlapBlockingTestByChannel(Pose.GetLocation(),Pose.GetRotation(),ECC_WorldDynamic,FCollisionShape::MakeBox(Extent+FVector(SafetyMargin,SafetyMargin,0)),Query,VehicleResponses())) return;
+    const int32 Variant=!bUseLegacyPaint || Paints.IsEmpty() ? INDEX_NONE :
+        (TotalSpawned<Paints.Num() ? TotalSpawned : DrivingRandom.RandRange(0,Paints.Num()-1));
     AStreetTrafficCar* Car=Slot->Car.Get();
-    Car->Configure(CarMesh,PaintSlot,Paints.IsValidIndex(Variant) ? Paints[Variant].Get() : nullptr);
+    Car->Configure(Model,PaintSlot,Paints.IsValidIndex(Variant) ? Paints[Variant].Get() : nullptr);
     Car->SetActorTransform(Pose,false,nullptr,ETeleportType::TeleportPhysics);
     Slot->Lane=LaneIndex;
     Slot->Distance=0;
@@ -409,7 +429,7 @@ void AStreetTrafficFlow::Advance(FVehicle& V,float DeltaSeconds,float Clearance)
     }
     const float Next=FMath::Min(V.Distance+Step,Lane.GetSplineLength());
     float Fraction=1;
-    if (!Car->MoveOnRoad(RoadTransform(Lane,Next),V.Speed,Fraction))
+    if (!Car->MoveOnRoad(RoadTransform(Lane,Next,Car->RoadCenterHeight()),V.Speed,Fraction))
     {
         V.Distance=FMath::Lerp(V.Distance,Next,Fraction);
         V.Speed=0;

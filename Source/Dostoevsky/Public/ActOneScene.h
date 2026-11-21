@@ -36,6 +36,8 @@ public:
     void Face(const FVector& Target);
     void Nod();
     void WalkAway(const FVector& Destination,float Speed);
+    void WalkTo(const FVector& Destination,float Speed);
+    bool IsWalkingToMark() const { return WalkSpeed>0; }
     void SetSpeaking(bool bIsSpeaking);
 protected:
     void BeginPlay() override;
@@ -52,6 +54,7 @@ private:
     UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> HeldCigarette;
     bool bSpeaking = false;
     bool bLegacySeat = false;
+    bool bHideAtWalkEnd = false;
     FVector WalkTarget = FVector::ZeroVector;
     void Part(FName Name,float Pitch,float Roll=0);
     void PlayCharacterPose();
@@ -85,6 +88,9 @@ public:
     void BarShotImpact();
     void DropBarWeapon();
     void EndBarShot();
+    void StartPursuitTrip(const FVector& Direction);
+    void EndPursuitTrip();
+    UFUNCTION(BlueprintPure,Category="Pursuit") bool IsPursuitTripPlaying() const { return TripCamera != nullptr; }
     void PressRecorder();
     void OpenDoor(FName Hinge,float Yaw);
     UFUNCTION(BlueprintCallable,Category="Weather") void SetRain(bool bOn);
@@ -99,7 +105,7 @@ private:
     TMap<FName,TWeakObjectPtr<AActor>> Cues;
     TArray<TWeakObjectPtr<AActOneInteraction>> Targets;
     TArray<FTransform> Drops;
-    TArray<float> DropFloors;
+    TArray<float> DropSpeeds;
     TArray<float> SplashAges;
     TArray<FVector> SplashLocations;
     TArray<FTransform> SplashTransforms;
@@ -112,6 +118,13 @@ private:
     UPROPERTY(Transient) TObjectPtr<USkeletalMeshComponent> SmokingArms;
     UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> HeldCigarette;
     TWeakObjectPtr<AActor> PreviousBarView;
+    TWeakObjectPtr<AActor> PreviousTripView;
+    UPROPERTY(Transient) TObjectPtr<ACameraActor> TripCamera;
+    FVector TripEye=FVector::ZeroVector;
+    FVector TripDirection=FVector::ForwardVector;
+    FRotator TripView=FRotator::ZeroRotator;
+    float TripElapsed=0;
+    float TripDrop=0;
     TWeakObjectPtr<AActor> FallingBarWeapon;
     FTransform ReleaseTransform, LandingTransform;
     float DropElapsed=0, DropDuration=0;
@@ -133,4 +146,5 @@ private:
     void SampleRainGround(const FVector& Around);
     void UpdateSmoke(APlayerController* Player,float DeltaSeconds);
     void UpdateRecorder(APlayerController* Player,float DeltaSeconds);
+    void UpdatePursuitTrip(float DeltaSeconds);
 };

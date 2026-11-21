@@ -28,6 +28,7 @@ public:
     UFUNCTION(BlueprintPure, Category="Traffic") int32 GetImpactCount() const { return ImpactCount; }
     UFUNCTION(BlueprintPure, Category="Traffic") float GetLastImpactSpeed() const { return LastImpactSpeed; }
     static FVector CollisionExtent(const UStaticMesh* Model);
+    float RoadCenterHeight() const;
 private:
     UPROPERTY(VisibleAnywhere, Category="Traffic") TObjectPtr<UBoxComponent> RoadBody;
     UPROPERTY(VisibleAnywhere, Category="Traffic") TObjectPtr<UStaticMeshComponent> BodyMesh;
@@ -61,6 +62,7 @@ public:
     UFUNCTION(BlueprintPure, Category="Traffic") int32 GetRouteCount() const { return bUseCrossStreetRoutes ? 4 : 2; }
     UFUNCTION(BlueprintPure, Category="Traffic") USplineComponent* GetLane(int32 Lane) const;
     UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category="Traffic") TObjectPtr<UStaticMesh> CarMesh;
+    UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category="Traffic") TArray<TObjectPtr<UStaticMesh>> FleetMeshes;
     UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category="Traffic|Audio") TObjectPtr<USoundBase> DriveBySound;
     UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category="Traffic|Audio") TObjectPtr<USoundBase> HornSound;
     UFUNCTION(BlueprintPure, Category="Traffic|Audio") int32 GetDriveByCount() const;
@@ -110,6 +112,7 @@ private:
     int32 RouteObstructions=0;
     int32 BlockedMoves=0;
     void Release(FVehicle& Vehicle);
+    FVector FleetExtent() const;
     void SpawnNext();
     void MeasureJunction();
     float FollowingClearance(const FVehicle& Vehicle) const;

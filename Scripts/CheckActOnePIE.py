@@ -12,7 +12,7 @@ levels = ue.get_editor_subsystem(ue.LevelEditorSubsystem)
 editor = ue.get_editor_subsystem(ue.UnrealEditorSubsystem)
 root = Path(ue.Paths.convert_relative_path_to_full(ue.Paths.project_dir()))
 spec = json.loads((root/'Docs/Scenario/ActOne.json').read_text(encoding='utf-8'))
-state = dict(busy=False, deadline=time.monotonic()+225)
+state = dict(busy=False, deadline=time.monotonic()+295)
 apartment = 'L_DimaApartmentInterior'
 street = 'L_NeptuneStreet'
 phase = ue.ActOnePhase
@@ -79,7 +79,7 @@ def pause(seconds):
 
 
 def page(key=None, choice=None, count=None):
-    yield from wait(windows, 'Expected shared document '+str(key))
+    yield from wait(lambda:len(windows())==1,'Expected shared document '+str(key))
     active = windows()
     assert len(active) == 1, len(active)
     window = active[0]
@@ -133,6 +133,10 @@ def use(which, offset=(-100,0)):
 
 def physical_use(which, offset):
     point = reach(which, offset)
+    yield from look_and_use(which,point)
+
+
+def look_and_use(which,point):
     yield from pause(.17)
     camera = ue.GameplayStatics.get_player_camera_manager(world(),0).get_camera_location()
     pc().set_control_rotation(ue.MathLibrary.find_look_at_rotation(camera,point))
@@ -373,11 +377,22 @@ def precinct(alt,alarm):
 def fedor(alt,alarm):
     entry = 'seal alarm' if alarm else 'Ivan’s key' if alt else 'lock timing'
     say_step('5 '+entry+', four clues, pursuit and automatic credits')
-    yield from physical_use(action.SEAL,(-157,0))
+    yield from physical_use(action.BUILDING_ENTRY,(-115,0))
+    yield from pause(.73)
+    travel_limit=time.monotonic()+26
+    for floor in range(3):
+        for x,y in ((604,0),(604,-91),(955,-91),(955,64),(600,64)):
+            yield from walk_to(x,y,travel_limit,17)
+        assert pawn().get_actor_location().z>(floor+1)*270+62,(floor,pawn().get_actor_location())
+    yield from walk_to(602,40,travel_limit,14)
+    pawn().get_component_by_class(ue.CharacterMovementComponent).stop_movement_immediately()
+    assert abs(target(action.SEAL).get_actor_location().z-919)<.5
+    ue.log('FEDOR_STAIRS_PLAY_OK entry door opened with E and all six flights climbed on foot')
+    yield from look_and_use(action.SEAL,target(action.SEAL).get_actor_location())
     if alarm:
         def patrol_facing_door():
             guard = target('ActCue:Patrol')
-            return guard.get_actor_rotation().yaw < 0 and guard.get_actor_location().y > 200
+            return guard.get_actor_rotation().yaw > 0 and guard.get_actor_location().y < -30
         yield from wait(patrol_facing_door,'Patrol crossing the line of sight',12)
         yield from page('SealDoor',0,1)
         yield from page('AlarmNotice')
@@ -395,6 +410,12 @@ def fedor(alt,alarm):
     yield from travel('L_FedorApartment','ActEntry')
     assert act().is_alarmed() == alarm
     assert not target(action.IVAN_FEDOR).get_actor_enable_collision()
+    ivan=target('ActCue:IvanFedor')
+    listener=target('ActCue:FedorListener')
+    outside=listener.get_actor_location()
+    assert ivan.get_editor_property('character_profile').get_name()=='DA_Ivan'
+    assert listener.get_editor_property('character_profile').get_name()=='DA_Agent'
+    assert ivan.get_editor_property('hidden') and outside.x<-529 and not listener.get_editor_property('hidden')
     use(action.FLOORBOARD)
     use(action.FOLDER)
     yield from page('FedorFolder')
@@ -405,14 +426,23 @@ def fedor(alt,alarm):
     use(action.DRAWER)
     use(action.DESK_BADGE)
     yield from page('FedorBadge')
+    yield from wait(lambda:target(action.IVAN_FEDOR).get_actor_enable_collision(),'Ivan walks in',6)
+    assert ivan.get_actor_location().x>-500
+    assert (listener.get_actor_location()-outside).length()<2
     use(action.IVAN_FEDOR,(104,0))
     yield from page('IvanFedor')
     assert act().has_evidence('BankKey')
+    yield from wait(lambda:listener.get_editor_property('hidden'),'The listener runs away',5)
+    assert (listener.get_actor_location()-outside).length()>180 and not ivan.get_editor_property('hidden')
+    assert ivan.get_actor_location().x>-500
+    ue.log('FEDOR_ROLES_PLAY_OK Ivan enters and remains inside while the listener runs down the hallway')
     use(action.LEAVE_FEDOR,(100,0))
     yield from travel('L_BrightonAlley','ActEntry')
     assert not target(action.CHASE_BADGE).get_actor_enable_collision()
     game_key('LeftShift',True)
     route_end=time.monotonic()+32
+    director=ue.GameplayStatics.get_actor_of_class(world(),ue.ActOneDirector)
+    saw_fall=False
     for x,y in ((1017,0),(1017,822),(2190,822),(2190,1620),(3330,1620)):
         while True:
             current=pawn().get_actor_location()
@@ -420,12 +450,26 @@ def fedor(alt,alarm):
             distance=hypot(dx,dy)
             if distance<28:break
             assert time.monotonic()<route_end,('Physical pursuit route blocked',current,x,y)
+            if director.is_pursuit_trip_playing() and not saw_fall:
+                saw_fall=True
+                assert x==2190 and y==1620 and current.y<1550,current
+                yield from pause(.61)
+                view=pc().get_view_target()
+                arms=next(c for c in view.get_components_by_class(ue.SkeletalMeshComponent) if c.get_name()=='FirstPersonTripArms')
+                assert arms.get_position()>.43 and arms.is_playing()
+                assert pc().is_move_input_ignored()
+                assert ue.GameplayStatics.get_player_camera_manager(world(),0).get_camera_location().z<106
+                yield from wait(lambda:not director.is_pursuit_trip_playing(),'Dima stands back up',5)
+                assert not pc().is_move_input_ignored()
+                continue
             pc().set_control_rotation(ue.MathLibrary.find_look_at_rotation(current,ue.Vector(x,y,current.z)))
             pawn().add_movement_input(ue.Vector(dx/distance,dy/distance,0),1,False)
             yield
     game_key('LeftShift',False)
     pawn().get_component_by_class(ue.CharacterMovementComponent).stop_movement_immediately()
     yield from wait(lambda: act().is_pursuit_finished(), 'Agent ran to the end of the route')
+    assert saw_fall and target('ActCue:Agent').get_editor_property('hidden')
+    ue.log('CHASE_TRIP_PLAY_OK Dima falls before the turn, recovers controls, then the badge is available')
     use(action.CHASE_BADGE,(84,0))
     yield from arrival(apartment,'FromFinale')
     yield from wait(windows,'Tape playback')
@@ -435,6 +479,19 @@ def fedor(alt,alarm):
     assert act().has_evidence('BrightonNewspaper') and act().has_evidence('PursuitBadge')
     assert act().can_use_disposition(1,0,1,100)
     assert not act().can_use_disposition(2,0,100,100)
+
+
+def walk_to(x,y,deadline,tolerance):
+    while True:
+        current=pawn().get_actor_location()
+        dx,dy=x-current.x,y-current.y
+        distance=hypot(dx,dy)
+        if distance<tolerance:
+            return
+        assert time.monotonic()<deadline,('Stairwell movement blocked',current,x,y)
+        pc().set_control_rotation(ue.MathLibrary.find_look_at_rotation(current,ue.Vector(x,y,current.z)))
+        pawn().add_movement_input(ue.Vector(dx/distance,dy/distance,0),min(1,distance/44),False)
+        yield
 
 
 def run():

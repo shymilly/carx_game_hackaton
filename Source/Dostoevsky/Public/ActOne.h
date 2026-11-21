@@ -16,6 +16,7 @@ class UNarrativeSubsystem;
 class USoundBase;
 class UAnimInstance;
 class UAnimMontage;
+class UAnimSequence;
 class USkeletalMesh;
 class UStaticMesh;
 
@@ -34,7 +35,7 @@ enum class EActOneAction : uint8
 {
     Pistol, Press, Newspaper, PayPhone, Veteran, Grocery, LeaveGrocery, Cigarettes, Bar, LeaveBar,
     Guard, Missing, Office, Captain, Training, Archives, IvanStreet, Ride, Seal, Floorboard,
-    Folder, Tape, Photograph, Drawer, DeskBadge, IvanFedor, LeaveFedor, ChaseBadge
+    Folder, Tape, Photograph, Drawer, DeskBadge, IvanFedor, LeaveFedor, ChaseBadge, BuildingEntry
 };
 
 USTRUCT(BlueprintType)
@@ -61,6 +62,7 @@ public:
     UPROPERTY(EditAnywhere, Category="Smoking") TSubclassOf<UAnimInstance> SmokingAnimClass;
     UPROPERTY(EditAnywhere, Category="Smoking") TObjectPtr<UAnimMontage> SmokingMontage;
     UPROPERTY(EditAnywhere, Category="Smoking") TObjectPtr<UStaticMesh> CigaretteMesh;
+    UPROPERTY(EditAnywhere, Category="Pursuit") TObjectPtr<UAnimSequence> TripArms;
 };
 
 UCLASS()
@@ -136,6 +138,11 @@ private:
     bool bAgentEscaped = false;
     bool bClosingStarted = false;
     bool bIvanSpoken = false;
+    bool bLobbyOpened = false;
+    bool bIvanEntered = false;
+    bool bIvanArrived = false;
+    bool bTripStarted = false;
+    bool bTripRecovered = false;
     int32 Cash = 20;
     float ChasePosition = 0;
     EChallenge Challenge = EChallenge::None;
@@ -173,6 +180,7 @@ private:
     void OpenSeal();
     void EnterFedor(bool bLoud);
     void CheckClues();
+    void UpdateFedorArrival();
     void MeetFedorIvan();
     void WalkOff(FName Actor,FName Exit);
     void UpdatePursuit(float DeltaSeconds);

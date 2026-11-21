@@ -135,8 +135,8 @@ def run_presentation():
     director=ue.GameplayStatics.get_actor_of_class(world(),ue.ActOneDirector)
     director.set_rain(True)
     yield from wait(lambda: environment().get_wetness()>.9,'Wet pavement',10)
-    assert director.get_editor_property('rain').get_instance_count()==480
-    assert director.get_editor_property('rain_splashes').get_instance_count()==72
+    assert director.get_editor_property('rain').get_instance_count()==740
+    assert director.get_editor_property('rain_splashes').get_instance_count()==112
     previous=environment().get_footstep_count()
     yield from walk((1,0,0),1.7)
     assert environment().get_footstep_count()>previous

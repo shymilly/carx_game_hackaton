@@ -116,6 +116,7 @@ void UActOneSubsystem::Reset()
     bPressOpen=bVeteranDone=bVeteranFled=bPistol=bOldManFled=bGuardResolved=bArchives=bLockpickTraining=false;
     bGuardKilled=false;
     bIvanKey=bAlarm=bFloorboardOpen=bDrawerOpen=bBankKey=bAgentEscaped=bIvanSpoken=bClosingStarted=false;
+    bLobbyOpened=bIvanEntered=bIvanArrived=bTripStarted=bTripRecovered=false;
     Cash=20;
     ChasePosition=0;
     Step=0;
@@ -135,13 +136,16 @@ FText UActOneSubsystem::Objective() const
         ? Text(TEXT("Поговорить с капитаном Криллом")) : Text(TEXT("Явиться в полицейский участок"));
     case EActOnePhase::CaptainDone: return Text(TEXT("Выйти из участка"));
     case EActOnePhase::MeetIvan: return Text(TEXT("Поговорить с Иваном"));
-    case EActOnePhase::FedorEntrance: return Text(TEXT("Тайком пробраться в квартиру отца"));
+    case EActOnePhase::FedorEntrance:
+        if (Place()==EActOneLocation::Entrance)
+            return bLobbyOpened ? Text(TEXT("Подняться к квартире Фёдора на 4-й этаж")) : Text(TEXT("Войти в подъезд Фёдора"));
+        return Text(TEXT("Тайком пробраться в квартиру отца"));
     case EActOnePhase::Search:
-        if (bBankKey) return Text(TEXT("Выйти из квартиры Фёдора"));
+        if (bBankKey) return Text(TEXT("Выбежать за агентом Aegis"));
         if (HasEvidence(Clues[0])&&HasEvidence(Clues[1])&&HasEvidence(Clues[2])&&HasEvidence(Clues[3]))
             return Text(TEXT("Поговорить с Иваном"));
         return Text(TEXT("Осмотреть квартиру отца"));
-    case EActOnePhase::Chase: return bAgentEscaped ? Text(TEXT("Подобрать значок Aegis")) : Text(TEXT("Догнать агента"));
+    case EActOnePhase::Chase: return bAgentEscaped && bTripRecovered ? Text(TEXT("Подобрать значок Aegis")) : Text(TEXT("Догнать агента"));
     case EActOnePhase::Finale: return Text(TEXT("Прослушать кассету"));
     case EActOnePhase::Complete: return Text(TEXT("Акт завершён"));
     }
@@ -198,12 +202,13 @@ void UActOneSubsystem::RefreshScene()
         case EActOneAction::Archives: bAvailable=bArchives; break;
         case EActOneAction::IvanStreet: bAvailable=Phase==EActOnePhase::MeetIvan; break;
         case EActOneAction::Ride: bAvailable=Phase==EActOnePhase::FedorEntrance; break;
+        case EActOneAction::BuildingEntry: bAvailable=Phase==EActOnePhase::FedorEntrance && !bLobbyOpened; break;
         case EActOneAction::Floorboard: bAvailable=!bFloorboardOpen; break;
         case EActOneAction::Folder: bAvailable=bFloorboardOpen; break;
         case EActOneAction::Drawer: bAvailable=!bDrawerOpen; break;
         case EActOneAction::DeskBadge: bAvailable=bDrawerOpen; break;
-        case EActOneAction::IvanFedor: bAvailable=bAllClues&&!bBankKey; break;
-        case EActOneAction::ChaseBadge: bAvailable=bAgentEscaped && Phase==EActOnePhase::Chase; break;
+        case EActOneAction::IvanFedor: bAvailable=bAllClues && bIvanArrived && !bBankKey; break;
+        case EActOneAction::ChaseBadge: bAvailable=bAgentEscaped && bTripRecovered && Phase==EActOnePhase::Chase; break;
         default: break;
         }
         Target->SetAvailable(bAvailable);
@@ -222,10 +227,10 @@ void UActOneSubsystem::RefreshScene()
     }
     if (Place()==EActOneLocation::Fedor)
     {
-        Director->Show(TEXT("IvanFedor"),bAllClues&&!bBankKey);
+        Director->Show(TEXT("IvanFedor"),bIvanEntered);
         Director->Show(TEXT("DeskBadgeProp"),bDrawerOpen&&!HasEvidence(TEXT("FedorBadge")));
     }
-    if (Place()==EActOneLocation::Alley) Director->Show(TEXT("ChaseBadge"),bAgentEscaped);
+    if (Place()==EActOneLocation::Alley) Director->Show(TEXT("ChaseBadge"),bAgentEscaped && bTripRecovered);
     Director->SetRain(IsRain());
 }
 
@@ -337,6 +342,8 @@ void UActOneSubsystem::Update(float DeltaSeconds)
         Timed(2.55f,FSimpleDelegate::CreateUObject(this,&ThisClass::Dispatch));
     }
     if (Phase==EActOnePhase::Chase && Place()==EActOneLocation::Alley && !bAgentEscaped) UpdatePursuit(DeltaSeconds);
+    if (Phase==EActOnePhase::Search && Place()==EActOneLocation::Fedor && bIvanEntered && !bIvanArrived)
+        UpdateFedorArrival();
     if (Phase==EActOnePhase::Precinct && Place()==EActOneLocation::Precinct && !bClosingStarted)
     {
         bClosingStarted=true;
@@ -447,6 +454,14 @@ bool UActOneSubsystem::Use(const AActOneInteraction& Item,APlayerController* Use
     case EActOneAction::IvanStreet: if (Phase==EActOnePhase::MeetIvan) MeetIvan(); break;
     case EActOneAction::Ride:
         if (Phase==EActOnePhase::FedorEntrance) Travel(TEXT("L_FedorEntry"),TEXT("Подъезд Фёдора"),TEXT("ActEntry"));
+        break;
+    case EActOneAction::BuildingEntry:
+        if (Phase==EActOnePhase::FedorEntrance && !bLobbyOpened)
+        {
+            Director->OpenDoor(TEXT("FedorBuildingLeaf"),88.f);
+            bLobbyOpened=true;
+            RefreshScene();
+        }
         break;
     case EActOneAction::Seal: if (Phase==EActOnePhase::FedorEntrance) OpenSeal(); break;
     case EActOneAction::Floorboard:
@@ -712,19 +727,51 @@ void UActOneSubsystem::EnterFedor(bool bLoud)
 
 void UActOneSubsystem::CheckClues()
 {
+    if (!bIvanEntered)
+    {
+        for (FName Entry:Clues) if (!HasEvidence(Entry)) { RefreshScene(); return; }
+        AActOneCast* Ivan=Cast<AActOneCast>(Director->Cue(TEXT("IvanFedor")));
+        const AActor* Arrival=Director->Cue(TEXT("IvanFedorArrival"));
+        bIvanEntered=true;
+        Director->Show(TEXT("IvanFedor"),true);
+        Director->OpenDoor(TEXT("FedorFlatLeaf"),82.f);
+        if (Ivan && Arrival)
+            Ivan->WalkTo(Arrival->GetActorLocation(),155.f);
+        else
+            bIvanArrived=true;
+    }
+    RefreshScene();
+}
+
+void UActOneSubsystem::UpdateFedorArrival()
+{
+    AActOneCast* Ivan=Cast<AActOneCast>(Director->Cue(TEXT("IvanFedor")));
+    if (Ivan && Ivan->IsWalkingToMark()) return;
+    bIvanArrived=true;
+    if (Ivan && Player()->GetPawn()) Ivan->Face(Player()->GetPawn()->GetActorLocation());
     RefreshScene();
 }
 
 void UActOneSubsystem::MeetFedorIvan()
 {
-    if (bBankKey) return;
+    if (bBankKey || !bIvanArrived) return;
     for (FName Entry:Clues) if (!HasEvidence(Entry)) return;
     Say({TEXT("IvanFedor")},FSimpleDelegate::CreateWeakLambda(this,[this]()
     {
         bBankKey=true;
         AddEvidence(TEXT("BankKey"),false);
+        AActOneCast* Listener=Cast<AActOneCast>(Director->Cue(TEXT("FedorListener")));
+        const AActor* Exit=Director->Cue(TEXT("FedorListenerExit"));
+        if (Listener && Exit)
+        {
+            Director->Show(TEXT("FedorListener"),true);
+            Listener->WalkAway(Exit->GetActorLocation(),460.f);
+        }
+        if (AActOneCast* Ivan=Cast<AActOneCast>(Director->Cue(TEXT("IvanFedor"))))
+            if (const AActor* Wait=Director->Cue(TEXT("IvanFedorWait")))
+                Ivan->WalkTo(Wait->GetActorLocation(),112.f);
+        Hint(Text(TEXT("Кто-то подслушивал за дверью. За ним!")),3.f);
         RefreshScene();
-        WalkOff(TEXT("IvanFedor"),TEXT("IvanFedorExit"));
     }));
 }
 
@@ -741,13 +788,29 @@ void UActOneSubsystem::UpdatePursuit(float DeltaSeconds)
 {
     AActOneCast* Agent=Cast<AActOneCast>(Director->Cue(TEXT("Agent")));
     USplineComponent* Route=Director->PursuitRoute;
-    if (!Agent || !Route || !Player()->GetPawn()) return;
+    if (!Agent || !Route || Route->GetNumberOfSplinePoints()<3 || !Player()->GetPawn()) return;
     const FVector Position=Player()->GetPawn()->GetActorLocation();
     const float At=Route->GetDistanceAlongSplineAtSplineInputKey(Route->FindInputKeyClosestToWorldLocation(Position));
     const float Length=Route->GetSplineLength();
+    const float FinalBend=Route->GetDistanceAlongSplineAtSplinePoint(Route->GetNumberOfSplinePoints()-2);
+    const float TripAt=FinalBend-186.f;
     const float Lead=bAlarm ? 1000.f : 820.f;
     if (ChasePosition<=0) {ChasePosition=530; Hint(Text(TEXT("Агент Aegis уходит в переулок. Бегите за ним.")),4.f);}
-    ChasePosition=FMath::Max(ChasePosition,FMath::Min3(Length,ChasePosition+DeltaSeconds*(bAlarm ? 570.f : 505.f),At+Lead));
+    if (!bTripStarted && At>=TripAt)
+    {
+        bTripStarted=true;
+        Director->StartPursuitTrip(Route->GetDirectionAtDistanceAlongSpline(TripAt,ESplineCoordinateSpace::World));
+        Timed(1.94f,FSimpleDelegate::CreateWeakLambda(this,[this]()
+        {
+            bTripRecovered=true;
+            Director->EndPursuitTrip();
+            RefreshScene();
+        }));
+    }
+    if (bTripStarted)
+        ChasePosition=FMath::Min(Length,ChasePosition+DeltaSeconds*1050.f);
+    else
+        ChasePosition=FMath::Max(ChasePosition,FMath::Min3(FinalBend-86.f,ChasePosition+DeltaSeconds*(bAlarm ? 570.f : 505.f),At+Lead));
     const FTransform Pose=Route->GetTransformAtDistanceAlongSpline(ChasePosition,ESplineCoordinateSpace::World);
     Agent->SetActorLocationAndRotation(Pose.GetLocation(),Pose.GetRotation());
     Agent->Pose(EActOnePose::Running);

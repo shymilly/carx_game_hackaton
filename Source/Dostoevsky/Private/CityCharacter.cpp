@@ -570,6 +570,45 @@ bool UCityCharacterAuthoring::AuthorFirstPersonSmoke(USkeletalMesh* Mesh,USkelet
 #endif
 }
 
+bool UCityCharacterAuthoring::AuthorFirstPersonTrip(USkeletalMesh* Mesh,UCityGestureSequence* Destination)
+{
+#if WITH_EDITOR
+    if (!Mesh || !Mesh->GetSkeleton() || !Destination) return false;
+    const FReferenceSkeleton& Ref=Mesh->GetRefSkeleton();
+    const auto Bone=[&Ref](const TCHAR* Name){return Ref.FindBoneIndex(Name);};
+    const int32 UpperL=Bone(TEXT("upper_arm_L")), ElbowL=Bone(TEXT("forearm_L")), HandL=Bone(TEXT("hand_L"));
+    const int32 UpperR=Bone(TEXT("upper_arm_R")), ElbowR=Bone(TEXT("forearm_R")), HandR=Bone(TEXT("hand_R"));
+    if (FMath::Min3(UpperL,ElbowL,HandL)<0 || FMath::Min3(UpperR,ElbowR,HandR)<0) return false;
+    const TArray<FTransform>& Reference=Ref.GetRefBonePose();
+    TArray<FTransform> Pose;
+    constexpr int32 Frames=58;
+    TArray<FGestureKeys> Tracks;
+    Tracks.SetNum(Ref.GetNum());
+    for (int32 Frame=0;Frame<=Frames;++Frame)
+    {
+        const double Time=Frame/30.;
+        const double Reach=FMath::SmoothStep(.03,.36,Time);
+        const double Brace=FMath::SmoothStep(.36,.64,Time);
+        const double Push=FMath::SmoothStep(.91,1.20,Time);
+        const double Release=FMath::SmoothStep(1.12,1.76,Time);
+        FVector Left=FMath::Lerp(FVector(37,10,112),FVector(25,55,159),Reach);
+        FVector Right=FMath::Lerp(FVector(-39,13,115),FVector(-31,51,156),Reach);
+        Left=FMath::Lerp(Left,FVector(25,49,150),Brace)+FVector(2,-6,-4)*Push;
+        Right=FMath::Lerp(Right,FVector(-31,45,152),Brace)+FVector(-3,-7,-5)*Push;
+        Left=FMath::Lerp(Left,FVector(37,11,112),Release);
+        Right=FMath::Lerp(Right,FVector(-38,13,115),Release);
+        TArray<FTransform> Local=Reference;
+        ComponentPose(Ref,Local,Pose);
+        CityReach(Ref,Local,Pose,UpperL,ElbowL,HandL,Left,FVector(54,24,112),1.);
+        CityReach(Ref,Local,Pose,UpperR,ElbowR,HandR,Right,FVector(-56,22,114),1.);
+        AppendGesturePose(Local,Tracks);
+    }
+    return WriteGesture(*Mesh,*Destination,Tracks,Frames);
+#else
+    return false;
+#endif
+}
+
 bool UCityCharacterAuthoring::InstallSmokingSlot(UAnimBlueprint* Blueprint)
 {
 #if WITH_EDITOR

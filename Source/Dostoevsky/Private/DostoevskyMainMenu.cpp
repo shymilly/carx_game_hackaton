@@ -29,7 +29,7 @@ namespace
 constexpr TCHAR CoverAsset[]=TEXT("/Game/UI/Menu/T_MainMenuBrighton.T_MainMenuBrighton");
 const FLinearColor Parchment=FLinearColor::FromSRGBColor(FColor(233,204,155));
 const FLinearColor Cream=FLinearColor::FromSRGBColor(FColor(249,236,213));
-const FLinearColor Ink=FLinearColor::FromSRGBColor(FColor(28,22,19));
+const FLinearColor MenuInk=FLinearColor::FromSRGBColor(FColor(28,22,19));
 
 FSlateFontInfo MenuFont(bool bTitle,float Size)
 {
@@ -110,7 +110,7 @@ TSharedRef<SWidget> UDostoevskyMainMenu::Button(const FText& Label,bool bPrimary
         [SNew(SButton)
             .ButtonStyle(bPrimary ? &PrimaryStyle : &SecondaryStyle)
             .HAlign(HAlign_Left).VAlign(VAlign_Center).OnClicked(Action)
-            [SNew(STextBlock).Text(Label).Font(MenuFont(false,19)).ColorAndOpacity(bPrimary ? Ink : Cream)]];
+            [SNew(STextBlock).Text(Label).Font(MenuFont(false,19)).ColorAndOpacity(bPrimary ? MenuInk : Cream)]];
 }
 
 TSharedRef<SWidget> UDostoevskyMainMenu::Slider(const FText& Label,bool bVolume)
