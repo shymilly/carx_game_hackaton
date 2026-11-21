@@ -1,13 +1,11 @@
 #include "DocumentWindow.h"
 #include "InteractionDocument.h"
 #include "NarrativeSubsystem.h"
-#include "Brushes/SlateRoundedBoxBrush.h"
+#include "DialoguePanel.h"
 #include "Engine/GameInstance.h"
 #include "Engine/Texture2D.h"
-#include "Fonts/CompositeFont.h"
+#include "DialogueFont.h"
 #include "InputCoreTypes.h"
-#include "Misc/Paths.h"
-#include "Rendering/DrawElements.h"
 #include "Styling/CoreStyle.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SSpacer.h"
@@ -19,97 +17,6 @@
 #include "Widgets/Images/SImage.h"
 #include "Widgets/Text/STextBlock.h"
 
-namespace
-{
-FSlateFontInfo DialogueFont(const TCHAR* Filename, float Size)
-{
-    const FString Directory = FPaths::ProjectContentDir() / TEXT("UI/Dialogue/Fonts");
-    TSharedRef<FCompositeFont> Font = MakeShared<FCompositeFont>();
-    Font->DefaultTypeface.Fonts.Add(FTypefaceEntry(TEXT("Regular"), Directory / Filename,
-        EFontHinting::Default, EFontLoadingPolicy::LazyLoad));
-    // Preserve readable names with Cascadia if a character is absent in SOUTHGHETTO.
-    Font->FallbackTypeface.Typeface.Fonts.Add(FTypefaceEntry(TEXT("Regular"),
-        Directory / TEXT("CascadiaCode-Light.otf"), EFontHinting::Default, EFontLoadingPolicy::LazyLoad));
-    return FSlateFontInfo(Font, Size);
-}
-
-class SDialoguePanel : public SCompoundWidget
-{
-public:
-    SLATE_BEGIN_ARGS(SDialoguePanel) {}
-        SLATE_ARGUMENT(FLinearColor, Fill)
-        SLATE_ARGUMENT(FLinearColor, Outline)
-        SLATE_DEFAULT_SLOT(FArguments, Content)
-    SLATE_END_ARGS()
-
-    void Construct(const FArguments& Args)
-    {
-        FillBrush = MakeUnique<FSlateRoundedBoxBrush>(Args._Fill, 28.f);
-        Outline = Args._Outline;
-        ChildSlot.Padding(FMargin(24, 18, 24, 12))[Args._Content.Widget];
-    }
-
-    virtual int32 OnPaint(const FPaintArgs& Args, const FGeometry& Geometry,
-        const FSlateRect& CullingRect, FSlateWindowElementList& Elements, int32 Layer,
-        const FWidgetStyle& Style, bool bEnabled) const override
-    {
-        FSlateDrawElement::MakeBox(Elements, Layer, Geometry.ToPaintGeometry(), FillBrush.Get(),
-            ESlateDrawEffect::None, FillBrush->GetTint(Style) * Style.GetColorAndOpacityTint());
-
-        // Continuous distance around the rounded perimeter keeps dash spacing even at corners.
-        const FVector2D Size = Geometry.GetLocalSize();
-        const float Radius = FMath::Min(28.f, float(FMath::Min(Size.X, Size.Y)) / 2.f - 2.f);
-        if (Radius > 0)
-        {
-            TArray<FVector2D> Perimeter;
-            const FVector2D Centers[] = {
-                {Size.X - Radius - 2, Radius + 2}, {Size.X - Radius - 2, Size.Y - Radius - 2},
-                {Radius + 2, Size.Y - Radius - 2}, {Radius + 2, Radius + 2}
-            };
-            for (int32 Corner = 0; Corner < 4; ++Corner)
-            {
-                for (int32 Step = 0; Step <= 16; ++Step)
-                {
-                    const float Angle = FMath::DegreesToRadians(-90.f + Corner * 90.f + Step * 90.f / 16.f);
-                    Perimeter.Add(Centers[Corner] + FVector2D(FMath::Cos(Angle), FMath::Sin(Angle)) * Radius);
-                }
-            }
-            const FVector2D FirstPoint = Perimeter[0];
-            Perimeter.Add(FirstPoint);
-            float Distance = 0;
-            constexpr float DashLength = 20.f;
-            constexpr float Period = 32.f;
-            for (int32 Index = 1; Index < Perimeter.Num(); ++Index)
-            {
-                const FVector2D Delta = Perimeter[Index] - Perimeter[Index - 1];
-                const float Length = Delta.Size();
-                if (Length <= KINDA_SMALL_NUMBER) continue;
-                float Offset = 0;
-                while (Offset < Length - KINDA_SMALL_NUMBER)
-                {
-                    const float Phase = FMath::Fmod(Distance + Offset, Period);
-                    const bool bDraw = Phase < DashLength;
-                    const float Run = FMath::Min(Length - Offset, (bDraw ? DashLength : Period) - Phase + 0.001f);
-                    if (bDraw)
-                    {
-                        TArray<FVector2D> Points;
-                        Points.Add(Perimeter[Index - 1] + Delta * (Offset / Length));
-                        Points.Add(Perimeter[Index - 1] + Delta * ((Offset + Run) / Length));
-                        FSlateDrawElement::MakeLines(Elements, Layer + 1, Geometry.ToPaintGeometry(), Points,
-                            ESlateDrawEffect::None, Outline * Style.GetColorAndOpacityTint(), true, 2.f);
-                    }
-                    Offset += Run;
-                }
-                Distance += Length;
-            }
-        }
-        return SCompoundWidget::OnPaint(Args, Geometry, CullingRect, Elements, Layer + 2, Style, bEnabled);
-    }
-private:
-    TUniquePtr<FSlateRoundedBoxBrush> FillBrush;
-    FLinearColor Outline;
-};
-}
 
 TSharedRef<SWidget> UDocumentWindow::RebuildWidget()
 {
@@ -145,26 +52,47 @@ TSharedRef<SWidget> UDocumentWindow::RebuildWidget()
         }
         else Contents->AddSlot()[Text];
     }
-    for (int32 First = 0; First < Choices.Num(); First += 2)
+    ChoiceButtons.Reset();
+    ChoiceList = Contents;
+    const bool bHasChoices = !Choices.IsEmpty();
+    if (bHasChoices)
     {
-        TSharedRef<SHorizontalBox> Row = SNew(SHorizontalBox);
-        for (int32 Index = First; Index < FMath::Min(First + 2, Choices.Num()); ++Index)
+        const FSlateFontInfo ResponseFont = DialogueFont(TEXT("CascadiaCode-Light.otf"), 14);
+        const FLinearColor Normal = FMath::Lerp(PanelColor, FLinearColor::White, .45f);
+        const FLinearColor Highlight = FMath::Lerp(PanelColor, AccentColor, .53f);
+        static const FSlateRoundedBoxBrush ButtonFill(FLinearColor::White, 8.f);
+
+        for (int32 Index = 0; Index < Choices.Num(); ++Index)
         {
-            Row->AddSlot().FillWidth(1).Padding(0, 2, 10, 2)
-                [ SNew(SButton).ButtonStyle(&FCoreStyle::Get().GetWidgetStyle<FButtonStyle>("NoBorder"))
-                    .ButtonColorAndOpacity(FLinearColor::White).ContentPadding(FMargin(8, 3))
-                    .OnClicked_Lambda([this, Index]() { ChooseOption(Index); return FReply::Handled(); })
-                    [ SNew(STextBlock).Text(FText::Format(NSLOCTEXT("Dostoevsky", "DocumentOption", "{0}. {1}"),
-                        FText::AsNumber(Index + 1), Choices[Index])).ColorAndOpacity(TextColor).AutoWrapText(true)
-                        .Font(DialogueFont(TEXT("CascadiaCode-Light.otf"), 14)) ] ];
+            TSharedRef<SButton> Button = SNew(SButton)
+                .ButtonStyle(&FCoreStyle::Get().GetWidgetStyle<FButtonStyle>("NoBorder"))
+                .IsFocusable(false).HAlign(HAlign_Fill).ContentPadding(FMargin(10, 6))
+                .OnHovered_Lambda([this, Index] { SelectedChoice = Index; })
+                .OnClicked_Lambda([this, Index] { ChooseOption(Index); return FReply::Handled(); })
+                [
+                    SNew(SHorizontalBox)
+                    + SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0, 0, 9, 0)
+                    [
+                        SNew(STextBlock).Text(FText::AsCultureInvariant(TEXT(">"))).Font(ResponseFont)
+                        .ColorAndOpacity_Lambda([this, Index]() -> FSlateColor
+                        { return SelectedChoice == Index ? TextColor : FLinearColor::Transparent; })
+                    ]
+                    + SHorizontalBox::Slot().FillWidth(1).VAlign(VAlign_Center)
+                    [SNew(STextBlock).Text(Choices[Index]).ColorAndOpacity(TextColor).AutoWrapText(true).Font(ResponseFont)]
+                ];
+            const TSharedRef<SBorder> Row = SNew(SBorder).Padding(0).BorderImage(&ButtonFill)
+                .BorderBackgroundColor_Lambda([this, Index, Normal, Highlight]
+                { return SelectedChoice == Index ? Highlight : Normal; })
+                [Button];
+            ChoiceButtons.Add(Row);
+            Contents->AddSlot().Padding(0, Index == 0 ? 10 : 4, 6, 0)[Row];
         }
-        Contents->AddSlot()[Row];
     }
 
     // Anchors follow the supplied gameplay reference, measured against the viewport, not editor chrome.
     // All DocumentWindow subclasses use this shared design, including previously authored widget trees.
     return SNew(SConstraintCanvas).Visibility(EVisibility::SelfHitTestInvisible)
-        + SConstraintCanvas::Slot().Anchors(FAnchors(0.045f, 0.70f, 0.77f, 0.975f))
+        + SConstraintCanvas::Slot().Anchors(FAnchors(0.045f, FMath::Max(.50f, .70f - .035f * Choices.Num()), 0.77f, 0.975f))
           .Offset(FMargin(0)).Alignment(FVector2D::ZeroVector)
         [ SNew(SDialoguePanel).Fill(PanelColor).Outline(AccentColor)
           [ SNew(SVerticalBox)
@@ -172,13 +100,25 @@ TSharedRef<SWidget> UDocumentWindow::RebuildWidget()
               [ SNew(STextBlock).Text(Heading).AutoWrapText(true).ColorAndOpacity(TextColor)
                   .Font(DialogueFont(TEXT("SOUTHGHETTO.ttf"), 25)) ]
             + SVerticalBox::Slot().FillHeight(1)[Contents]
-            + SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right).Padding(0,6,0,0)
-              [ SNew(SButton).ButtonStyle(&FCoreStyle::Get().GetWidgetStyle<FButtonStyle>("NoBorder"))
-                  .ContentPadding(FMargin(6,2))
-                  .Visibility(bRequireChoice ? EVisibility::Collapsed : EVisibility::Visible)
-                  .OnClicked_Lambda([this]() { RequestClose(); return FReply::Handled(); })
-                  [ SNew(STextBlock).Text(Close).ColorAndOpacity(TextColor)
-                      .Font(DialogueFont(TEXT("CascadiaCode-Light.otf"), 10)) ] ]
+            + SVerticalBox::Slot().AutoHeight().Padding(0,6,0,0)
+            [
+                SNew(SHorizontalBox)
+                + SHorizontalBox::Slot().FillWidth(1).VAlign(VAlign_Center)
+                [
+                    SNew(STextBlock).Text(NSLOCTEXT("Dostoevsky", "ResponseKeys", "↑ ↓ / W S   ·   Enter — выбрать"))
+                    .ColorAndOpacity(TextColor).Font(DialogueFont(TEXT("CascadiaCode-Light.otf"), 10))
+                    .Visibility(bHasChoices ? EVisibility::Visible : EVisibility::Collapsed)
+                ]
+                + SHorizontalBox::Slot().AutoWidth()
+                [
+                    SNew(SButton).ButtonStyle(&FCoreStyle::Get().GetWidgetStyle<FButtonStyle>("NoBorder"))
+                    .IsFocusable(!bHasChoices).ContentPadding(FMargin(6,2))
+                    .Visibility(bRequireChoice ? EVisibility::Collapsed : EVisibility::Visible)
+                    .OnClicked_Lambda([this]() { RequestClose(); return FReply::Handled(); })
+                    [SNew(STextBlock).Text(Close).ColorAndOpacity(TextColor)
+                        .Font(DialogueFont(TEXT("CascadiaCode-Light.otf"), 10))]
+                ]
+            ]
           ]
         ];
 }
@@ -247,6 +187,7 @@ TSharedRef<SWidget> UDocumentWindow::BuildCredits()
 void UDocumentWindow::SetChoices(TArray<FText> InChoices, FDocumentChoice InChoice)
 {
     Choices = MoveTemp(InChoices);
+    SelectedChoice = 0;
     OnChoice = MoveTemp(InChoice);
 }
 
@@ -277,13 +218,25 @@ FReply UDocumentWindow::NativeOnKeyDown(const FGeometry& Geometry, const FKeyEve
         RequestClose();
         return FReply::Handled();
     }
-    if (!Event.IsRepeat() && !Choices.IsEmpty())
+    if (!Choices.IsEmpty())
     {
-        const FKey Digits[] = {EKeys::One, EKeys::Two, EKeys::Three, EKeys::Four};
-        const FKey Numpad[] = {EKeys::NumPadOne, EKeys::NumPadTwo, EKeys::NumPadThree, EKeys::NumPadFour};
-        for (int32 Index = 0; Index < UE_ARRAY_COUNT(Digits); ++Index)
-            if ((Event.GetKey() == Digits[Index] || Event.GetKey() == Numpad[Index]) && ChooseOption(Index))
-                return FReply::Handled();
+        const FKey Key = Event.GetKey();
+        if (Key == EKeys::Up || Key == EKeys::W || Key == EKeys::Down || Key == EKeys::S)
+        {
+            const int32 Direction = Key == EKeys::Up || Key == EKeys::W ? -1 : 1;
+            SelectedChoice = (SelectedChoice + Direction + Choices.Num()) % Choices.Num();
+            if (const auto List = ChoiceList.Pin(); List && ChoiceButtons.IsValidIndex(SelectedChoice))
+            {
+                if (const auto Row = ChoiceButtons[SelectedChoice].Pin())
+                    List->ScrollDescendantIntoView(Row, true, EDescendantScrollDestination::IntoView, 4.f);
+            }
+            return FReply::Handled();
+        }
+        if (Key == EKeys::Enter)
+        {
+            if (!Event.IsRepeat()) ChooseOption(SelectedChoice);
+            return FReply::Handled();
+        }
     }
     return Super::NativeOnKeyDown(Geometry, Event);
 }

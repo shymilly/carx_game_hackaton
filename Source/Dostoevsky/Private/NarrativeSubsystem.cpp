@@ -1,4 +1,5 @@
 #include "NarrativeSubsystem.h"
+#include "CharacterNotebook.h"
 #include "DoorOpeningAudio.h"
 #include "DimaApartmentStory.h"
 #include "LocationTravel.h"
@@ -136,14 +137,33 @@ bool UNarrativeSubsystem::OpenDocument(APlayerController* Player, UInteractionDo
 {
     if (!Player || !Player->IsLocalController() || !Document || IsLocationTransitionActive()) return false;
     CloseDocument();
-    Window = CreateWidget<UDocumentWindow>(Player, WindowClass.Get() ? WindowClass.Get() : UDocumentWindow::StaticClass());
-    if (!Window) return false;
+    UDocumentWindow* DocumentWindow = CreateWidget<UDocumentWindow>(Player, WindowClass.Get() ? WindowClass.Get() : UDocumentWindow::StaticClass());
+    if (!DocumentWindow) return false;
     CurrentDocument = Document;
-    Window->Document = Document;
-    Window->bRequireChoice = bRequireChoice;
-    Window->OnCloseRequested = MoveTemp(Continue);
-    Window->OnKeyInput = MoveTemp(Input);
-    Window->SetChoices(MoveTemp(Choices), MoveTemp(Selection));
+    DocumentWindow->Document = Document;
+    DocumentWindow->bRequireChoice = bRequireChoice;
+    DocumentWindow->OnCloseRequested = MoveTemp(Continue);
+    DocumentWindow->OnKeyInput = MoveTemp(Input);
+    DocumentWindow->SetChoices(MoveTemp(Choices), MoveTemp(Selection));
+    PresentModal(Player, DocumentWindow);
+    if (Document->OpenSound) UGameplayStatics::PlaySound2D(Player, Document->OpenSound);
+    if (Document->Voice) Voice = UGameplayStatics::SpawnSound2D(Player, Document->Voice);
+    return true;
+}
+
+bool UNarrativeSubsystem::ShowCharacterNotebook(APlayerController* Player, const FActOneStatistics& Stats, int32 Cash, const FText& Notes)
+{
+    if (!Player || !Player->IsLocalController() || IsDocumentOpen() || IsLocationTransitionActive()) return false;
+    UCharacterNotebook* Notebook = CreateWidget<UCharacterNotebook>(Player);
+    if (!Notebook) return false;
+    Notebook->SetEntries(Stats, Cash, Notes);
+    PresentModal(Player, Notebook);
+    return true;
+}
+
+void UNarrativeSubsystem::PresentModal(APlayerController* Player, UUserWidget* Widget)
+{
+    Window = Widget;
     Window->AddToViewport(50);
     ModalPlayer = Player;
     bPreviousCursor = Player->bShowMouseCursor;
@@ -156,20 +176,17 @@ bool UNarrativeSubsystem::OpenDocument(APlayerController* Player, UInteractionDo
     Mode.SetWidgetToFocus(Window->TakeWidget());
     Player->SetInputMode(Mode);
     Window->SetKeyboardFocus();
-    if (Document->OpenSound) UGameplayStatics::PlaySound2D(Player, Document->OpenSound);
-    if (Document->Voice) Voice = UGameplayStatics::SpawnSound2D(Player, Document->Voice);
-    return true;
 }
 
 void UNarrativeSubsystem::CloseDocument()
 {
     if (Voice) { Voice->Stop(); Voice = nullptr; }
-    if (Window)
+    if (UDocumentWindow* DocumentWindow = Cast<UDocumentWindow>(Window))
     {
-        Window->OnCloseRequested.Unbind();
-        Window->OnKeyInput.Unbind();
-        Window->RemoveFromParent();
+        DocumentWindow->OnCloseRequested.Unbind();
+        DocumentWindow->OnKeyInput.Unbind();
     }
+    if (Window) Window->RemoveFromParent();
     if (IsValid(ModalPlayer))
     {
         ModalPlayer->SetIgnoreMoveInput(false);
