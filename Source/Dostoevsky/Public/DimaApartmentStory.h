@@ -122,6 +122,16 @@ private:
     UPROPERTY(Transient) TObjectPtr<UDimaWashOverlay> WashOverlay;
     UPROPERTY(Transient) TArray<TObjectPtr<UInteractionDocument>> Pages;
     TWeakObjectPtr<APlayerController> Player;
+    struct FMovingDoorSound
+    {
+        TWeakObjectPtr<AActor> Leaf;
+        FName TargetProperty;
+        FName ProgressProperty;
+        double PreviousProgress=0;
+        bool bPlayed=false;
+        bool bFridge=false;
+    };
+    TArray<FMovingDoorSound, TInlineAllocator<3>> DoorSounds;
     FDimaApartmentProgress Progress;
     FName PendingInspection;
     int32 PageIndex = 0;
@@ -143,6 +153,7 @@ private:
     void FinishWash();
     void RingPhone();
     void Hint(const FText& Text);
+    void UpdateDoorSounds();
 };
 
 UCLASS()

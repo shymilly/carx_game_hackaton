@@ -10,6 +10,7 @@ struct FActOneStatistics;
 class UDocumentWindow;
 class UAudioComponent;
 class USoundBase;
+class AActor;
 class APlayerController;
 class ATargetPoint;
 class SWidget;
@@ -36,7 +37,8 @@ public:
     UFUNCTION(BlueprintCallable, Category="Narrative|Audio") void StopAmbience(float FadeSeconds = 1.f);
     // Destination is an asset reference, so renames and cooking can track it.
     UFUNCTION(BlueprintCallable, Category="Narrative|Travel")
-    bool TravelToStreet(TSoftObjectPtr<UWorld> Destination, FText LocationTitle, UTexture2D* DestinationPhoto = nullptr, FName ArrivalTag = NAME_None);
+    bool TravelToStreet(TSoftObjectPtr<UWorld> Destination, FText LocationTitle, UTexture2D* DestinationPhoto = nullptr,
+        FName ArrivalTag = NAME_None, const AActor* OpeningDoor = nullptr);
     bool ShowLocationCard(APlayerController* Player, FText LocationTitle, UTexture2D* DestinationPhoto,
         const ATargetPoint* Arrival = nullptr);
     UFUNCTION(BlueprintPure, Category="Narrative|Travel") bool IsLocationTransitionActive() const

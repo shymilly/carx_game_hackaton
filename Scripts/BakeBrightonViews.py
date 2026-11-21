@@ -6,7 +6,8 @@ import unreal as ue
 
 project=Path(ue.Paths.convert_relative_path_to_full(ue.Paths.project_dir()))
 quarter='-quarterviews' in ue.SystemLibrary.get_command_line().lower()
-reviews=project/'Saved/Reviews'/('Brighton014' if quarter else 'Brighton012')
+repair='-streetrepairviews' in ue.SystemLibrary.get_command_line().lower()
+reviews=project/'Saved/Reviews'/('Brighton0141' if repair else 'Brighton014' if quarter else 'Brighton012')
 reviews.mkdir(parents=True,exist_ok=True)
 levels=ue.get_editor_subsystem(ue.LevelEditorSubsystem)
 actors=ue.get_editor_subsystem(ue.EditorActorSubsystem)
@@ -37,6 +38,15 @@ if quarter:
         ('L_DimaApartmentInterior','PistolDesk',(-25,310,131),(-58.3,349.3,87.7),52),
         ('L_PolicePrecinct','Precinct',(1602,-2725,170),(1110,-2860,133),80),
     ])
+if repair:
+    shots=[
+        ('L_NeptuneStreet','Street',None,None,80),
+        ('L_NeptuneStreet','BrickFacade',(986,-1850,164),(986,-2149,164),64),
+        ('L_NeptuneStreet','BrickUpperFloor',(2937,1055,337),(3390,1100,330),59),
+        ('L_NeptuneStreet','RailCrossing',(2400,-5320,204),(2400,-7771,532),68),
+        ('L_NeptuneStreet','RailEastPortal',(16760,-7415,912),(18200,-7771,755),65),
+        ('L_NeptuneStreet','RailWestPortal',(-3600,-7380,862),(-5040,-7771,733),65),
+    ]
 state=dict(index=0,stage='open',map=None,busy=False,deadline=time.monotonic()+240)
 ue.EditorPythonScripting.set_keep_python_script_alive(True)
 
@@ -72,6 +82,8 @@ def import_views():
              ('Street','Resources/Presentation/T_Transition_Neptune.png','/Game/Prologue/Street/Transitions'))
     if quarter:
         changed=(*changed[1:],('Precinct','Resources/Presentation/T_Transition_Precinct.png','/Game/Prologue/Street/Transitions'))
+    if repair:
+        changed=(('Street','Resources/Presentation/T_Transition_Neptune.png','/Game/Prologue/Street/Transitions'),)
     for name,destination,folder in changed:
         file=project/destination
         copy2(reviews/(name+'.png'),file)
@@ -106,7 +118,13 @@ def tick(delta):
                         mesh=character.get_editor_property('character_mesh')
                         if mesh.get_editor_property('skeletal_mesh_asset'):
                             mesh.set_update_animation_in_editor(True)
-            if position is None:
+            if repair and title=='Street':
+                entrance, = [a for a in actors.get_all_level_actors() if a.actor_has_tag('FromApartment')]
+                normal=entrance.get_actor_forward_vector()
+                at=entrance.get_actor_location()+normal*8+ue.Vector(0,0,59)
+                position=at.to_tuple()
+                target=(at+normal*1800).to_tuple()
+            elif position is None:
                 sign=next(a for a in actors.get_all_level_actors()
                           if a.actor_has_tag('SignText:4-я БРАЙТОН-БИЧ / 4th Brighton beach'))
                 center,extent=sign.get_actor_bounds(False)
@@ -117,7 +135,7 @@ def tick(delta):
             angle=ue.MathLibrary.find_look_at_rotation(ue.Vector(*position),ue.Vector(*target))
             camera=actors.spawn_actor_from_class(ue.SceneCapture2D,ue.Vector(*position),angle)
             capture=camera.get_component_by_class(ue.SceneCaptureComponent2D)
-            image_format=ue.TextureRenderTargetFormat.RTF_RGBA8_SRGB if quarter else ue.TextureRenderTargetFormat.RTF_RGBA8
+            image_format=ue.TextureRenderTargetFormat.RTF_RGBA8_SRGB if quarter or repair else ue.TextureRenderTargetFormat.RTF_RGBA8
             render=ue.RenderingLibrary.create_render_target2d(editor.get_editor_world(),1280,720,image_format)
             capture.set_editor_properties(dict(texture_target=render,fov_angle=field,
                 capture_source=ue.SceneCaptureSource.SCS_FINAL_COLOR_LDR,capture_every_frame=False,capture_on_movement=False))

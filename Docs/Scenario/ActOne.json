@@ -3,7 +3,7 @@
     "Vendor": {
       "title": "Продавщица киоска",
       "body": "Все актуальные новости на прилавке, зачем так долбить",
-      "voice": "Vendor",
+      "speaker_role": "Vendor",
       "open_sound": "Knock"
     },
     "BrightonNewspaper": {
@@ -40,7 +40,7 @@
     "NoConnection": {
       "title": "Дима",
       "body": "Опять эта хреновая связь",
-      "voice": "Dima"
+      "speaker_role": "Dima"
     },
     "LizaCall": {
       "title": "Звонок в Москву",
@@ -53,17 +53,17 @@
     "VeteranAsk": {
       "title": "Старик",
       "body": "Дай мелочи, молодой человек, тоже русский ведь, земляк, не обидишь старика…",
-      "voice": "Veteran"
+      "speaker_role": "Veteran"
     },
     "VeteranThanks": {
       "title": "Старик",
       "body": "Спасибо, сынок. Ты не такой, как эти корпоративные псы",
-      "voice": "Veteran"
+      "speaker_role": "Veteran"
     },
     "VeteranCurse": {
       "title": "Старик",
       "body": "Чтоб вам всем…",
-      "voice": "Veteran"
+      "speaker_role": "Veteran"
     },
     "Pistol": {
       "title": "Служебный пистолет",
@@ -76,7 +76,7 @@
     "DispatchBar": {
       "title": "Рация",
       "body": "Всем постам, пьяный дебош в баре \"Маяк\" на Пятой. Двое посетителей, один вооружён. Ближайший патруль — Огнев, ответь",
-      "voice": "Radio",
+      "speaker_role": "Radio",
       "open_sound": "Radio"
     },
     "BarChoice": {
@@ -86,17 +86,17 @@
     "GuardTaunt": {
       "title": "Охранник Aegis",
       "body": "О, коп-русак! Вот же наплодилось вас в Бруклине. Как крысы из нор лезете",
-      "voice": "Guard"
+      "speaker_role": "Guard"
     },
     "DimaBarReply": {
       "title": "Дима",
       "body": "Синяя сволочь, все равно повяжу же",
-      "voice": "Dima"
+      "speaker_role": "Dima"
     },
     "GuardEnglish": {
       "title": "Охранник Aegis",
       "body": "Shut up, bastard. Понимаешь по-английски, да?",
-      "voice": "Guard"
+      "speaker_role": "Guard"
     },
     "BarGun": {
       "title": "Бар «Маяк»",
@@ -109,12 +109,12 @@
     "OldManThanks": {
       "title": "Старик-эмигрант",
       "body": "Спасибо тебе, молодой человек…",
-      "voice": "Veteran"
+      "speaker_role": "Veteran"
     },
     "DispatchPrecinct": {
       "title": "Рация",
       "body": "Огнев, ответь. Капитан Крилл требует тебя в участок. Немедленно",
-      "voice": "Radio",
+      "speaker_role": "Radio",
       "open_sound": "Radio"
     },
     "FedorMissing": {
@@ -126,62 +126,62 @@
     "CaptainNews": {
       "title": "Капитан Крилл",
       "body": "Садись, Дима. У меня плохие новости. Твой отец пропал. И это дело...его не дают вести нам. Корпорация Aegis забрала его себе",
-      "voice": "Captain"
+      "speaker_role": "Captain"
     },
     "CaptainReply01": {
       "title": "Дима",
       "body": "Почему корпорация? Он же просто инженер",
-      "voice": "Dima"
+      "speaker_role": "Dima"
     },
     "CaptainReply02": {
       "title": "Дима",
       "body": "Мой отец — не их собственность",
-      "voice": "Dima"
+      "speaker_role": "Dima"
     },
     "CaptainKGB": {
       "title": "Капитан Крилл",
       "body": "Твой отец был не просто инженером. Он работал на КГБ. А потом — на Aegis. Он знал слишком много о том, как уран вывозили из России. И теперь он исчез. Тебе лучше забыть о нём",
-      "voice": "Captain"
+      "speaker_role": "Captain"
     },
     "CaptainAnger": {
       "title": "Дима",
       "body": "Вы знали? И молчали?",
-      "voice": "Dima"
+      "speaker_role": "Dima"
     },
     "CaptainInfo": {
       "title": "Дима",
       "body": "Где мне найти информацию?",
-      "voice": "Dima"
+      "speaker_role": "Dima"
     },
     "CaptainSearch": {
       "title": "Дима",
       "body": "Я найду его сам",
-      "voice": "Dima"
+      "speaker_role": "Dima"
     },
     "CaptainInfoReply": {
       "title": "Капитан Крилл",
       "body": "Еще раз повторяю, забудь об этом, если тебе еще дорога спокойная, безмятежная жизнь",
-      "voice": "Captain"
+      "speaker_role": "Captain"
     },
     "CaptainSearchReply": {
       "title": "Капитан Крилл",
       "body": "Не лезь, Дима. Ты хороший коп, но ты не понимаешь, с чем играешь",
-      "voice": "Captain"
+      "speaker_role": "Captain"
     },
     "CaptainOffer": {
       "title": "Капитан Крилл",
       "body": "Корпорация предлагает тебе работу. Отдел утилизации. Они хотят, чтобы ты помог им найти твоего отца. Подумай",
-      "voice": "Captain"
+      "speaker_role": "Captain"
     },
     "CaptainFather": {
       "title": "Капитан Крилл",
       "body": "Ты весь в отца",
-      "voice": "Captain"
+      "speaker_role": "Captain"
     },
     "CaptainWarning": {
       "title": "Капитан Крилл",
       "body": "И ещё. Квартира твоего отца опечатана. Корпорация настаивает. Не лезь туда. Это официальное предупреждение",
-      "voice": "Captain"
+      "speaker_role": "Captain"
     },
     "OfferBadge": {
       "title": "Значок от Крилла",
@@ -198,17 +198,17 @@
     "IvanStreet01": {
       "title": "Иван",
       "body": "Ну что, брат? Крилл рассказал тебе сказку про шпиона?",
-      "voice": "Ivan"
+      "speaker_role": "Ivan"
     },
     "IvanStreet02": {
       "title": "Дима",
       "body": "Ты знал, что отец был шпионом?",
-      "voice": "Dima"
+      "speaker_role": "Dima"
     },
     "IvanStreet03": {
       "title": "Иван",
       "body": "Я знаю многое. Но не всё можно говорить на улице. Квартира отца опечатана, но у меня есть ключ. Хочешь узнать правду — иди туда сегодня. Я буду ждать",
-      "voice": "Ivan"
+      "speaker_role": "Ivan"
     },
     "IvanKeyOffer": {
       "title": "Иван",
@@ -252,7 +252,7 @@
     "IvanFedor": {
       "title": "Иван",
       "body": "Я знал, что ты придёшь сюда. Отец был шпионом, Дима. Он продал им уран. А теперь его убрали",
-      "voice": "Ivan"
+      "speaker_role": "Ivan"
     },
     "BankKey": {
       "title": "Ключ от банковской ячейки",
@@ -265,7 +265,7 @@
     "FedorRecording": {
       "title": "Фёдор · запись",
       "body": "Если ты это слышишь, сын, значит, я не успел. Прости. Ищи правду не в документах. Ищи её в себе",
-      "voice": "Fedor",
+      "speaker_role": "Fedor",
       "open_sound": "TapeClick"
     },
     "Credits": {

@@ -27,17 +27,18 @@ UCigaretteSmokeComponent* UCigaretteSmokeComponent::CreateTrail(AActor* Owner)
     Trail->SetMaterial(0,LoadObject<UMaterialInterface>(nullptr,TEXT("/Game/Prologue/Brighton/Materials/M_CigaretteSmoke.M_CigaretteSmoke")));
     Trail->RegisterComponent();
     Trail->Random.Initialize(GetTypeHash(Owner->GetFName()));
-    Trail->Puffs.SetNum(24);
+    Trail->Puffs.SetNum(14);
     Trail->Transforms.Init(FTransform(FQuat::Identity,FVector::ZeroVector,FVector(.001f)),Trail->Puffs.Num());
     Trail->AddInstances(Trail->Transforms,false,false,false);
     Trail->SetVisibility(false);
     return Trail;
 }
 
-void UCigaretteSmokeComponent::SetSource(const FVector& Tip,const FVector& Mouth,bool bExhaling)
+void UCigaretteSmokeComponent::SetSource(const FVector& Tip,const FVector& Mouth,const FVector& Forward,bool bExhaling)
 {
     TipLocation=Tip;
     MouthLocation=Mouth;
+    BreathDirection=Forward;
     bExhale=bExhaling;
     bEmitting=true;
     SetComponentTickEnabled(true);
@@ -47,7 +48,7 @@ void UCigaretteSmokeComponent::TickComponent(float Delta,ELevelTick Type,FActorC
 {
     Super::TickComponent(Delta,Type,Tick);
     const auto* Camera=UGameplayStatics::GetPlayerCameraManager(this,0);
-    if (!Camera || GetOwner()->IsHidden() || FVector::DistSquared(Camera->GetCameraLocation(),TipLocation)>FMath::Square(2500.f))
+    if (!Camera || GetOwner()->IsHidden() || FVector::DistSquared(Camera->GetCameraLocation(),TipLocation)>FMath::Square(1550.f))
     {
         if (IsVisible())
             for (int32 I=0;I<Puffs.Num();++I)
@@ -56,7 +57,7 @@ void UCigaretteSmokeComponent::TickComponent(float Delta,ELevelTick Type,FActorC
                 SetCustomDataValue(I,0,0,false);
             }
         SetVisibility(false);
-        if (!bEmitting) SetComponentTickEnabled(false);
+        SetComponentTickEnabled(false);
         return;
     }
     UntilNext-=Delta;
@@ -65,14 +66,14 @@ void UCigaretteSmokeComponent::TickComponent(float Delta,ELevelTick Type,FActorC
         const bool bBreath=bExhale && NextIndex%2==0;
         FPuff& Puff=Puffs[NextIndex];
         Puff.Age=0;
-        Puff.Lifetime=Random.FRandRange(1.35f,2.15f);
-        Puff.Width=bBreath ? 14.f : 6.5f;
+        Puff.Lifetime=Random.FRandRange(.85f,1.45f);
+        Puff.Width=bBreath ? 8.5f : 2.7f;
         Puff.Phase=Random.FRandRange(0,2*PI);
         Puff.Location=bBreath ? MouthLocation : TipLocation;
-        Puff.Velocity=FVector(6,3,Random.FRandRange(20.f,27.f));
-        if (bBreath) Puff.Velocity+=GetOwner()->GetActorForwardVector()*16.f;
+        Puff.Velocity=FVector(3,2,Random.FRandRange(17.f,25.f));
+        Puff.Velocity+=BreathDirection*(bBreath ? 29.f : 5.f);
         NextIndex=(NextIndex+1)%Puffs.Num();
-        UntilNext=bExhale ? .115f : .16f;
+        UntilNext=bExhale ? .11f : .15f;
     }
     bool bAlive=false;
     for (int32 I=0;I<Puffs.Num();++I)
@@ -83,7 +84,7 @@ void UCigaretteSmokeComponent::TickComponent(float Delta,ELevelTick Type,FActorC
         const float T=FMath::Min(1.f,Puff.Age/Puff.Lifetime);
         Puff.Location+=Delta*(Puff.Velocity+FVector(FMath::Sin(4*T+Puff.Phase)*6,FMath::Cos(5*T+Puff.Phase)*4,0));
         const FQuat Facing=FRotationMatrix::MakeFromZ(Camera->GetCameraLocation()-Puff.Location).ToQuat();
-        const double Size=(.34+1.9*T)*Puff.Width/100.;
+        const double Size=(.42+1.45*T)*Puff.Width/100.;
         Transforms[I]=FTransform(Facing,Puff.Location,FVector(Size,Size*1.24,Size));
         SetCustomDataValue(I,0,FMath::SmoothStep(0.f,.10f,T)*(1-FMath::SmoothStep(.24f,1.f,T)),false);
         bAlive|=T<1.f;

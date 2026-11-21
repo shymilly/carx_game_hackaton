@@ -46,7 +46,8 @@ void ACityRailTraffic::Tick(float DeltaSeconds)
     if (bPassing!=bMoving)
     {
         bPassing=bMoving;
-        for (UStaticMeshComponent* Car:Cars) Car->SetVisibility(bPassing);
+        if (!bPassing)
+            for (UStaticMeshComponent* Car:Cars) Car->SetVisibility(false);
         SetActorTickInterval(bPassing ? 0.f : .22f);
     }
     if (!bPassing) return;
@@ -57,6 +58,8 @@ void ACityRailTraffic::Tick(float DeltaSeconds)
         const FCityRailVehicle& Vehicle=Consist[Index];
         const double Center=Head-Direction*Vehicle.Length*.5;
         Cars[Index]->SetRelativeLocationAndRotation(FVector(Center,0,0),FRotator(0,Vehicle.MeshYaw+(Direction<0 ? 180 : 0),0));
+        const bool bInsideTrack=!bCoveredEnds || FMath::Abs(Center)+Vehicle.Length*.5<=HalfRoute;
+        if (Cars[Index]->IsVisible()!=bInsideTrack) Cars[Index]->SetVisibility(bInsideTrack);
         Head-=Direction*(Vehicle.Length+CityCouplerGap);
     }
 }

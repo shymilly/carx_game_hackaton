@@ -43,7 +43,14 @@ assert all(a.get_component_by_class(ue.SpotLightComponent).get_editor_property('
            a.get_component_by_class(ue.SpotLightComponent).get_editor_property('max_draw_distance')==2600 for a in lights)
 assert any(a.actor_has_tag('SignText:4-я БРАЙТОН-БИЧ / 4th Brighton beach') for a in street_actors)
 road=next(a for a in street_actors if a.get_actor_label()=='Neptune Avenue • stem')
-assert road.get_component_by_class(ue.StaticMeshComponent).get_material(0).get_name().startswith('M_Wet_')
+road_material=road.get_component_by_class(ue.StaticMeshComponent).get_material(0)
+road_package=road_material.get_path_name().split('.',1)[0]
+weather_package=data.get_editor_property('weather_parameters').get_path_name().split('.',1)[0]
+registry=ue.AssetRegistryHelpers.get_asset_registry()
+options=ue.AssetRegistryDependencyOptions()
+options.set_editor_property('include_hard_package_references',True)
+dependencies=registry.get_dependencies(road_package,options) or []
+assert weather_package in {str(package) for package in dependencies},road_package
 original_roads=[(a.get_actor_label(),a.get_actor_location()) for a in street_actors
                 if a.get_actor_label().startswith('Road continues past the playable boundary')]
 

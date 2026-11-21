@@ -12,6 +12,9 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "ProfilingDebugging/CsvProfiler.h"
+
+CSV_DEFINE_CATEGORY(Brighton,true);
 
 namespace
 {
@@ -23,6 +26,10 @@ constexpr float MinimumSpawnGap=880.f;
 constexpr float SteeringLookahead=135.f;
 constexpr float AuditStep=50.f;
 constexpr float SafetyMargin=7.f;
+constexpr float FollowingGap=155.f;
+constexpr float Acceleration=440.f;
+constexpr float Braking=630.f;
+constexpr float MaxSimulationStep=1.f/30.f;
 FTransform RoadTransform(const USplineComponent& Lane,float Distance)
 {
     using Coordinate=ESplineCoordinateSpace::Type;
@@ -198,6 +205,8 @@ void AStreetTrafficFlow::BeginPlay()
     Super::BeginPlay();
     if (!CarMesh || Eastbound->GetSplineLength()<100.f || Westbound->GetSplineLength()<100.f) {SetActorTickEnabled(false);return;}
     ValidateRouteClearance();
+    BodyExtent=AStreetTrafficCar::CollisionExtent(CarMesh);
+    MeasureJunction();
     DrivingRandom.Initialize(1994);
     DriveConcurrency=NewObject<USoundConcurrency>(this);
     DriveConcurrency->Concurrency.MaxCount=3;
@@ -287,6 +296,79 @@ void AStreetTrafficFlow::Release(FVehicle& V)
     V.Lane=INDEX_NONE;
     V.BrakeRemaining=0;
 }
+
+void AStreetTrafficFlow::MeasureJunction()
+{
+    if (!bUseCrossStreetRoutes) return;
+    // Reserve the intersection until the entire car, including its rear, has left it.
+    const FVector2D Padding(BodyExtent.Size2D()+AuditStep);
+    const FBox2D Bounds(JunctionCenter-JunctionHalfSize-Padding,JunctionCenter+JunctionHalfSize+Padding);
+    for (int32 Index=0;Index<GetRouteCount();++Index)
+    {
+        const USplineComponent& Lane=*GetLane(Index);
+        FJunctionRange& Range=JunctionRanges[Index];
+        for (float Distance=0;Distance<Lane.GetSplineLength();Distance+=AuditStep)
+        {
+            const FVector Point=Lane.GetLocationAtDistanceAlongSpline(Distance,ESplineCoordinateSpace::World);
+            if (!Bounds.IsInsideOrOn(FVector2D(Point))) continue;
+            if (!Range.bPresent) Range.Entry=FMath::Max(0.f,Distance-AuditStep);
+            Range.bPresent=true;
+            Range.Exit=FMath::Min(Distance+AuditStep,Lane.GetSplineLength());
+        }
+    }
+}
+
+float AStreetTrafficFlow::FollowingClearance(const FVehicle& V) const
+{
+    const FVector Position=V.Car->GetActorLocation();
+    const FVector Forward=V.Car->GetActorForwardVector().GetSafeNormal2D();
+    const float Headway=2.f*BodyExtent.X+FollowingGap;
+    float Clearance=TNumericLimits<float>::Max();
+    for (const FVehicle& Other : Fleet)
+    {
+        if (&Other==&V || Other.Lane==INDEX_NONE || !Other.Car.IsValid()) continue;
+        if (Other.Lane==V.Lane)
+        {
+            if (Other.Distance>V.Distance)
+                Clearance=FMath::Min(Clearance,Other.Distance-V.Distance-Headway);
+            continue;
+        }
+        const FVector ToOther=Other.Car->GetActorLocation()-Position;
+        const float Ahead=FVector::DotProduct(ToOther,Forward);
+        if (Ahead<=0 || Ahead>Headway+1250.f || FMath::Abs(ToOther.Z)>BodyExtent.Z) continue;
+        const FVector OtherForward=Other.Car->GetActorForwardVector().GetSafeNormal2D();
+        if (FVector::DotProduct(Forward,OtherForward)<.91f) continue;
+        // The two turning routes share straight segments with the through lane.
+        if ((ToOther-Forward*Ahead).SizeSquared2D()<FMath::Square(2.f*BodyExtent.Y+25.f))
+            Clearance=FMath::Min(Clearance,Ahead-Headway);
+    }
+    return Clearance;
+}
+
+void AStreetTrafficFlow::ReserveJunction()
+{
+    if (!bUseCrossStreetRoutes) return;
+    const FVehicle* ReservedVehicle=Fleet.FindByPredicate([this](const FVehicle& V)
+    {
+        return V.Lane!=INDEX_NONE && V.Car.IsValid() && V.ArrivalOrder==JunctionOwner
+            && V.Distance<JunctionRanges[V.Lane].Exit;
+    });
+    if (ReservedVehicle) return;
+    JunctionOwner=INDEX_NONE;
+    const FVehicle* Front=nullptr;
+    for (const FVehicle& V : Fleet)
+    {
+        if (V.Lane==INDEX_NONE || !V.Car.IsValid()) continue;
+        const FJunctionRange& Range=JunctionRanges[V.Lane];
+        if (!Range.bPresent || V.Distance>=Range.Exit) continue;
+        const float ToEntry=Range.Entry-V.Distance;
+        const float BrakingDistance=FMath::Square(V.Speed)/(2.f*Braking);
+        if (ToEntry>BrakingDistance+150.f || FollowingClearance(V)<ToEntry) continue;
+        if (!Front || V.ArrivalOrder<Front->ArrivalOrder) Front=&V;
+    }
+    if (Front) JunctionOwner=Front->ArrivalOrder;
+}
+
 void AStreetTrafficFlow::SpawnNext()
 {
     const int32 LaneIndex=NextLane;
@@ -307,48 +389,66 @@ void AStreetTrafficFlow::SpawnNext()
     Slot->Cruise=DrivingRandom.FRandRange(730.f,920.f);
     Slot->Speed=Slot->Cruise;
     Slot->BrakeRemaining=0;
+    Slot->ArrivalOrder=TotalSpawned;
     Car->SetOnRoad(true);
     ++TotalSpawned;
 }
-void AStreetTrafficFlow::Advance(FVehicle& V,float DeltaSeconds)
+void AStreetTrafficFlow::Advance(FVehicle& V,float DeltaSeconds,float Clearance)
 {
     AStreetTrafficCar* Car=V.Car.Get();
     if (!Car) {Release(V);return;}
     if (V.BrakeRemaining>0) {V.BrakeRemaining-=DeltaSeconds;return;}
     const USplineComponent& Lane=*GetLane(V.Lane);
-    V.Speed=FMath::FInterpConstantTo(V.Speed,V.Cruise,DeltaSeconds,570.f);
-    float Remaining=V.Speed*DeltaSeconds;
-    while (Remaining>UE_KINDA_SMALL_NUMBER && V.Lane!=INDEX_NONE)
+    const float Target=FMath::Min(V.Cruise,FMath::Sqrt(2.f*Braking*FMath::Max(0.f,Clearance)));
+    V.Speed=FMath::FInterpConstantTo(V.Speed,Target,DeltaSeconds,V.Speed>Target ? Braking : Acceleration);
+    const float Step=FMath::Min(V.Speed*DeltaSeconds,FMath::Max(0.f,Clearance));
+    if (Step<=UE_KINDA_SMALL_NUMBER)
     {
-        const float Step=FMath::Min(Remaining,18.f);
-        const float Next=FMath::Min(V.Distance+Step,Lane.GetSplineLength());
-        float Fraction=1;
-        if (!Car->MoveOnRoad(RoadTransform(Lane,Next),V.Speed,Fraction))
-        {
-            V.Distance=FMath::Lerp(V.Distance,Next,Fraction);
-            V.Speed=0;
-            V.BrakeRemaining=.45f;
-            ++BlockedMoves;
-            return;
-        }
-        V.Distance=Next;
-        Remaining-=Step;
-        if (V.Distance>=Lane.GetSplineLength()-UE_KINDA_SMALL_NUMBER) Release(V);
+        V.Speed=0;
+        return;
     }
+    const float Next=FMath::Min(V.Distance+Step,Lane.GetSplineLength());
+    float Fraction=1;
+    if (!Car->MoveOnRoad(RoadTransform(Lane,Next),V.Speed,Fraction))
+    {
+        V.Distance=FMath::Lerp(V.Distance,Next,Fraction);
+        V.Speed=0;
+        V.BrakeRemaining=.45f;
+        ++BlockedMoves;
+        return;
+    }
+    V.Distance=Next;
+    if (V.Distance>=Lane.GetSplineLength()-UE_KINDA_SMALL_NUMBER) Release(V);
 }
 void AStreetTrafficFlow::Tick(float DeltaSeconds)
 {
+    CSV_SCOPED_TIMING_STAT(Brighton,TrafficTick);
     Super::Tick(DeltaSeconds);
-    TimeUntilSpawn-=DeltaSeconds;
-    if (TimeUntilSpawn<=0) {SpawnNext();TimeUntilSpawn=FMath::Max(SpawnInterval,MinimumTrafficInterval);}
-    const float Step=FMath::Min(DeltaSeconds,.045f);
+    const float SimulationTime=FMath::Min(DeltaSeconds,.4f);
+    TimeUntilSpawn-=SimulationTime;
+    if (TimeUntilSpawn<=0)
+    {
+        SpawnNext();
+        TimeUntilSpawn+=FMath::Max(SpawnInterval,MinimumTrafficInterval);
+    }
+    for (float Remaining=SimulationTime;Remaining>UE_KINDA_SMALL_NUMBER;Remaining-=MaxSimulationStep)
+    {
+        ReserveJunction();
+        for (FVehicle& V : Fleet)
+        {
+            if (V.Lane==INDEX_NONE || !V.Car.IsValid()) continue;
+            float Clearance=FollowingClearance(V);
+            const FJunctionRange& Range=JunctionRanges[V.Lane];
+            if (Range.bPresent && V.ArrivalOrder!=JunctionOwner && V.Distance<=Range.Entry)
+                Clearance=FMath::Min(Clearance,Range.Entry-V.Distance);
+            Advance(V,FMath::Min(Remaining,MaxSimulationStep),Clearance);
+        }
+    }
     const APlayerController* Player=UGameplayStatics::GetPlayerController(this,0);
     const APawn* Listener=Player ? Player->GetPawn() : nullptr;
-    for (FVehicle& V:Fleet) if (V.Lane!=INDEX_NONE)
-    {
-        Advance(V,Step);
-        if (Listener && V.Lane!=INDEX_NONE && V.Car.IsValid()) V.Car->UpdateRoadAudio(V.Speed,Listener->GetActorLocation());
-    }
+    if (Listener)
+        for (const FVehicle& V : Fleet)
+            if (V.Lane!=INDEX_NONE && V.Car.IsValid()) V.Car->UpdateRoadAudio(V.Speed,Listener->GetActorLocation());
 }
 void AStreetTrafficFlow::EndPlay(const EEndPlayReason::Type Reason)
 {

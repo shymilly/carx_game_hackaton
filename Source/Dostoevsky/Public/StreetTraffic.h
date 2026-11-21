@@ -56,6 +56,8 @@ public:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Traffic") TObjectPtr<USplineComponent> Northbound;
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Traffic") TObjectPtr<USplineComponent> Southbound;
     UPROPERTY(EditInstanceOnly, Category="Traffic") bool bUseCrossStreetRoutes=false;
+    UPROPERTY(EditInstanceOnly, Category="Traffic") FVector2D JunctionCenter=FVector2D(2190,-1210);
+    UPROPERTY(EditInstanceOnly, Category="Traffic") FVector2D JunctionHalfSize=FVector2D(1050,1570);
     UFUNCTION(BlueprintPure, Category="Traffic") int32 GetRouteCount() const { return bUseCrossStreetRoutes ? 4 : 2; }
     UFUNCTION(BlueprintPure, Category="Traffic") USplineComponent* GetLane(int32 Lane) const;
     UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category="Traffic") TObjectPtr<UStaticMesh> CarMesh;
@@ -86,8 +88,18 @@ private:
         float Cruise=0;
         float BrakeRemaining=0;
         int32 Lane=INDEX_NONE;
+        int32 ArrivalOrder=0;
+    };
+    struct FJunctionRange
+    {
+        float Entry=0;
+        float Exit=0;
+        bool bPresent=false;
     };
     TArray<FVehicle> Fleet;
+    FJunctionRange JunctionRanges[4];
+    int32 JunctionOwner=INDEX_NONE;
+    FVector BodyExtent=FVector::ZeroVector;
     FRandomStream DrivingRandom;
     UPROPERTY(Transient) TObjectPtr<USoundConcurrency> DriveConcurrency;
     UPROPERTY(Transient) TObjectPtr<USoundConcurrency> HornConcurrency;
@@ -99,5 +111,8 @@ private:
     int32 BlockedMoves=0;
     void Release(FVehicle& Vehicle);
     void SpawnNext();
-    void Advance(FVehicle& Vehicle,float DeltaSeconds);
+    void MeasureJunction();
+    float FollowingClearance(const FVehicle& Vehicle) const;
+    void ReserveJunction();
+    void Advance(FVehicle& Vehicle,float DeltaSeconds,float Clearance);
 };

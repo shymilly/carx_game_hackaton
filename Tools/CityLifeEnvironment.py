@@ -232,7 +232,7 @@ def dress_street(layout):
     rng=Random(1994)
     # Root all vegetation on the existing lawn or sidewalk, away from the door and travel markers.
     trees=(( -819,915,-7.9),( -261,1120,-7.9),(-904,2130,-7.9),(-136,1935,-7.9),
-           (625,759,-7.9),(1131,1077,-7.9),(938,2380,-12),(-5168,-568,-12),
+           (625,759,-7.9),(1131,1077,-7.9),(938,2380,-12),(-5480,-568,-12),
            (-3437,-1993,-12),(-5984,-602,-12),(3074,3040,-12),(3075,-3590,-12))
     soil=material("TreeBed",(.090,.066,.039))
     for index,(x,y,z) in enumerate(trees):

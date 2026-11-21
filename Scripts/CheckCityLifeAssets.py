@@ -38,7 +38,8 @@ for map_name in maps:
                  and a.actor_has_tag("CityLifeDressing") and a.get_actor_label()=="Rail segments"]
         assert sum(buffer.get_instance_count() for buffer in buffers)==44
         branch_track=[a.get_editor_property("instances") for a in placed if a.get_actor_label()=="Industrial line rails"]
-        assert sum(b.get_instance_count() for b in branch_track)==26
+        assert branch.get_editor_property("covered_ends")
+        assert sum(b.get_instance_count() for b in branch_track)==36
         assert {"Bus shelter frame","Wooden shipping cases","Park planting beds"} <= {a.get_actor_label() for a in placed}
         fog,=[a for a in placed if isinstance(a,ue.ExponentialHeightFog)]
         assert fog.get_component_by_class(ue.ExponentialHeightFogComponent).get_editor_property("start_distance")>=3500

@@ -11,7 +11,7 @@ class DOSTOEVSKY_API UCigaretteSmokeComponent : public UInstancedStaticMeshCompo
 public:
     UCigaretteSmokeComponent();
     static UCigaretteSmokeComponent* CreateTrail(AActor* Owner);
-    void SetSource(const FVector& Tip,const FVector& Mouth,bool bExhaling);
+    void SetSource(const FVector& Tip,const FVector& Mouth,const FVector& Forward,bool bExhaling);
     void StopEmitting() { bEmitting=false; }
 protected:
     void TickComponent(float Delta,ELevelTick Type,FActorComponentTickFunction* Tick) override;
@@ -24,6 +24,7 @@ private:
     TArray<FPuff> Puffs;
     TArray<FTransform> Transforms;
     FVector TipLocation=FVector::ZeroVector, MouthLocation=FVector::ZeroVector;
+    FVector BreathDirection=FVector::ForwardVector;
     FRandomStream Random;
     float UntilNext=0;
     int32 NextIndex=0;

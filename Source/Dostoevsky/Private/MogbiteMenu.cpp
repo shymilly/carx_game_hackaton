@@ -3,6 +3,7 @@
 #include "Components/AudioComponent.h"
 #include "DialoguePanel.h"
 #include "DocumentWindow.h"
+#include "DostoevskyGameSettings.h"
 #include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
 #include "Engine/Texture2D.h"
@@ -198,23 +199,12 @@ private:
                 + SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 13)
                 [ PaperButton(TAttribute<FText>::CreateLambda([this] { return WindowLabel(); }),
                     FOnClicked::CreateLambda([this] { Window = (Window + 1) % 3; return FReply::Handled(); }), nullptr, true) ]
-                + SVerticalBox::Slot().AutoHeight().Padding(3, 0, 3, 6)
-                [
-                    SNew(STextBlock).Font(SettingsFont).ColorAndOpacity(Ink).Text_Lambda([this]
-                    {
-                        return FText::Format(LOCTEXT("Rain", "Дождь в меню: {0}%"), FText::AsNumber(FMath::RoundToInt(100 * PendingRain)));
-                    })
-                ]
+                + SVerticalBox::Slot().AutoHeight().Padding(3, 0, 3, 7)
+                  [ SettingsSlider(LOCTEXT("Volume", "Общая громкость"), &SMogbiteMenu::PendingVolume) ]
+                + SVerticalBox::Slot().AutoHeight().Padding(3, 0, 3, 7)
+                  [ SettingsSlider(LOCTEXT("Brightness", "Яркость"), &SMogbiteMenu::PendingBrightness) ]
                 + SVerticalBox::Slot().AutoHeight().Padding(3, 0, 3, 11)
-                [
-                    SNew(SSlider).Value_Lambda([this] { return PendingRain; }).StepSize(.05f)
-                    .SliderBarColor(FLinearColor(.25f, .16f, .05f)).SliderHandleColor(FLinearColor(.25f, .16f, .05f))
-                    .OnValueChanged_Lambda([this](float Value)
-                    {
-                        PendingRain = Value;
-                        if (Controller.IsValid()) Controller->SetRainVolume(Value);
-                    })
-                ]
+                  [ SettingsSlider(LOCTEXT("RainVolume", "Дождь в меню"), &SMogbiteMenu::PendingRain) ]
                 + SVerticalBox::Slot().AutoHeight()
                 [
                     SNew(SHorizontalBox)
@@ -225,6 +215,24 @@ private:
                 ]
             ]
         ];
+    }
+
+    TSharedRef<SWidget> SettingsSlider(const FText& Label, float SMogbiteMenu::* Value)
+    {
+        const FLinearColor ControlColor(.25f, .16f, .05f);
+        return SNew(SHorizontalBox)
+            + SHorizontalBox::Slot().FillWidth(1.65f).VAlign(VAlign_Center).Padding(0, 0, 6, 0)
+              [SNew(STextBlock).Text(Label).Font(SettingsFont).ColorAndOpacity(Ink)]
+            + SHorizontalBox::Slot().FillWidth(1).VAlign(VAlign_Center)
+            [
+                SNew(SSlider).Value_Lambda([this, Value] { return this->*Value; }).StepSize(.05f)
+                .SliderBarColor(ControlColor).SliderHandleColor(ControlColor)
+                .OnValueChanged_Lambda([this, Value](float NewValue)
+                {
+                    this->*Value = NewValue;
+                    if (Value == &SMogbiteMenu::PendingRain && Controller.IsValid()) Controller->SetRainVolume(NewValue);
+                })
+            ];
     }
 
     FText GraphicsLabel() const
@@ -259,6 +267,11 @@ private:
             Quality = FMath::Clamp(Settings->GetOverallScalabilityLevel(), INDEX_NONE, 4);
             Window = FMath::Clamp(static_cast<int32>(Settings->GetFullscreenMode()), 0, 2);
         }
+        if (const auto* Settings = UDostoevskyGameSettings::Get())
+        {
+            PendingVolume = Settings->GetMasterVolume();
+            PendingBrightness = Settings->GetSceneBrightness();
+        }
         OriginalRain = PendingRain = Controller.IsValid() ? Controller->GetRainVolume() : .45f;
         Pages->SetActiveWidgetIndex(1);
         return FReply::Handled().SetUserFocus(GraphicsButton.ToSharedRef());
@@ -266,6 +279,11 @@ private:
 
     FReply OnApply()
     {
+        if (auto* Settings = UDostoevskyGameSettings::Get())
+        {
+            Settings->SetMasterVolume(PendingVolume, Controller.IsValid() ? Controller->GetWorld() : nullptr);
+            Settings->SetSceneBrightness(PendingBrightness);
+        }
         if (auto* Settings = GEngine->GetGameUserSettings())
         {
             if (Quality != INDEX_NONE && Quality != Settings->GetOverallScalabilityLevel()) Settings->SetOverallScalabilityLevel(Quality);
@@ -310,6 +328,8 @@ private:
     int32 Window = 1;
     float OriginalRain = .45f;
     float PendingRain = .45f;
+    float PendingVolume = 1.f;
+    float PendingBrightness = .5f;
 };
 }
 

@@ -2,8 +2,12 @@
 #include "BrightonEnvironment.h"
 #include "CityCharacter.h"
 #include "CigaretteSmokeComponent.h"
+#include "DoorOpeningAudio.h"
+#include "DostoevskyGameSettings.h"
 
+#include "Animation/AnimMontage.h"
 #include "Animation/AnimSingleNodeInstance.h"
+#include "Camera/CameraComponent.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Components/LightComponent.h"
 #include "Engine/PointLight.h"
@@ -17,7 +21,32 @@
 #include "EngineUtils.h"
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
+#include "ProfilingDebugging/CsvProfiler.h"
 #include "Sound/SoundBase.h"
+
+CSV_DECLARE_CATEGORY_EXTERN(Brighton);
+
+namespace
+{
+const FName CigaretteGrip(TEXT("CigaretteGrip"));
+const FName SmokeMouth(TEXT("SmokeMouth"));
+constexpr double CigaretteTip=5.35;
+
+UStaticMeshComponent* AttachCigarette(USkeletalMeshComponent& Hand,UStaticMesh* Model)
+{
+    if (!Model || !Hand.DoesSocketExist(CigaretteGrip)) return nullptr;
+    auto* Prop=NewObject<UStaticMeshComponent>(Hand.GetOwner(),TEXT("HeldCigarette"));
+    Prop->SetStaticMesh(Model);
+    Prop->SetupAttachment(&Hand,CigaretteGrip);
+    Prop->SetUsingAbsoluteScale(true);
+    Prop->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    Prop->SetCanEverAffectNavigation(false);
+    Prop->SetCastShadow(false);
+    Prop->bAffectDistanceFieldLighting=false;
+    Prop->RegisterComponent();
+    return Prop;
+}
+}
 
 AActOneCast::AActOneCast()
 {
@@ -39,7 +68,8 @@ AActOneCast::AActOneCast()
     CharacterMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     CharacterMesh->SetCanEverAffectNavigation(false);
     PrimaryActorTick.bCanEverTick=true;
-    PrimaryActorTick.TickInterval=.033f;
+    PrimaryActorTick.bStartWithTickEnabled=false;
+    PrimaryActorTick.TickInterval=.04f;
 }
 
 void AActOneCast::BeginPlay()
@@ -56,16 +86,20 @@ void AActOneCast::BeginPlay()
     if (UAnimSingleNodeInstance* Clip=CharacterMesh->GetSingleNodeInstance())
     {
         const float Offset=AnimationPhase>0 ? AnimationPhase : (GetTypeHash(GetFName())%1000)*.001f*Clip->GetLength();
-        if (DefaultPose==EActOnePose::Seated) Clip->SetPosition(2.3f,false);
+        if (bLegacySeat) Clip->SetPosition(FMath::Min(2.3f,Clip->GetLength()),false);
         else if (Clip->GetLength()>0) Clip->SetPosition(FMath::Fmod(Offset,Clip->GetLength()),false);
     }
     if (DefaultPose==EActOnePose::Smoking)
     {
         TArray<AActor*> Props;
         GetAttachedActors(Props,false,true);
-        for (AActor* Prop:Props) if (Prop->ActorHasTag(TEXT("CigaretteSource"))) CigaretteTip=Prop;
-        SmokeTrail=UCigaretteSmokeComponent::CreateTrail(this);
+        for (AActor* Prop:Props)
+            if (Prop->ActorHasTag(TEXT("CigaretteSource")) || Prop->ActorHasTag(TEXT("LegacyCigarette")))
+                Prop->SetActorHiddenInGame(true);
+        if (CharacterProfile) HeldCigarette=AttachCigarette(*CharacterMesh,CharacterProfile->CigaretteMesh);
+        if (HeldCigarette) SmokeTrail=UCigaretteSmokeComponent::CreateTrail(this);
     }
+    UpdateActorTick();
 }
 
 void AActOneCast::Pose(EActOnePose NewPose)
@@ -78,6 +112,7 @@ void AActOneCast::Pose(EActOnePose NewPose)
     Body->SetCapsuleHalfHeight(bFallen ? 29.f : 88.f);
     Body->SetRelativeLocation(FVector(0,0,bFallen ? 29.f : 88.f));
     if (bChanged || !Cast<UCityClipInstance>(CharacterMesh->GetAnimInstance())) PlayCharacterPose();
+    UpdateActorTick();
 }
 
 void AActOneCast::PlayCharacterPose()
@@ -85,9 +120,10 @@ void AActOneCast::PlayCharacterPose()
     if (!CharacterProfile || !CharacterProfile->Mesh) return;
     NodRemaining=0;
     FName Motion=bSpeaking ? TEXT("Talk") : TEXT("Idle");
+    const FName Seat=CharacterProfile->Motions.Contains(TEXT("SeatedIdle")) ? TEXT("SeatedIdle") : TEXT("Sit");
     switch (CurrentPose)
     {
-    case EActOnePose::Seated: Motion=bSpeaking && CharacterProfile->Motions.Contains(TEXT("SeatedTalk")) ? TEXT("SeatedTalk") : TEXT("Sit"); break;
+    case EActOnePose::Seated: Motion=bSpeaking && CharacterProfile->Motions.Contains(TEXT("SeatedTalk")) ? TEXT("SeatedTalk") : Seat; break;
     case EActOnePose::Smoking: Motion=TEXT("Smoke"); break;
     case EActOnePose::Armed: Motion=TEXT("Armed"); break;
     case EActOnePose::Fallen: Motion=TEXT("Fall"); break;
@@ -96,20 +132,26 @@ void AActOneCast::PlayCharacterPose()
     case EActOnePose::Conversing: Motion=TEXT("Talk"); break;
     case EActOnePose::Firing: Motion=TEXT("Shot"); break;
     case EActOnePose::Dead: Motion=TEXT("Fall"); break;
-    case EActOnePose::Subdued: Motion=TEXT("Sit"); break;
+    case EActOnePose::Subdued: Motion=Seat; break;
     default: break;
     }
     const bool bLoop=CurrentPose!=EActOnePose::Fallen && CurrentPose!=EActOnePose::Dead && CurrentPose!=EActOnePose::Firing;
     const float Rate=CurrentPose==EActOnePose::Walking && WalkSpeed<1 ? .72f : 1.f;
     CharacterProfile->Play(*CharacterMesh,Motion,bLoop,Rate);
-    if (Motion==TEXT("Sit") && CharacterMesh->GetSingleNodeInstance()) CharacterMesh->SetPosition(2.3f,false);
+    bLegacySeat=Motion==TEXT("Sit");
+    if (UAnimSingleNodeInstance* Clip=CharacterMesh->GetSingleNodeInstance(); Clip && bLegacySeat)
+        Clip->SetPosition(FMath::Min(2.3f,Clip->GetLength()),false);
 }
 
 void AActOneCast::SetSpeaking(bool bIsSpeaking)
 {
     if (bSpeaking==bIsSpeaking) return;
     bSpeaking=bIsSpeaking;
-    if (CurrentPose==EActOnePose::Idle || CurrentPose==EActOnePose::Seated) PlayCharacterPose();
+    if (CurrentPose==EActOnePose::Idle || CurrentPose==EActOnePose::Seated)
+    {
+        PlayCharacterPose();
+        UpdateActorTick();
+    }
 }
 
 void AActOneCast::Face(const FVector& Target)
@@ -127,12 +169,29 @@ void AActOneCast::WalkAway(const FVector& Destination,float Speed)
 
 void AActOneCast::Nod()
 {
-    if (CharacterProfile && CharacterProfile->Motions.Contains(TEXT("Nod")))
+    const FName Motion=CurrentPose==EActOnePose::Seated ? TEXT("SeatedNod") : TEXT("Nod");
+    if (CharacterProfile && CharacterProfile->Motions.Contains(Motion))
     {
-        NodRemaining=CharacterProfile->Play(*CharacterMesh,TEXT("Nod"),false);
+        NodRemaining=CharacterProfile->Play(*CharacterMesh,Motion,false);
+        UpdateActorTick();
         return;
     }
     NodTime=0;
+    UpdateActorTick();
+}
+
+void AActOneCast::UpdateActorTick()
+{
+    const bool bSkeletal=CharacterProfile && CharacterProfile->Mesh;
+    SetActorTickInterval(WalkSpeed>0 ? 0.f : .04f);
+    SetActorTickEnabled(!IsHidden() && (WalkSpeed>0 || NodRemaining>0 || !bSkeletal ||
+        CurrentPose==EActOnePose::Smoking || bLegacySeat));
+}
+
+void AActOneCast::SetActorHiddenInGame(bool bNewHidden)
+{
+    Super::SetActorHiddenInGame(bNewHidden);
+    UpdateActorTick();
 }
 
 void AActOneCast::Part(FName Name,float Pitch,float Roll)
@@ -145,17 +204,27 @@ void AActOneCast::Part(FName Name,float Pitch,float Roll)
 
 void AActOneCast::Tick(float DeltaSeconds)
 {
+    CSV_SCOPED_TIMING_STAT(Brighton,CastTick);
     Super::Tick(DeltaSeconds);
     if (IsHidden()) return;
     Life+=DeltaSeconds;
     if (WalkSpeed>0)
     {
-        Face(WalkTarget);
-        const FVector Next=FMath::VInterpConstantTo(GetActorLocation(),WalkTarget,DeltaSeconds,WalkSpeed);
+        const FVector ToTarget=WalkTarget-GetActorLocation();
+        if (ToTarget.SizeSquared2D()>1.)
+            SetActorRotation(FRotator(0,FMath::FixedTurn(GetActorRotation().Yaw,ToTarget.Rotation().Yaw,720.f*DeltaSeconds),0));
+        CurrentWalkSpeed=FMath::FInterpConstantTo(CurrentWalkSpeed,WalkSpeed,DeltaSeconds,1250.f);
+        const FVector Next=FMath::VInterpConstantTo(GetActorLocation(),WalkTarget,DeltaSeconds,CurrentWalkSpeed);
         SetActorLocation(Next);
+        if (UAnimSingleNodeInstance* Clip=CharacterMesh->GetSingleNodeInstance())
+        {
+            const float NominalSpeed=CurrentPose==EActOnePose::Running ? 530.f : 275.f;
+            Clip->SetPlayRate(FMath::Clamp(CurrentWalkSpeed/NominalSpeed,.25f,1.55f));
+        }
         if (FVector::DistSquared(Next,WalkTarget)<4)
         {
             WalkSpeed=0;
+            CurrentWalkSpeed=0;
             SetActorHiddenInGame(true);
             SetActorEnableCollision(false);
             TArray<AActor*> Attached;
@@ -168,17 +237,23 @@ void AActOneCast::Tick(float DeltaSeconds)
         if (UAnimSingleNodeInstance* Clip=CharacterMesh->GetSingleNodeInstance())
         {
             const float T=Clip->GetCurrentTime();
-            if ((CurrentPose==EActOnePose::Seated || CurrentPose==EActOnePose::Subdued) && Clip->GetLength()>5.f && T>Clip->GetLength()-.4f)
+            if (bLegacySeat && Clip->GetLength()>5.f && T>Clip->GetLength()-.4f)
                 Clip->SetPosition(2.3f,false);
-            if (SmokeTrail && CurrentPose==EActOnePose::Smoking)
+            if (SmokeTrail && HeldCigarette && CurrentPose==EActOnePose::Smoking)
             {
-                const FVector Mouth=CharacterMesh->GetSocketLocation(TEXT("Head"))+GetActorForwardVector()*9.f;
-                const FVector Tip=CigaretteTip.IsValid() ? CigaretteTip->GetActorLocation() : CharacterMesh->GetSocketLocation(TEXT("MiddleHand_R"));
-                SmokeTrail->SetSource(Tip,Mouth,T>3.8f && T<4.9f);
+                const APawn* Viewer=UGameplayStatics::GetPlayerPawn(this,0);
+                if (Viewer && FVector::DistSquared(Viewer->GetActorLocation(),GetActorLocation())<FMath::Square(1450.f))
+                {
+                    const FTransform Mouth=CharacterMesh->GetSocketTransform(SmokeMouth);
+                    const FVector Tip=HeldCigarette->GetComponentTransform().TransformPosition(FVector(CigaretteTip,0,0));
+                    SmokeTrail->SetSource(Tip,Mouth.GetLocation(),Mouth.GetUnitAxis(EAxis::X),T>4.45f && T<5.14f);
+                }
+                else SmokeTrail->StopEmitting();
             }
             else if (SmokeTrail) SmokeTrail->StopEmitting();
         }
         if (NodRemaining>0 && (NodRemaining-=DeltaSeconds)<=0) PlayCharacterPose();
+        UpdateActorTick();
         return;
     }
     const float Swing=CurrentPose==EActOnePose::Walking ? 31.f*FMath::Sin(12.f*Life) : 0.f;
@@ -235,6 +310,8 @@ AActOneDirector::AActOneDirector()
 void AActOneDirector::BeginPlay()
 {
     Super::BeginPlay();
+    if (const UDostoevskyGameSettings* Settings=UDostoevskyGameSettings::Get())
+        Settings->ApplyToWorld(GetWorld());
     for (TActorIterator<AActor> It(GetWorld()); It; ++It)
     {
         for (FName Tag:It->Tags)
@@ -355,15 +432,40 @@ bool AActOneDirector::PatrolCanSeePlayer(APlayerController* Player) const
 
 void AActOneDirector::StartSmoke()
 {
+    APawn* Pawn=UGameplayStatics::GetPlayerPawn(this,0);
+    if (!Pawn || !Data || !Data->SmokingArms || !Data->SmokingAnimClass || !Data->SmokingMontage) return;
+    if (SmokingArms) StopSmoke();
+    SmokingArms=NewObject<USkeletalMeshComponent>(Pawn,TEXT("FirstPersonSmokingArms"));
+    SmokingArms->SetSkeletalMeshAsset(Data->SmokingArms);
+    SmokingArms->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    SmokingArms->SetCanEverAffectNavigation(false);
+    SmokingArms->SetCastShadow(false);
+    SmokingArms->bAffectDistanceFieldLighting=false;
+    SmokingArms->VisibilityBasedAnimTickOption=EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
+    USceneComponent* Anchor=Pawn->FindComponentByClass<UCameraComponent>();
+    SmokingArms->SetupAttachment(Anchor ? Anchor : Pawn->GetRootComponent());
+    SmokingArms->SetRelativeLocationAndRotation(FVector(0,0,-174.32),FRotator(0,-90,0));
+    SmokingArms->RegisterComponent();
+    SmokingArms->SetAnimInstanceClass(Data->SmokingAnimClass);
+    UAnimInstance* Animation=SmokingArms->GetAnimInstance();
+    if (!Animation || Animation->Montage_Play(Data->SmokingMontage)<=0)
+    {
+        StopSmoke();
+        return;
+    }
+    HeldCigarette=AttachCigarette(*SmokingArms,Data->CigaretteMesh);
     bSmoking=true;
     if (!SmokeTrail) SmokeTrail=UCigaretteSmokeComponent::CreateTrail(this);
     SmokeTime=0;
-    SmokeRig->SetHiddenInGame(false,true);
 }
 
 void AActOneDirector::StopSmoke()
 {
     bSmoking=false;
+    if (HeldCigarette) HeldCigarette->DestroyComponent();
+    if (SmokingArms) SmokingArms->DestroyComponent();
+    HeldCigarette=nullptr;
+    SmokingArms=nullptr;
     if (SmokeTrail) SmokeTrail->StopEmitting();
     SmokeRig->SetHiddenInGame(true,true);
 }
@@ -381,10 +483,12 @@ void AActOneDirector::OpenDoor(FName Hinge,float Yaw)
 {
     if (AActor* Actor=Cue(Hinge))
     {
+        if (MovingDoor.Get()==Actor || FMath::Abs(FMath::FindDeltaAngleDegrees(Actor->GetActorRotation().Yaw,Yaw))<.25f) return;
         DoorFrom=Actor->GetActorRotation().Yaw;
         DoorTo=DoorFrom+FMath::FindDeltaAngleDegrees(DoorFrom,Yaw);
         DoorProgress=0;
         MovingDoor=Actor;
+        DoorOpeningAudio::Play(Actor,Hinge==TEXT("SealedLeaf") ? EDoorOpeningSound::Entry : EDoorOpeningSound::Wood);
     }
 }
 
@@ -488,17 +592,16 @@ void AActOneDirector::SampleRainGround(const FVector& Around)
 
 void AActOneDirector::UpdateSmoke(APlayerController* Player,float DeltaSeconds)
 {
-    if (!Player->PlayerCameraManager) return;
+    if (!Player->PlayerCameraManager || !SmokingArms) return;
     SmokeTime+=DeltaSeconds;
-    const float Rise=FMath::SmoothStep(0.f,1.f,FMath::Clamp(SmokeTime/.65f,0.f,1.f));
-    const float Rest=FMath::SmoothStep(0.f,1.f,FMath::Clamp((SmokeTime-1.28f)/.78f,0.f,1.f));
-    const float Lift=Rise-Rest;
     const FRotator View=Player->PlayerCameraManager->GetCameraRotation();
-    const FVector Position=Player->PlayerCameraManager->GetCameraLocation()+
-        View.RotateVector(FVector(54-23*Lift,25-14*Lift,-34+18*Lift+FMath::Sin(SmokeTime*8)*.5f));
-    SmokeRig->SetWorldLocationAndRotation(Position,View+FRotator(8+25*Lift,-17,0));
-    if (SmokeTrail) SmokeTrail->SetSource(Ember->GetComponentLocation(),
-        Player->PlayerCameraManager->GetCameraLocation()+View.RotateVector(FVector(20,2,-6)),SmokeTime>1.45f && SmokeTime<2.35f);
+    const FVector Eye=Player->PlayerCameraManager->GetCameraLocation();
+    if (!Cast<UCameraComponent>(SmokingArms->GetAttachParent()))
+        SmokingArms->SetWorldLocationAndRotation(Eye+View.RotateVector(FVector(0,0,-174.32)),
+            View.Quaternion()*FRotator(0,-90,0).Quaternion());
+    if (SmokeTrail && HeldCigarette)
+        SmokeTrail->SetSource(HeldCigarette->GetComponentTransform().TransformPosition(FVector(CigaretteTip,0,0)),
+            Eye+View.RotateVector(FVector(14,0,-9)),View.Vector(),SmokeTime>1.50f && SmokeTime<2.10f);
 }
 
 void AActOneDirector::UpdateRecorder(APlayerController* Player,float DeltaSeconds)

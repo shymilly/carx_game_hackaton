@@ -78,28 +78,6 @@ def music():
     save("Music90",samples)
 
 
-def color_recording(name, gain, noise, highpass):
-    file = Path(__file__).resolve().parents[1] / "Saved/ActOne/Unfiltered" / (name+".wav")
-    if not file.is_file():
-        return
-    with wave.open(str(file),"rb") as source:
-        assert source.getsampwidth()==2 and source.getnchannels()==1, name
-        rate=source.getframerate()
-        raw=array("h",source.readframes(source.getnframes()))
-    rng=Random(name)
-    floor=filtered=0
-    samples=[]
-    for sample in raw:
-        point=sample/32768
-        floor=.965*floor+.035*point
-        filtered=.63*filtered+.37*(point-floor*highpass)
-        samples.append(filtered*gain+rng.uniform(-noise,noise))
-    save(name,samples,rate)
-
-
 if __name__=="__main__":
     effects()
     music()
-    for name in ("Voice_DispatchBar","Voice_DispatchPrecinct","Voice_Apartment_Television"):
-        color_recording(name,1.65,.010,1)
-    color_recording("Voice_FedorRecording",1.22,.006,.62)

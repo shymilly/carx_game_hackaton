@@ -11,8 +11,8 @@ project=Path(ue.Paths.convert_relative_path_to_full(ue.Paths.project_dir()))
 sys.path.insert(0,str(project/"Tools"))
 from ActOneScenes import page_speakers
 from ApartmentScene import make_material
-from BrightonStreetDetails import build_street_details, expression, factory_finishes
-from BrightonUpgrade import ACTORS, LEVELS, LIB, P, V, color, constant, factory_asset, media, node, output, save
+from BrightonStreetDetails import build_street_details, factory_finishes
+from BrightonUpgrade import ACTORS, LEVELS, LIB, P, V, constant, factory_asset, media, output, save
 from CityLifeCharacters import PEOPLE, STYLES, apply_profile, mtl_colors
 from CityLifeEnvironment import save_instance_material_usage
 from RefineStreetVisuals import set_lettering
@@ -35,26 +35,6 @@ def pistol_asset():
         model.set_material(index,mat)
     save(model)
     return model
-
-
-def smoke_material():
-    mat=make_material("/Game/Prologue/Brighton","CigaretteSmoke",(.48,.51,.55))
-    LIB.delete_all_material_expressions(mat)
-    mat.set_editor_properties(dict(two_sided=True,blend_mode=ue.BlendMode.BLEND_TRANSLUCENT,
-        shading_model=ue.MaterialShadingModel.MSM_UNLIT,used_with_instanced_static_meshes=True))
-    fade=node(mat,ue.MaterialExpressionPerInstanceCustomData,data_index=0,const_default_value=0.)
-    varying=node(mat,ue.MaterialExpressionVertexInterpolator)
-    assert LIB.connect_material_expressions(fade,"",varying,"") or LIB.connect_material_expressions(fade,"",varying,"VS")
-    alpha=expression(mat,{"UV":node(mat,ue.MaterialExpressionTextureCoordinate),"Fade":varying,
-                          "Clock":node(mat,ue.MaterialExpressionTime)},"""
-        float2 p=UV*2.-1.;
-        p.x+=.13*sin(p.y*5.+Clock*1.5);
-        float curl=.68+.32*sin(p.x*5.-p.y*3.+Clock*.9);
-        return (1.-smoothstep(.05,.96,length(p)))*curl*Fade*.48;""",ue.CustomMaterialOutputType.CMOT_FLOAT1)
-    output(alpha,mat,P.MP_OPACITY)
-    output(color(mat,(.55,.58,.62)),mat,P.MP_EMISSIVE_COLOR)
-    LIB.recompile_material(mat)
-    save(mat)
 
 
 def animation_profiles():
@@ -178,7 +158,6 @@ backup.mkdir(parents=True)
 for name in maps: copy2(project/"Content/Locations"/(name+".umap"),backup/(name+".umap"))
 profiles=animation_profiles()
 model=pistol_asset()
-smoke_material()
 factory_finishes()
 spec=json.loads((project/"Docs/Scenario/ActOne.json").read_text(encoding="utf-8"))
 data=ue.load_asset("/Game/Story/ActOne/DA_ActOne")
@@ -193,12 +172,6 @@ for name in maps:
         set_lettering(fascia,"SM_NeighborhoodPrecinct",letters,name==maps[0])
     if name in maps[:2]:
         if name==maps[0]: on_desk(placed,model)
-        for actor in placed:
-            if not isinstance(actor,ue.ActOneCast): continue
-            if actor.get_editor_property("default_pose")==ue.ActOnePose.SMOKING:
-                for prop in actor.get_attached_actors(True,True):
-                    if prop.get_actor_label() in ("Cigarette ember","Smoker's cigarette") and not prop.actor_has_tag("CigaretteSource"):
-                        prop.tags=[*prop.tags,ue.Name("CigaretteSource")]
         build_street_details(name==maps[0])
         save_instance_material_usage()
     if name=="L_LighthouseBar":

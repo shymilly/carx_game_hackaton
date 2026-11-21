@@ -7,6 +7,7 @@ import unreal as ue
 from ApartmentScene import make_material
 from BrightonUpgrade import ACTORS, LIB, P, V, color, connect, constant, node, output, save
 from CityLifeEnvironment import CityLayout, STREET_SHIFT
+from IndustrialRail import industrial_branch
 from StreetMaterials import custom_input
 
 FACTORY_SCALE=1.45
@@ -102,32 +103,6 @@ class BlockLayout(CityLayout):
         actor.tags=[*actor.tags,DETAIL_TAG]
         actor.set_folder_path(ue.Name("Brighton/Block details"))
         return actor
-
-
-def industrial_branch(layout):
-    x,y,half=2550,-7650,10140
-    track_z=539.
-    steel=ue.load_asset("/Game/Prologue/CityLife/Materials/M_BridgePaint")
-    brick=ue.load_asset("/Game/Prologue/Street/RefinedFactory/Materials/M_Factory_brick")
-    ballast=ue.load_asset("/Game/Prologue/CityLife/Materials/M_TrackBallast")
-    layout.box("Industrial line track bed",(x,y,track_z-30),(half*2,386,37),ballast,cull=45000)
-    for i in range(26):
-        layout.instance("Industrial line rails","RailStraight",(x-half+390+i*780,y,track_z-6.2),(1,3.16,1),cull=45000)
-    for side in (-1,1):
-        layout.box("Industrial line girder",(x,y+side*194,track_z-62),(half*2,32,88),steel,cull=45000)
-        for i in range(27):
-            layout.box("Industrial line ribs",(x-half+i*780,y+side*194,track_z-62),(24,48,86),steel,cull=28000)
-    for px in (-7150,-4760,-2370,-110,1410,3460,5700,7940,10180,12420):
-        layout.box("Industrial viaduct masonry piers",(px,y,206),(143,370,491),brick,cull=43000)
-    service=layout.actor(ue.CityRailTraffic,"Industrial branch local service",(x,y,track_z))
-    consist=[]
-    for key in ("FreightEngine","FreightGondola","FreightBoxcar","FreightGondola"):
-        mesh=layout.models[key]
-        bounds=mesh.get_bounding_box()
-        car=ue.CityRailVehicle()
-        car.set_editor_properties(dict(mesh=mesh,length=bounds.max.x-bounds.min.x,mesh_yaw=180 if key=="FreightEngine" else 0))
-        consist.append(car)
-    service.set_editor_properties(dict(consist=consist,half_route=half,interval=300.,first_pass_delay=95.,speed=980.))
 
 
 def neighborhood_infill(layout):

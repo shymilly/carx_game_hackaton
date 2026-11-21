@@ -1,5 +1,6 @@
 #include "NarrativeSubsystem.h"
 #include "CharacterNotebook.h"
+#include "DoorOpeningAudio.h"
 #include "DimaApartmentStory.h"
 #include "LocationTravel.h"
 #include "HAL/PlatformTime.h"
@@ -291,7 +292,7 @@ void UNarrativeSubsystem::FinishLocationCard()
 }
 
 bool UNarrativeSubsystem::TravelToStreet(TSoftObjectPtr<UWorld> Destination, FText LocationTitle,
-    UTexture2D* DestinationPhoto, FName ArrivalTag)
+    UTexture2D* DestinationPhoto, FName ArrivalTag, const AActor* OpeningDoor)
 {
     // References to an already visited map can carry the PIE package prefix in editor play.
     const FString Package = UWorld::RemovePIEPrefix(Destination.ToSoftObjectPath().GetLongPackageName());
@@ -337,8 +338,9 @@ bool UNarrativeSubsystem::TravelToStreet(TSoftObjectPtr<UWorld> Destination, FTe
         Screen.WidgetLoadingScreen = SNew(SLocationCard).Photo(DestinationPhoto).Title(LocationTitle).Loading(true);
         GetMoviePlayer()->SetupLoadingScreen(Screen);
     }
-    // Draw the loading screen before blocking OpenLevel; PIE uses the viewport overlay too.
-    World->GetTimerManager().SetTimer(TravelBegin,this,&ThisClass::BeginMapTravel,.15f,false);
+    if (OpeningDoor) DoorOpeningAudio::Play(OpeningDoor,EDoorOpeningSound::Entry);
+    // Draw the screen immediately, giving a door's latch time to sound before its world unloads.
+    World->GetTimerManager().SetTimer(TravelBegin,this,&ThisClass::BeginMapTravel,OpeningDoor ? .32f : .15f,false);
     return true;
 }
 

@@ -1,5 +1,6 @@
 #include "DimaApartmentStory.h"
 #include "ActOne.h"
+#include "DoorOpeningAudio.h"
 #include "LocationTravel.h"
 #include "Engine/Texture2D.h"
 #include "InteractionDocument.h"
@@ -109,6 +110,18 @@ void UDimaApartmentStoryComponent::InitializeStory()
     bSharedStreet = UGameplayStatics::GetActorOfClass(this, APrologueTimeOfDay::StaticClass()) != nullptr;
     if (!bSharedStreet && UGameplayStatics::GetCurrentLevelName(this,true) != Scenario->ApartmentMap.ToString()) return;
     bActive = true;
+    for (const TCHAR* Tag:{TEXT("KitchenDoor"),TEXT("BathDoor"),TEXT("FridgeDoor")})
+    {
+        TArray<AActor*> Doors;
+        UGameplayStatics::GetAllActorsWithTag(this,FName(Tag),Doors);
+        if (Doors.IsEmpty()) continue;
+        FMovingDoorSound& Door=DoorSounds.AddDefaulted_GetRef();
+        Door.Leaf=Doors[0];
+        Door.TargetProperty=FName(*(FString(Tag)+TEXT("Toggled")));
+        Door.ProgressProperty=FName(*(FString(Tag)+TEXT("Progress")));
+        Door.PreviousProgress=Number(HUD,Door.ProgressProperty);
+        Door.bFridge=FName(Tag)==TEXT("FridgeDoor");
+    }
     if (bSharedStreet)
     {
         if (ACharacter* Character = Cast<ACharacter>(Player->GetPawn()))
@@ -262,26 +275,30 @@ bool UDimaApartmentStoryComponent::TryInteract(FName Tag)
     InitializeStory();
     if (!bActive) return false;
     if (IsBusy()) return true;
-    if (bSharedStreet && Tag == TEXT("StreetDoor"))
+    const bool bStreetDoor=Tag==TEXT("StreetDoor");
+    if ((bSharedStreet && bStreetDoor) || Tag==TEXT("Exit"))
     {
-        if (Progress.Phase == EDimaApartmentPhase::ReadyToExit)
+        if (Progress.Phase!=EDimaApartmentPhase::ReadyToExit)
         {
-            if (UGameplayStatics::GetCurrentLevelName(this,true) != TEXT("L_DimaApartmentInterior")) return false;
-            GetWorld()->GetGameInstance()->GetSubsystem<UNarrativeSubsystem>()->TravelToStreet(
-                TSoftObjectPtr<UWorld>(FSoftObjectPath(TEXT("/Game/Locations/L_NeptuneStreet.L_NeptuneStreet"))),
-                NSLOCTEXT("Dostoevsky","BrightonDestination","4th Brighton beach"),
-                LoadObject<UTexture2D>(nullptr,TEXT("/Game/Prologue/Street/Transitions/T_Transition_Neptune.T_Transition_Neptune")),TEXT("FromApartment"));
+            Hint(FText::FromString(Objective(TEXT("Осмотрите квартиру"))));
             return true;
         }
-        Hint(FText::FromString(Objective(TEXT("Осмотрите квартиру"))));
-        return true;
-    }
-    if (Tag == TEXT("Exit"))
-    {
-        if (Progress.Phase != EDimaApartmentPhase::ReadyToExit) { Hint(FText::FromString(Objective(TEXT("Осмотрите квартиру")))); return true; }
+        const bool bCurrentApartment=UGameplayStatics::GetCurrentLevelName(this,true)==TEXT("L_DimaApartmentInterior");
+        if (bStreetDoor && !bCurrentApartment) return false;
+        TArray<AActor*> Doors;
+        UGameplayStatics::GetAllActorsWithTag(this,bCurrentApartment ? FName(TEXT("StreetDoor")) : Tag,Doors);
+        const AActor* Leaf=Doors.IsEmpty() ? nullptr : Doors[0];
+        auto* Narrative=GetWorld()->GetGameInstance()->GetSubsystem<UNarrativeSubsystem>();
+        if (bCurrentApartment)
+        {
+            Narrative->TravelToStreet(
+                TSoftObjectPtr<UWorld>(FSoftObjectPath(TEXT("/Game/Locations/L_NeptuneStreet.L_NeptuneStreet"))),
+                NSLOCTEXT("Dostoevsky","BrightonDestination","4th Brighton beach"),nullptr,TEXT("FromApartment"),Leaf);
+            return true;
+        }
         if (Scenario->StreetMap.IsNull()) { Hint(NSLOCTEXT("Dostoevsky","StreetNotAssigned","Следующая локация ещё не подключена.")); return true; }
-        GetWorld()->GetGameInstance()->GetSubsystem<UNarrativeSubsystem>()->TravelToStreet(Scenario->StreetMap,
-            NSLOCTEXT("Dostoevsky","StreetStoryTitle","Улица Американского квартала"));
+        Narrative->TravelToStreet(Scenario->StreetMap,
+            NSLOCTEXT("Dostoevsky","StreetStoryTitle","Улица Американского квартала"),nullptr,NAME_None,Leaf);
         return true;
     }
     if (Tag == TEXT("Phone"))
@@ -324,10 +341,27 @@ FString UDimaApartmentStoryComponent::Prompt(FName Tag,const FString& Fallback) 
     return Fallback;
 }
 
+void UDimaApartmentStoryComponent::UpdateDoorSounds()
+{
+    const UObject* HUD=GetOwner();
+    for (FMovingDoorSound& Door:DoorSounds)
+    {
+        const double Position=Number(HUD,Door.ProgressProperty);
+        if (!Flag(HUD,Door.TargetProperty)) Door.bPlayed=false;
+        else if (!Door.bPlayed && Position>Door.PreviousProgress+UE_SMALL_NUMBER)
+        {
+            DoorOpeningAudio::Play(Door.Leaf.Get(),Door.bFridge ? EDoorOpeningSound::Fridge : EDoorOpeningSound::Wood);
+            Door.bPlayed=true;
+        }
+        Door.PreviousProgress=Position;
+    }
+}
+
 void UDimaApartmentStoryComponent::TickComponent(float Delta,ELevelTick TickType,FActorComponentTickFunction* TickFunction)
 {
     Super::TickComponent(Delta,TickType,TickFunction);
     if (!bActive || !Player.IsValid()) return;
+    UpdateDoorSounds();
     AHUD* HUD = Cast<AHUD>(GetOwner());
     if (bSharedStreet && AmbientAudio)
     {
