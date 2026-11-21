@@ -4,6 +4,7 @@
 #include "Styling/SlateBrush.h"
 #include "DocumentWindow.generated.h"
 class UInteractionDocument;
+class SScrollBox;
 struct FKey;
 
 DECLARE_DELEGATE_OneParam(FDocumentChoice, int32);
@@ -32,6 +33,9 @@ protected:
 private:
     TArray<FText> Choices;
     FDocumentChoice OnChoice;
+    int32 SelectedChoice = 0;
+    TWeakPtr<SScrollBox> ChoiceList;
+    TArray<TWeakPtr<SWidget>> ChoiceButtons;
     FSlateBrush IllustrationBrush;
     TSharedRef<SWidget> BuildNewspaper(const FText& Close);
     TSharedRef<SWidget> BuildCredits();

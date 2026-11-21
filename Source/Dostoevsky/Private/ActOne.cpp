@@ -356,17 +356,13 @@ void UActOneSubsystem::Dispatch()
 
 void UActOneSubsystem::ShowStatus()
 {
-    APlayerController* PC=Player();
-    if (!IsActive() || !PC || !PC->GetPawn() || PC->GetViewTarget()!=PC->GetPawn() ||
-        PC->IsMoveInputIgnored() || UI()->IsDocumentOpen() || UI()->IsLocationTransitionActive()) return;
-    const UInteractionDocument* Guidance=Doc(TEXT("Disposition"));
-    if (!Guidance) return;
-    LiveDocument=NewObject<UInteractionDocument>(this);
-    LiveDocument->Title=Text(TEXT("Характеристики"));
-    LiveDocument->Body=FText::FromString(FString::Printf(
-        TEXT("Спокойствие %d\nГнев %d\nСвязь с русским наследием %d\nДоверие корпорации %d\nРепутация в квартале %d\nНаличные $%d\n\n%s"),
-        Stats.Calm,Stats.Anger,Stats.Heritage,Stats.CorporateTrust,Stats.Neighborhood,Cash,*Guidance->Body.ToString()));
-    UI()->ShowDocument(PC,LiveDocument,nullptr);
+    APlayerController* PC = Player();
+    if (!IsActive() || !PC || !PC->GetPawn() || PC->GetViewTarget() != PC->GetPawn() ||
+        PC->IsMoveInputIgnored() || Flag(PC->GetHUD(), TEXT("JournalOpen")) ||
+        UI()->IsDocumentOpen() || UI()->IsLocationTransitionActive()) return;
+
+    const UInteractionDocument* Guidance = Doc(TEXT("Disposition"));
+    UI()->ShowCharacterNotebook(PC, Stats, Cash, Guidance ? Guidance->Body : FText::GetEmpty());
 }
 
 bool UActOneSubsystem::HandlePortal(const AStreetPortal& Portal)

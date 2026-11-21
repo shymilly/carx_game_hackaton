@@ -6,6 +6,7 @@
 #include "Engine/TimerHandle.h"
 #include "NarrativeSubsystem.generated.h"
 class UInteractionDocument;
+struct FActOneStatistics;
 class UDocumentWindow;
 class UAudioComponent;
 class USoundBase;
@@ -28,6 +29,7 @@ public:
     bool ShowStoryPage(APlayerController* Player, UInteractionDocument* Document, FSimpleDelegate Continue);
     bool ShowRequiredChoices(APlayerController* Player, UInteractionDocument* Document, TArray<FText> Choices, FDocumentChoice Selection);
     bool ShowChallenge(APlayerController* Player, UInteractionDocument* Document, FDocumentKeyInput Input, FSimpleDelegate Cancel);
+    bool ShowCharacterNotebook(APlayerController* Player, const FActOneStatistics& Stats, int32 Cash, const FText& Notes);
     UFUNCTION(BlueprintCallable, Category="Narrative") void CloseDocument();
     UFUNCTION(BlueprintPure, Category="Narrative") bool IsDocumentOpen() const { return Window != nullptr; }
     UFUNCTION(BlueprintCallable, Category="Narrative|Audio") void StartAmbience(USoundBase* Sound, float Volume = 0.5f);
@@ -43,7 +45,7 @@ public:
     }
     UFUNCTION(BlueprintPure, Category="Narrative|Travel") UTexture2D* GetLocationPhoto() const { return LocationPhoto; }
 private:
-    UPROPERTY(Transient) TObjectPtr<UDocumentWindow> Window;
+    UPROPERTY(Transient) TObjectPtr<UUserWidget> Window;
     UPROPERTY(Transient) TObjectPtr<UInteractionDocument> CurrentDocument;
     UPROPERTY(Transient) TObjectPtr<UAudioComponent> Voice;
     UPROPERTY(Transient) TObjectPtr<UAudioComponent> Ambience;
@@ -58,6 +60,7 @@ private:
     bool bTravelling = false;
     FDelegateHandle MapLoadedHandle;
     FDelegateHandle TravelFailureHandle;
+    void PresentModal(APlayerController* Player, UUserWidget* Widget);
     bool OpenDocument(APlayerController* Player, UInteractionDocument* Document,
         TSubclassOf<UDocumentWindow> WindowClass, TArray<FText> Choices, FDocumentChoice Selection,
         bool bRequireChoice = false, FSimpleDelegate Continue = {}, FDocumentKeyInput Input = {});
