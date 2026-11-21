@@ -45,11 +45,13 @@ private:
     EActOnePose CurrentPose = EActOnePose::Idle;
     float Life = 0;
     float WalkSpeed = 0;
+    float CurrentWalkSpeed = 0;
     float NodTime = 1;
     float NodRemaining = 0;
     UPROPERTY(Transient) TObjectPtr<UCigaretteSmokeComponent> SmokeTrail;
     UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> HeldCigarette;
     bool bSpeaking = false;
+    bool bLegacySeat = false;
     FVector WalkTarget = FVector::ZeroVector;
     void Part(FName Name,float Pitch,float Roll=0);
     void PlayCharacterPose();

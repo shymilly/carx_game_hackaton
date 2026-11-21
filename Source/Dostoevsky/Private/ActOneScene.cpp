@@ -3,6 +3,7 @@
 #include "CityCharacter.h"
 #include "CigaretteSmokeComponent.h"
 #include "DoorOpeningAudio.h"
+#include "DostoevskyGameSettings.h"
 
 #include "Animation/AnimMontage.h"
 #include "Animation/AnimSingleNodeInstance.h"
@@ -85,7 +86,7 @@ void AActOneCast::BeginPlay()
     if (UAnimSingleNodeInstance* Clip=CharacterMesh->GetSingleNodeInstance())
     {
         const float Offset=AnimationPhase>0 ? AnimationPhase : (GetTypeHash(GetFName())%1000)*.001f*Clip->GetLength();
-        if (DefaultPose==EActOnePose::Seated) Clip->SetPosition(2.3f,false);
+        if (bLegacySeat) Clip->SetPosition(FMath::Min(2.3f,Clip->GetLength()),false);
         else if (Clip->GetLength()>0) Clip->SetPosition(FMath::Fmod(Offset,Clip->GetLength()),false);
     }
     if (DefaultPose==EActOnePose::Smoking)
@@ -119,9 +120,10 @@ void AActOneCast::PlayCharacterPose()
     if (!CharacterProfile || !CharacterProfile->Mesh) return;
     NodRemaining=0;
     FName Motion=bSpeaking ? TEXT("Talk") : TEXT("Idle");
+    const FName Seat=CharacterProfile->Motions.Contains(TEXT("SeatedIdle")) ? TEXT("SeatedIdle") : TEXT("Sit");
     switch (CurrentPose)
     {
-    case EActOnePose::Seated: Motion=bSpeaking && CharacterProfile->Motions.Contains(TEXT("SeatedTalk")) ? TEXT("SeatedTalk") : TEXT("Sit"); break;
+    case EActOnePose::Seated: Motion=bSpeaking && CharacterProfile->Motions.Contains(TEXT("SeatedTalk")) ? TEXT("SeatedTalk") : Seat; break;
     case EActOnePose::Smoking: Motion=TEXT("Smoke"); break;
     case EActOnePose::Armed: Motion=TEXT("Armed"); break;
     case EActOnePose::Fallen: Motion=TEXT("Fall"); break;
@@ -130,20 +132,26 @@ void AActOneCast::PlayCharacterPose()
     case EActOnePose::Conversing: Motion=TEXT("Talk"); break;
     case EActOnePose::Firing: Motion=TEXT("Shot"); break;
     case EActOnePose::Dead: Motion=TEXT("Fall"); break;
-    case EActOnePose::Subdued: Motion=TEXT("Sit"); break;
+    case EActOnePose::Subdued: Motion=Seat; break;
     default: break;
     }
     const bool bLoop=CurrentPose!=EActOnePose::Fallen && CurrentPose!=EActOnePose::Dead && CurrentPose!=EActOnePose::Firing;
     const float Rate=CurrentPose==EActOnePose::Walking && WalkSpeed<1 ? .72f : 1.f;
     CharacterProfile->Play(*CharacterMesh,Motion,bLoop,Rate);
-    if (Motion==TEXT("Sit") && CharacterMesh->GetSingleNodeInstance()) CharacterMesh->SetPosition(2.3f,false);
+    bLegacySeat=Motion==TEXT("Sit");
+    if (UAnimSingleNodeInstance* Clip=CharacterMesh->GetSingleNodeInstance(); Clip && bLegacySeat)
+        Clip->SetPosition(FMath::Min(2.3f,Clip->GetLength()),false);
 }
 
 void AActOneCast::SetSpeaking(bool bIsSpeaking)
 {
     if (bSpeaking==bIsSpeaking) return;
     bSpeaking=bIsSpeaking;
-    if (CurrentPose==EActOnePose::Idle || CurrentPose==EActOnePose::Seated) PlayCharacterPose();
+    if (CurrentPose==EActOnePose::Idle || CurrentPose==EActOnePose::Seated)
+    {
+        PlayCharacterPose();
+        UpdateActorTick();
+    }
 }
 
 void AActOneCast::Face(const FVector& Target)
@@ -161,9 +169,10 @@ void AActOneCast::WalkAway(const FVector& Destination,float Speed)
 
 void AActOneCast::Nod()
 {
-    if (CharacterProfile && CharacterProfile->Motions.Contains(TEXT("Nod")))
+    const FName Motion=CurrentPose==EActOnePose::Seated ? TEXT("SeatedNod") : TEXT("Nod");
+    if (CharacterProfile && CharacterProfile->Motions.Contains(Motion))
     {
-        NodRemaining=CharacterProfile->Play(*CharacterMesh,TEXT("Nod"),false);
+        NodRemaining=CharacterProfile->Play(*CharacterMesh,Motion,false);
         UpdateActorTick();
         return;
     }
@@ -174,8 +183,9 @@ void AActOneCast::Nod()
 void AActOneCast::UpdateActorTick()
 {
     const bool bSkeletal=CharacterProfile && CharacterProfile->Mesh;
+    SetActorTickInterval(WalkSpeed>0 ? 0.f : .04f);
     SetActorTickEnabled(!IsHidden() && (WalkSpeed>0 || NodRemaining>0 || !bSkeletal ||
-        CurrentPose==EActOnePose::Smoking || CurrentPose==EActOnePose::Seated || CurrentPose==EActOnePose::Subdued));
+        CurrentPose==EActOnePose::Smoking || bLegacySeat));
 }
 
 void AActOneCast::SetActorHiddenInGame(bool bNewHidden)
@@ -200,12 +210,21 @@ void AActOneCast::Tick(float DeltaSeconds)
     Life+=DeltaSeconds;
     if (WalkSpeed>0)
     {
-        Face(WalkTarget);
-        const FVector Next=FMath::VInterpConstantTo(GetActorLocation(),WalkTarget,DeltaSeconds,WalkSpeed);
+        const FVector ToTarget=WalkTarget-GetActorLocation();
+        if (ToTarget.SizeSquared2D()>1.)
+            SetActorRotation(FRotator(0,FMath::FixedTurn(GetActorRotation().Yaw,ToTarget.Rotation().Yaw,720.f*DeltaSeconds),0));
+        CurrentWalkSpeed=FMath::FInterpConstantTo(CurrentWalkSpeed,WalkSpeed,DeltaSeconds,1250.f);
+        const FVector Next=FMath::VInterpConstantTo(GetActorLocation(),WalkTarget,DeltaSeconds,CurrentWalkSpeed);
         SetActorLocation(Next);
+        if (UAnimSingleNodeInstance* Clip=CharacterMesh->GetSingleNodeInstance())
+        {
+            const float NominalSpeed=CurrentPose==EActOnePose::Running ? 530.f : 275.f;
+            Clip->SetPlayRate(FMath::Clamp(CurrentWalkSpeed/NominalSpeed,.25f,1.55f));
+        }
         if (FVector::DistSquared(Next,WalkTarget)<4)
         {
             WalkSpeed=0;
+            CurrentWalkSpeed=0;
             SetActorHiddenInGame(true);
             SetActorEnableCollision(false);
             TArray<AActor*> Attached;
@@ -218,16 +237,16 @@ void AActOneCast::Tick(float DeltaSeconds)
         if (UAnimSingleNodeInstance* Clip=CharacterMesh->GetSingleNodeInstance())
         {
             const float T=Clip->GetCurrentTime();
-            if ((CurrentPose==EActOnePose::Seated || CurrentPose==EActOnePose::Subdued) && Clip->GetLength()>5.f && T>Clip->GetLength()-.4f)
+            if (bLegacySeat && Clip->GetLength()>5.f && T>Clip->GetLength()-.4f)
                 Clip->SetPosition(2.3f,false);
             if (SmokeTrail && HeldCigarette && CurrentPose==EActOnePose::Smoking)
             {
                 const APawn* Viewer=UGameplayStatics::GetPlayerPawn(this,0);
                 if (Viewer && FVector::DistSquared(Viewer->GetActorLocation(),GetActorLocation())<FMath::Square(1450.f))
                 {
-                    const FVector Mouth=CharacterMesh->GetSocketLocation(SmokeMouth);
+                    const FTransform Mouth=CharacterMesh->GetSocketTransform(SmokeMouth);
                     const FVector Tip=HeldCigarette->GetComponentTransform().TransformPosition(FVector(CigaretteTip,0,0));
-                    SmokeTrail->SetSource(Tip,Mouth,GetActorForwardVector(),T>3.95f && T<4.64f);
+                    SmokeTrail->SetSource(Tip,Mouth.GetLocation(),Mouth.GetUnitAxis(EAxis::X),T>4.45f && T<5.14f);
                 }
                 else SmokeTrail->StopEmitting();
             }
@@ -291,6 +310,8 @@ AActOneDirector::AActOneDirector()
 void AActOneDirector::BeginPlay()
 {
     Super::BeginPlay();
+    if (const UDostoevskyGameSettings* Settings=UDostoevskyGameSettings::Get())
+        Settings->ApplyToWorld(GetWorld());
     for (TActorIterator<AActor> It(GetWorld()); It; ++It)
     {
         for (FName Tag:It->Tags)

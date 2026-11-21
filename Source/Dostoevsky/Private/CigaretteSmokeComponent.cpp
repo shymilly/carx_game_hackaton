@@ -71,7 +71,7 @@ void UCigaretteSmokeComponent::TickComponent(float Delta,ELevelTick Type,FActorC
         Puff.Phase=Random.FRandRange(0,2*PI);
         Puff.Location=bBreath ? MouthLocation : TipLocation;
         Puff.Velocity=FVector(3,2,Random.FRandRange(17.f,25.f));
-        if (bBreath) Puff.Velocity+=BreathDirection*29.f;
+        Puff.Velocity+=BreathDirection*(bBreath ? 29.f : 5.f);
         NextIndex=(NextIndex+1)%Puffs.Num();
         UntilNext=bExhale ? .11f : .15f;
     }

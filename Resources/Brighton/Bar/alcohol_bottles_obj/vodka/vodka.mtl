@@ -1,0 +1,15 @@
+newmtl Glass
+Kd 0.620 0.720 0.750
+Ks .7 .7 .7
+Ns 130
+
+newmtl Label
+Kd 1 1 1
+Ks .15 .15 .15
+Ns 30
+map_Kd label.png
+
+newmtl Cap
+Kd 0.120 0.120 0.140
+Ks .55 .55 .55
+Ns 90
