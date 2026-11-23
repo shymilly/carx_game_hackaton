@@ -59,7 +59,8 @@ for map_name in maps:
             assert prop.get_component_by_class(ue.StaticMeshComponent).static_mesh.get_name()=="SM_pistol_obj"
             if role!="DroppedWeapon":
                 assert isinstance(prop.get_attach_parent_actor(),ue.ActOneCast)
-                assert str(prop.get_attach_parent_socket_name())=="MiddleHand_R"
+                socket="BarPistolGrip" if role=="BarShotProp" else "hand_r"
+                assert str(prop.get_attach_parent_socket_name())==socket
             else:
                 assert prop.get_component_by_class(ue.StaticMeshComponent).get_editor_property("mobility")==ue.ComponentMobility.MOVABLE
         assert len([a for a in placed if a.actor_has_tag("ActCue:BarShotCamera")])==1

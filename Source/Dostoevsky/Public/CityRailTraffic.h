@@ -6,6 +6,17 @@
 
 class UStaticMesh;
 class UStaticMeshComponent;
+class UMaterialInterface;
+
+USTRUCT(BlueprintType)
+struct FCityRailCarGraffiti
+{
+    GENERATED_BODY()
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Train") TObjectPtr<UMaterialInterface> Material;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Train") FVector Center = FVector::ZeroVector;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Train") FVector2D Size = FVector2D(400, 100);
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Train") float ProjectionYaw = 90.f;
+};
 
 USTRUCT(BlueprintType)
 struct FCityRailVehicle
@@ -14,6 +25,7 @@ struct FCityRailVehicle
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Train") TObjectPtr<UStaticMesh> Mesh;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Train") float Length = 1400.0f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Train") float MeshYaw = 0.0f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Train") TArray<FCityRailCarGraffiti> Graffiti;
 };
 
 // Background trains travel along the actor's local X axis. The origin is rail-top height.

@@ -1,4 +1,4 @@
-"""Play both Act One routes against real maps, Blueprint HUD and shared Slate documents."""
+"""Play all Act One routes against real maps, Blueprint HUD and shared Slate documents."""
 from pathlib import Path
 import json
 from math import hypot
@@ -186,7 +186,9 @@ def arrival(name, tag, exact=True):
 
 
 def travel(name, tag):
-    assert ui().is_location_transition_active() and ui().get_location_photo(), (name,tag)
+    expected = {'L_DimaApartmentInterior':'Apartment','L_NeptuneStreet':'Neptune','L_PolicePrecinct':'Precinct'}
+    texture = 'T_Transition_'+expected[name] if name in expected else 'T_Act_'+name.removeprefix('L_')
+    assert ui().is_location_transition_active() and ui().get_location_photo().get_name()==texture,(name,tag)
     assert pc().is_move_input_ignored() and pc().is_look_input_ignored()
     yield from arrival(name,tag)
 
@@ -195,7 +197,8 @@ def beginning(pistol):
     say_step('1 report, five inspections and nine phone pages')
     hud().call_method('ReceiveDrawHUD',(1280,720))
     assert hud().get_editor_property('State') == 9
-    hud().call_method('FinishReport')
+    yield from wait(windows,'Opening report window')
+    assert ue.ActOneBlueprintLibrary.send_editor_key('E'), 'E completes the opening report'
     yield from wait(lambda: hud().get_component_by_class(ue.DimaApartmentStoryComponent).get_phase() ==
                     ue.DimaApartmentPhase.EXPLORING and not pc().is_move_input_ignored(), 'Stand up from the desk')
     yield from pause(.65)
@@ -230,7 +233,7 @@ def beginning(pistol):
     assert act().get_phase() == phase.CIGARETTES
 
 
-def brighton(alt,alarm):
+def brighton(alt,tear_seal):
     say_step('2 street, newspaper, payphone, veteran and grocery')
     assert str(ue.DimaApartmentStoryLibrary.objective(hud(),'')) == 'Купить сигареты'
     use('ActPrecinctEntry')
@@ -245,7 +248,7 @@ def brighton(alt,alarm):
     articles = news.get_editor_property('articles')
     expected = spec['documents']['BrightonNewspaper']['articles']
     assert [str(article.get_editor_property('text')) for article in articles] == [entry['text'] for entry in expected]
-    if not alt and not alarm:
+    if not alt and not tear_seal:
         path=root/'Saved/ActOne/Newspaper.png'
         assert ue.ActOneBlueprintLibrary.capture_editor_document(windows()[0],str(path))
     yield from page('BrightonNewspaper')
@@ -257,10 +260,10 @@ def brighton(alt,alarm):
     yield from page('NoConnection')
     assert act().has_evidence('MotherCall' if alt else 'LizaCall')
     use(action.VETERAN)
-    yield from page('VeteranAsk',2 if alt else 1 if alarm else 0,3)
+    yield from page('VeteranAsk',2 if alt else 1 if tear_seal else 0,3)
     if not alt:
-        yield from page('VeteranCurse' if alarm else 'VeteranThanks')
-    assert act().get_statistics().get_editor_property('heritage') == (0 if alt or alarm else 1)
+        yield from page('VeteranCurse' if tear_seal else 'VeteranThanks')
+    assert act().get_statistics().get_editor_property('heritage') == (0 if alt or tear_seal else 1)
     use(action.BAR)
     assert not ui().is_location_transition_active()
     yield from physical_use(action.GROCERY,(0,133))
@@ -285,6 +288,8 @@ def conflict(alt):
         camera=target('ActCue:BarShotCamera')
         yield from wait(lambda: pc().get_view_target()==camera,'Cut to the shot')
         shooter=target('ActCue:BarDima')
+        prop=target('ActCue:BarShotProp')
+        assert prop.get_attach_parent_actor()==shooter and str(prop.get_attach_parent_socket_name())=='BarPistolGrip'
         assert not shooter.get_editor_property('hidden') and pawn().get_editor_property('hidden')
         shot=shooter.get_editor_property('character_mesh').get_anim_instance()
         authored=shooter.get_editor_property('character_profile').get_editor_property('motions')
@@ -333,7 +338,7 @@ def conflict(alt):
     yield from travel('L_PolicePrecinct','FromStreet')
 
 
-def precinct(alt,alarm):
+def precinct(alt,tear_seal):
     say_step('4 precinct, three conversations with Krill and Ivan at the door')
     use(action.MISSING,(100,0))
     yield from page('FedorMissing')
@@ -343,22 +348,22 @@ def precinct(alt,alarm):
     yield from pause(.58)
     assert place((resource.x,resource.y+120,99),sweep=True).y > resource.y+80, 'Captain office opening blocks the player'
     use(action.CAPTAIN,(0,-111))
-    yield from page('CaptainNews',2 if alt else 1 if alarm else 0,3)
+    yield from page('CaptainNews',2 if alt else 1 if tear_seal else 0,3)
     if not alt:
-        yield from page('CaptainReply02' if alarm else 'CaptainReply01')
-    yield from page('CaptainKGB',2 if alt else 1 if alarm else 0,3)
+        yield from page('CaptainReply02' if tear_seal else 'CaptainReply01')
+    yield from page('CaptainKGB',2 if alt else 1 if tear_seal else 0,3)
     if alt:
         yield from pages('CaptainSearch','CaptainSearchReply')
-    elif alarm:
+    elif tear_seal:
         yield from pages('CaptainInfo','CaptainInfoReply')
     else:
         yield from page('CaptainAnger')
-    yield from page('CaptainOffer',2 if alt else 1 if alarm else 0,3)
+    yield from page('CaptainOffer',2 if alt else 1 if tear_seal else 0,3)
     if alt:
         yield from page('CaptainFather')
     yield from page('CaptainWarning')
-    assert act().has_archive_access() == (not alt and not alarm)
-    if not alt and not alarm:
+    assert act().has_archive_access() == (not alt and not tear_seal)
+    if not alt and not tear_seal:
         use(action.ARCHIVES,(0,-101))
         yield from page('AegisArchive')
         use(action.TRAINING)
@@ -374,9 +379,10 @@ def precinct(alt,alarm):
     yield from travel('L_FedorEntry','ActEntry')
 
 
-def fedor(alt,alarm):
-    entry = 'seal alarm' if alarm else 'Ivan’s key' if alt else 'lock timing'
+def fedor(alt,tear_seal):
+    entry = 'remove seal' if tear_seal else 'Ivan’s key' if alt else 'lock timing'
     say_step('5 '+entry+', four clues, pursuit and automatic credits')
+    assert not ue.GameplayStatics.get_all_actors_with_tag(world(),'ActCue:Patrol')
     yield from physical_use(action.BUILDING_ENTRY,(-115,0))
     yield from pause(.73)
     travel_limit=time.monotonic()+26
@@ -389,16 +395,11 @@ def fedor(alt,alarm):
     assert abs(target(action.SEAL).get_actor_location().z-919)<.5
     ue.log('FEDOR_STAIRS_PLAY_OK entry door opened with E and all six flights climbed on foot')
     yield from look_and_use(action.SEAL,target(action.SEAL).get_actor_location())
-    if alarm:
-        def patrol_facing_door():
-            guard = target('ActCue:Patrol')
-            return guard.get_actor_rotation().yaw > 0 and guard.get_actor_location().y < -30
-        yield from wait(patrol_facing_door,'Patrol crossing the line of sight',12)
+    if tear_seal:
         yield from page('SealDoor',0,1)
-        yield from page('AlarmNotice')
     else:
         yield from page('SealDoor',1,2)
-    if not alt and not alarm:
+    if not alt and not tear_seal:
         assert ue.ActOneBlueprintLibrary.send_editor_key('SpaceBar')
         yield from page('LockRetry')
         yield from page('SealDoor',1,2)
@@ -408,14 +409,15 @@ def fedor(alt,alarm):
             assert act().get_challenge_step() == step+1
     yield from wait(lambda: ui().is_location_transition_active(), 'Opening the sealed door')
     yield from travel('L_FedorApartment','ActEntry')
-    assert act().is_alarmed() == alarm
+    assert not act().is_alarmed()
     assert not target(action.IVAN_FEDOR).get_actor_enable_collision()
     ivan=target('ActCue:IvanFedor')
     listener=target('ActCue:FedorListener')
     outside=listener.get_actor_location()
     assert ivan.get_editor_property('character_profile').get_name()=='DA_Ivan'
     assert listener.get_editor_property('character_profile').get_name()=='DA_Agent'
-    assert ivan.get_editor_property('hidden') and outside.x<-529 and not listener.get_editor_property('hidden')
+    assert ivan.get_editor_property('hidden') and outside.x<-529 and listener.get_editor_property('hidden')
+    assert not listener.get_actor_enable_collision()
     use(action.FLOORBOARD)
     use(action.FOLDER)
     yield from page('FedorFolder')
@@ -431,6 +433,8 @@ def fedor(alt,alarm):
     assert (listener.get_actor_location()-outside).length()<2
     use(action.IVAN_FEDOR,(104,0))
     yield from page('IvanFedor')
+    assert listener.get_editor_property('hidden')
+    yield from page('FedorWho')
     assert act().has_evidence('BankKey')
     yield from wait(lambda:listener.get_editor_property('hidden'),'The listener runs away',5)
     assert (listener.get_actor_location()-outside).length()>180 and not ivan.get_editor_property('hidden')
@@ -439,6 +443,15 @@ def fedor(alt,alarm):
     use(action.LEAVE_FEDOR,(100,0))
     yield from travel('L_BrightonAlley','ActEntry')
     assert not target(action.CHASE_BADGE).get_actor_enable_collision()
+    agent = target('ActCue:Agent')
+    if tear_seal:
+        # Let the agent leave while Dima stands still, then verify the stumble and badge below.
+        yield from wait(lambda:act().is_pursuit_finished(),'Agent runs out of sight on his own',24)
+        ue.log('CHASE_AGENT_ESCAPED_WHILE_PLAYER_WAITED')
+    else:
+        starting_point = agent.get_actor_location()
+        yield from pause(2.3)
+        assert agent.get_actor_location().distance(starting_point)>675, 'The agent stopped to wait for Dima'
     game_key('LeftShift',True)
     route_end=time.monotonic()+32
     director=ue.GameplayStatics.get_actor_of_class(world(),ue.ActOneDirector)
@@ -468,7 +481,9 @@ def fedor(alt,alarm):
     game_key('LeftShift',False)
     pawn().get_component_by_class(ue.CharacterMovementComponent).stop_movement_immediately()
     yield from wait(lambda: act().is_pursuit_finished(), 'Agent ran to the end of the route')
-    assert saw_fall and target('ActCue:Agent').get_editor_property('hidden')
+    assert saw_fall and agent.get_editor_property('hidden')
+    escaped_at = agent.get_actor_location()
+    assert escaped_at.x>4585 and escaped_at.y<1040,escaped_at
     ue.log('CHASE_TRIP_PLAY_OK Dima falls before the turn, recovers controls, then the badge is available')
     use(action.CHASE_BADGE,(84,0))
     yield from arrival(apartment,'FromFinale')
@@ -495,13 +510,13 @@ def walk_to(x,y,deadline,tolerance):
 
 
 def run():
-    for alternative,alarm in ((False,False),(True,False),(False,True)):
+    for alternative,tear_seal in ((False,False),(True,False),(False,True)):
         yield from beginning(alternative)
-        yield from brighton(alternative,alarm)
+        yield from brighton(alternative,tear_seal)
         yield from conflict(alternative)
-        yield from precinct(alternative,alarm)
-        yield from fedor(alternative,alarm)
-        ue.log('ACT_ONE_ROUTE_OK '+('seal/alarm' if alarm else 'pistol/key' if alternative else 'QTE/lock'))
+        yield from precinct(alternative,tear_seal)
+        yield from fedor(alternative,tear_seal)
+        ue.log('ACT_ONE_ROUTE_OK '+('seal' if tear_seal else 'pistol/key' if alternative else 'QTE/lock'))
         windows()[0].request_close()
         yield from wait(lambda: act().get_phase() == phase.APARTMENT and hud().get_editor_property('State') == 9,
                         'Clean restart at report')

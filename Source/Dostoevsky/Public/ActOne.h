@@ -63,6 +63,9 @@ public:
     UPROPERTY(EditAnywhere, Category="Smoking") TObjectPtr<UAnimMontage> SmokingMontage;
     UPROPERTY(EditAnywhere, Category="Smoking") TObjectPtr<UStaticMesh> CigaretteMesh;
     UPROPERTY(EditAnywhere, Category="Pursuit") TObjectPtr<UAnimSequence> TripArms;
+    UPROPERTY(EditAnywhere, Category="Finale") TObjectPtr<UAnimMontage> RecorderMontage;
+    UPROPERTY(EditAnywhere, Category="Finale") FVector RecorderContactPoint = FVector::ZeroVector;
+    UPROPERTY(EditAnywhere, Category="Finale", meta=(ClampMin="0.1")) float RecorderPressTime = .86f;
 };
 
 UCLASS()
@@ -145,6 +148,7 @@ private:
     bool bTripRecovered = false;
     int32 Cash = 20;
     float ChasePosition = 0;
+    float ChaseSpeed = 0;
     EChallenge Challenge = EChallenge::None;
     int32 Step = 0;
     double StepStarted = 0;
@@ -201,6 +205,7 @@ public:
     UFUNCTION(BlueprintCallable, Category="Act One|Editor") static bool UseDynamicObjective(UObject* BlueprintAsset);
     UFUNCTION(BlueprintCallable, Category="Act One|Editor") static bool SendEditorKey(FName KeyName);
     UFUNCTION(BlueprintCallable, Category="Act One|Editor") static bool SendEditorGameKey(APlayerController* Player,FName KeyName,bool bPressed);
+    UFUNCTION(BlueprintPure, Category="Act One|Editor") static EMouseCaptureMode GetEditorMouseCaptureMode(const APlayerController* Player);
     UFUNCTION(BlueprintCallable, Category="Act One|Editor") static bool CaptureEditorDocument(UDocumentWindow* Window,const FString& FileName);
     UFUNCTION(BlueprintCallable, Category="Act One|Editor") static bool CaptureEditorWidget(UUserWidget* Widget,const FString& FileName);
 };

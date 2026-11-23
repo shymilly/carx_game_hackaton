@@ -59,13 +59,21 @@ class DOSTOEVSKY_API UCityCharacterAuthoring : public UBlueprintFunctionLibrary
 public:
     UFUNCTION(BlueprintCallable, Category="City|Authoring")
     static FVector PoseBonePosition(const USkeletalMesh* Mesh, const UAnimSequence* Animation, FName Bone, float Time);
+    UFUNCTION(BlueprintCallable, Category="City|Authoring")
+    static bool FixRetargetedBoneUnits(const USkeletalMesh* Mesh, UAnimSequence* Animation, FName PelvisBone);
+    UFUNCTION(BlueprintCallable, Category="City|Authoring")
+    static bool RemoveLocomotionTravel(const USkeletalMesh* Mesh, UAnimSequence* Animation, FName PelvisBone);
 
     UFUNCTION(BlueprintCallable, Category="City|Authoring")
     static bool AuthorGesture(USkeletalMesh* Mesh,UAnimSequence* Idle,UCityGestureSequence* Destination,FName Gesture);
     UFUNCTION(BlueprintCallable, Category="City|Authoring")
+    static bool AuthorBarPistolPose(USkeletalMesh* Mesh,UAnimSequence* Idle,UCityGestureSequence* Destination);
+    UFUNCTION(BlueprintCallable, Category="City|Authoring")
     static bool AuthorFirstPersonSmoke(USkeletalMesh* Mesh,USkeleton* Skeleton,UCityGestureSequence* Destination);
     UFUNCTION(BlueprintCallable, Category="City|Authoring")
     static bool AuthorFirstPersonTrip(USkeletalMesh* Mesh,UCityGestureSequence* Destination);
+    UFUNCTION(BlueprintCallable,Category="City Life|Editor")
+    static bool AuthorFirstPersonRecorder(USkeletalMesh* Mesh,UCityGestureSequence* Destination,FVector& ContactPoint);
     UFUNCTION(BlueprintCallable, Category="City|Authoring")
     static bool InstallSmokingSlot(UAnimBlueprint* Blueprint);
 };

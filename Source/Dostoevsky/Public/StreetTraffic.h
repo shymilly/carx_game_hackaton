@@ -1,5 +1,6 @@
 #pragma once
 #include "CoreMinimal.h"
+#include "Engine/DataAsset.h"
 #include "GameFramework/Actor.h"
 #include "StreetTraffic.generated.h"
 class UBoxComponent;
@@ -12,14 +13,32 @@ class UAudioComponent;
 class USoundBase;
 class USoundConcurrency;
 
+USTRUCT(BlueprintType)
+struct FStreetTrafficModel
+{
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, Category="Traffic") TObjectPtr<UStaticMesh> Chassis;
+    UPROPERTY(EditAnywhere, Category="Traffic") TArray<TObjectPtr<UStaticMesh>> Wheels;
+};
+
+UCLASS(BlueprintType)
+class DOSTOEVSKY_API UStreetTrafficFleetAppearance : public UDataAsset
+{
+    GENERATED_BODY()
+public:
+    UPROPERTY(EditAnywhere, Category="Traffic") TMap<TObjectPtr<UStaticMesh>, FStreetTrafficModel> Models;
+};
+
 UCLASS()
 class DOSTOEVSKY_API AStreetTrafficCar : public AActor
 {
     GENERATED_BODY()
 public:
     AStreetTrafficCar();
-    void Configure(UStaticMesh* Model,int32 PaintSlot,UMaterialInterface* Paint);
+    void Configure(UStaticMesh* Model,int32 PaintSlot,UMaterialInterface* Paint,const FStreetTrafficModel* Appearance);
     void SetOnRoad(bool bOnRoad);
+    void UpdateWheels(float DeltaSeconds);
     void ConfigureAudio(USoundBase* DriveBy,USoundBase* Horn,USoundConcurrency* DriveLimit,USoundConcurrency* HornLimit);
     void UpdateRoadAudio(float Speed,const FVector& Listener);
     UFUNCTION(BlueprintPure, Category="Traffic|Audio") int32 GetDriveByCount() const { return DriveByCount; }
@@ -32,6 +51,7 @@ public:
 private:
     UPROPERTY(VisibleAnywhere, Category="Traffic") TObjectPtr<UBoxComponent> RoadBody;
     UPROPERTY(VisibleAnywhere, Category="Traffic") TObjectPtr<UStaticMeshComponent> BodyMesh;
+    UPROPERTY(VisibleAnywhere, Category="Traffic") TArray<TObjectPtr<UStaticMeshComponent>> Wheels;
     UPROPERTY(VisibleAnywhere, Category="Traffic|Audio") TObjectPtr<UAudioComponent> DriveByAudio;
     UPROPERTY(VisibleAnywhere, Category="Traffic|Audio") TObjectPtr<UAudioComponent> HornAudio;
     bool bDriveByStarted=false;
@@ -43,6 +63,11 @@ private:
     double LastHitAt=-10;
     int32 ImpactCount=0;
     float LastImpactSpeed=0;
+    FVector PreviousWheelLocation=FVector::ZeroVector;
+    double PreviousWheelHeading=0;
+    double WheelTravel=0;
+    double Wheelbase=0;
+    float SteeringAngle=0;
     void Impact(const FHitResult& Hit,float Speed);
 };
 
@@ -63,6 +88,7 @@ public:
     UFUNCTION(BlueprintPure, Category="Traffic") USplineComponent* GetLane(int32 Lane) const;
     UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category="Traffic") TObjectPtr<UStaticMesh> CarMesh;
     UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category="Traffic") TArray<TObjectPtr<UStaticMesh>> FleetMeshes;
+    UPROPERTY(EditInstanceOnly, Category="Traffic") TObjectPtr<UStreetTrafficFleetAppearance> FleetAppearance;
     UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category="Traffic|Audio") TObjectPtr<USoundBase> DriveBySound;
     UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category="Traffic|Audio") TObjectPtr<USoundBase> HornSound;
     UFUNCTION(BlueprintPure, Category="Traffic|Audio") int32 GetDriveByCount() const;

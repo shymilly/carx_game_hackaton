@@ -6,8 +6,9 @@
 class AHUD;
 class UFont;
 class UDocumentWindow;
+struct FKey;
 
-// Adapter for the existing HUD graph. Its gameplay/input logic continues unchanged.
+// Adapter for the existing HUD graph. It forwards the opening report key to the HUD.
 UCLASS(Transient)
 class DOSTOEVSKY_API ULegacyDialogueBridge : public UActorComponent
 {
@@ -23,6 +24,9 @@ private:
     TArray<FString> Parts;
     FString PreviousContent;
     uint64 LastDrawFrame = 0;
+    bool bReportInputFocused = false;
+    bool HandleReportKey(const FKey& Key,bool bRepeat);
+    void ReleaseReportFocus();
 };
 
 UCLASS()

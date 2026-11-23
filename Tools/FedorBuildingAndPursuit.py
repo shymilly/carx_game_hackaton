@@ -286,6 +286,7 @@ def apartment():
     watcher=scene.spawn(ue.ActOneCast,'Aegis listener outside the apartment',(-588,-104,0),-83,cue='FedorListener')
     apply_profile(watcher,ue.load_asset(PEOPLE+'/Profiles/DA_Agent'))
     watcher.set_editor_property('default_pose',ue.ActOnePose.IDLE)
+    watcher.set_actor_hidden_in_game(True)
     watcher.set_actor_enable_collision(False)
     scene.target('Listener runs toward the stairwell',(-601,-321,0),cue='FedorListenerExit')
     ue.log('FEDOR_LISTENER_READY separate Ivan and eavesdropping Aegis actor')

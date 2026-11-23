@@ -4,6 +4,7 @@
 #include "EdGraph/EdGraph.h"
 #include "EdGraph/EdGraphSchema.h"
 #include "Engine/Blueprint.h"
+#include "Engine/GameViewportClient.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "Framework/Application/SlateApplication.h"
 #include "GameFramework/PlayerController.h"
@@ -104,4 +105,16 @@ bool UActOneBlueprintLibrary::SendEditorGameKey(APlayerController* Player,FName 
 #else
     return false;
 #endif
+}
+
+EMouseCaptureMode UActOneBlueprintLibrary::GetEditorMouseCaptureMode(const APlayerController* Player)
+{
+#if WITH_EDITOR
+    if (Player && Player->GetWorld())
+    {
+        if (const UGameViewportClient* Viewport=Player->GetWorld()->GetGameViewport())
+            return Viewport->GetMouseCaptureMode();
+    }
+#endif
+    return EMouseCaptureMode::NoCapture;
 }

@@ -4,6 +4,8 @@
 #include "GameFramework/HUD.h"
 #include "GameFramework/PlayerController.h"
 #include "EngineGlobals.h"
+#include "InputCoreTypes.h"
+#include "UObject/UnrealType.h"
 #if WITH_EDITOR
 #include "Engine/Blueprint.h"
 #include "EdGraph/EdGraph.h"
@@ -23,6 +25,14 @@
 
 namespace
 {
+constexpr int32 ApartmentReportState = 9;
+
+bool IsOpeningReport(const AHUD* HUD)
+{
+    const FIntProperty* State=HUD ? FindFProperty<FIntProperty>(HUD->GetClass(),TEXT("State")) : nullptr;
+    return State && State->GetPropertyValue_InContainer(HUD)==ApartmentReportState;
+}
+
 ULegacyDialogueBridge* Bridge(AHUD* HUD)
 {
     if (!HUD) return nullptr;
@@ -65,16 +75,59 @@ void ULegacyDialogueBridge::Append(const FString& Text)
     Document->Body = FText::FromString(Parts[1]);
     Document->CloseLabel = FText::FromString(Parts[2]);
     Window->Document = Document;
-    // The existing HUD owns E, journal, camera and state changes. Do not steal its input.
-    Window->SetVisibility(ESlateVisibility::HitTestInvisible);
+    const bool bOpeningReport=IsOpeningReport(HUD);
+    Window->SetVisibility(bOpeningReport ? ESlateVisibility::Visible : ESlateVisibility::HitTestInvisible);
     Window->AddToViewport(40);
+    if (bOpeningReport)
+    {
+        Window->OnKeyInput.BindUObject(this,&ThisClass::HandleReportKey);
+        FInputModeGameAndUI Input;
+        Input.SetWidgetToFocus(Window->TakeWidget());
+        Input.SetHideCursorDuringCapture(false);
+        bReportInputFocused = true;
+        Player->SetInputMode(Input);
+        Window->SetKeyboardFocus();
+    }
     PreviousContent = Content;
+}
+
+bool ULegacyDialogueBridge::HandleReportKey(const FKey& Key,bool bRepeat)
+{
+    AHUD* HUD=Cast<AHUD>(GetOwner());
+    if (Key!=EKeys::E || !IsOpeningReport(HUD)) return false;
+    if (bRepeat) return true;
+    if (UFunction* Finish=HUD->FindFunction(TEXT("FinishReport")))
+    {
+        HUD->ProcessEvent(Finish,nullptr);
+        ReleaseReportFocus();
+        return true;
+    }
+    return false;
+}
+
+void ULegacyDialogueBridge::ReleaseReportFocus()
+{
+    if (!bReportInputFocused) return;
+    bReportInputFocused = false;
+    const AHUD* HUD = Cast<AHUD>(GetOwner());
+    if (APlayerController* Player = HUD ? HUD->GetOwningPlayerController() : nullptr)
+    {
+        if (Player->IsLocalController() && !Player->bShowMouseCursor)
+        {
+            Player->SetInputMode(FInputModeGameOnly());
+        }
+    }
 }
 
 void ULegacyDialogueBridge::TickComponent(float Delta, ELevelTick TickType, FActorComponentTickFunction* TickFunction)
 {
     Super::TickComponent(Delta, TickType, TickFunction);
-    if (Window && GFrameCounter > LastDrawFrame + 1)
+    const bool bStale = GFrameCounter > LastDrawFrame + 1;
+    if (bReportInputFocused && (bStale || !IsOpeningReport(Cast<AHUD>(GetOwner()))))
+    {
+        ReleaseReportFocus();
+    }
+    if (Window && bStale)
     {
         Window->RemoveFromParent();
         Window = nullptr;
@@ -85,6 +138,7 @@ void ULegacyDialogueBridge::TickComponent(float Delta, ELevelTick TickType, FAct
 void ULegacyDialogueBridge::EndPlay(const EEndPlayReason::Type Reason)
 {
     if (Window) { Window->RemoveFromParent(); Window = nullptr; }
+    if (Reason==EEndPlayReason::Destroyed) ReleaseReportFocus();
     Super::EndPlay(Reason);
 }
 

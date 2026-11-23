@@ -205,28 +205,38 @@ class ProductMesh:
     def sphere(self,center,size,material):
         start=len(self.points)
         rings,segments=8,16
-        for ring in range(rings+1):
+        self.points.append((center[0],center[1],center[2]-size[2]/2))
+        for ring in range(1,rings):
             phi=-pi/2+pi*ring/rings
             for segment in range(segments):
                 theta=tau*segment/segments
                 self.points.append((center[0]+size[0]/2*cos(phi)*cos(theta),
                                     center[1]+size[1]/2*cos(phi)*sin(theta),
                                     center[2]+size[2]/2*sin(phi)))
-        for ring in range(rings):
+        top=len(self.points)
+        self.points.append((center[0],center[1],center[2]+size[2]/2))
+        for segment in range(segments):
+            next_segment=(segment+1)%segments
+            bottom_ring,top_ring=start+1,top-segments
+            self.faces.append((material,[start,bottom_ring+next_segment,bottom_ring+segment]))
+            self.faces.append((material,[top_ring+segment,top_ring+next_segment,top]))
+        for ring in range(rings-2):
             for segment in range(segments):
-                a=start+ring*segments+segment
-                b=start+ring*segments+(segment+1)%segments
+                a=start+1+ring*segments+segment
+                b=start+1+ring*segments+(segment+1)%segments
                 self.faces.append((material,[a,b,b+segments,a+segments]))
 
     def save(self,name):
         directory=OUT/'Groceries/Created'
         directory.mkdir(parents=True,exist_ok=True)
-        lines=['o SM_'+name,'vt 0 0','vt 1 0','vt 1 1','vt 0 1']
+        # Preserve the apparent left/right and top/bottom of printed labels after reflecting Y.
+        lines=['o SM_'+name,'vt 1 1','vt 0 1','vt 0 0','vt 1 0']
         lines.extend('v %.5f %.5f %.5f'%(x,-y,z) for x,y,z in self.points)
         previous=None
         for material,face in self.faces:
             if material!=previous:
                 lines.append('usemtl '+material)
+                lines.append('s 1' if material in ('Crust','Egg') else 's off')
                 previous=material
             lines.append('f '+' '.join('%d/%d'%(vertex+1,index%4+1) for index,vertex in enumerate(reversed(face))))
         (directory/('SM_'+name+'.obj')).write_text('\n'.join(lines)+'\n',encoding='utf-8')

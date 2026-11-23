@@ -1,6 +1,7 @@
 #include "CityRailTraffic.h"
 #include "LocationTravel.h"
 
+#include "Components/DecalComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/GameInstance.h"
 
@@ -30,6 +31,18 @@ void ACityRailTraffic::BeginPlay()
         Car->SetVisibility(false);
         Car->RegisterComponent();
         Cars.Add(Car);
+        for (const FCityRailCarGraffiti& Paint : Vehicle.Graffiti)
+        {
+            if (!Paint.Material) continue;
+            UDecalComponent* Decal = NewObject<UDecalComponent>(this);
+            Decal->SetupAttachment(Car);
+            Decal->SetRelativeLocationAndRotation(Paint.Center, FRotator(0, Paint.ProjectionYaw, 0));
+            Decal->DecalSize = FVector(7, Paint.Size.X * .5, Paint.Size.Y * .5);
+            Decal->SetDecalMaterial(Paint.Material);
+            Decal->SetFadeScreenSize(.018f);
+            Decal->SetVisibility(false);
+            Decal->RegisterComponent();
+        }
         TrainLength+=Vehicle.Length+CityCouplerGap;
     }
     SetActorTickEnabled(TrainLength>0);
@@ -47,7 +60,7 @@ void ACityRailTraffic::Tick(float DeltaSeconds)
     {
         bPassing=bMoving;
         if (!bPassing)
-            for (UStaticMeshComponent* Car:Cars) Car->SetVisibility(false);
+            for (UStaticMeshComponent* Car:Cars) Car->SetVisibility(false,true);
         SetActorTickInterval(bPassing ? 0.f : .22f);
     }
     if (!bPassing) return;
@@ -59,7 +72,7 @@ void ACityRailTraffic::Tick(float DeltaSeconds)
         const double Center=Head-Direction*Vehicle.Length*.5;
         Cars[Index]->SetRelativeLocationAndRotation(FVector(Center,0,0),FRotator(0,Vehicle.MeshYaw+(Direction<0 ? 180 : 0),0));
         const bool bInsideTrack=!bCoveredEnds || FMath::Abs(Center)+Vehicle.Length*.5<=HalfRoute;
-        if (Cars[Index]->IsVisible()!=bInsideTrack) Cars[Index]->SetVisibility(bInsideTrack);
+        if (Cars[Index]->IsVisible()!=bInsideTrack) Cars[Index]->SetVisibility(bInsideTrack,true);
         Head-=Direction*(Vehicle.Length+CityCouplerGap);
     }
 }

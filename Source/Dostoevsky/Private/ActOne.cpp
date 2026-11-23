@@ -119,6 +119,7 @@ void UActOneSubsystem::Reset()
     bLobbyOpened=bIvanEntered=bIvanArrived=bTripStarted=bTripRecovered=false;
     Cash=20;
     ChasePosition=0;
+    ChaseSpeed=0;
     Step=0;
     Data=nullptr;
 }
@@ -145,7 +146,9 @@ FText UActOneSubsystem::Objective() const
         if (HasEvidence(Clues[0])&&HasEvidence(Clues[1])&&HasEvidence(Clues[2])&&HasEvidence(Clues[3]))
             return Text(TEXT("Поговорить с Иваном"));
         return Text(TEXT("Осмотреть квартиру отца"));
-    case EActOnePhase::Chase: return bAgentEscaped && bTripRecovered ? Text(TEXT("Подобрать значок Aegis")) : Text(TEXT("Догнать агента"));
+    case EActOnePhase::Chase:
+        if (bAgentEscaped && bTripRecovered) return Text(TEXT("Подобрать значок Aegis"));
+        return bAgentEscaped ? Text(TEXT("Продолжить погоню")) : Text(TEXT("Догнать агента"));
     case EActOnePhase::Finale: return Text(TEXT("Прослушать кассету"));
     case EActOnePhase::Complete: return Text(TEXT("Акт завершён"));
     }
@@ -228,6 +231,7 @@ void UActOneSubsystem::RefreshScene()
     if (Place()==EActOneLocation::Fedor)
     {
         Director->Show(TEXT("IvanFedor"),bIvanEntered);
+        if (!bBankKey) Director->Show(TEXT("FedorListener"),false);
         Director->Show(TEXT("DeskBadgeProp"),bDrawerOpen&&!HasEvidence(TEXT("FedorBadge")));
     }
     if (Place()==EActOneLocation::Alley) Director->Show(TEXT("ChaseBadge"),bAgentEscaped && bTripRecovered);
@@ -341,7 +345,8 @@ void UActOneSubsystem::Update(float DeltaSeconds)
         PlayAudio(TEXT("Lighter"),.7f);
         Timed(2.55f,FSimpleDelegate::CreateUObject(this,&ThisClass::Dispatch));
     }
-    if (Phase==EActOnePhase::Chase && Place()==EActOneLocation::Alley && !bAgentEscaped) UpdatePursuit(DeltaSeconds);
+    if (Phase==EActOnePhase::Chase && Place()==EActOneLocation::Alley && (!bAgentEscaped || !bTripStarted))
+        UpdatePursuit(DeltaSeconds);
     if (Phase==EActOnePhase::Search && Place()==EActOneLocation::Fedor && bIvanEntered && !bIvanArrived)
         UpdateFedorArrival();
     if (Phase==EActOnePhase::Precinct && Place()==EActOneLocation::Precinct && !bClosingStarted)
@@ -752,7 +757,7 @@ void UActOneSubsystem::MeetFedorIvan()
 {
     if (bBankKey || !bIvanArrived) return;
     for (FName Entry:Clues) if (!HasEvidence(Entry)) return;
-    Say({TEXT("IvanFedor")},FSimpleDelegate::CreateWeakLambda(this,[this]()
+    Say({TEXT("IvanFedor"),TEXT("FedorWho")},FSimpleDelegate::CreateWeakLambda(this,[this]()
     {
         bBankKey=true;
         AddEvidence(TEXT("BankKey"),false);
@@ -784,14 +789,24 @@ void UActOneSubsystem::UpdatePursuit(float DeltaSeconds)
 {
     AActOneCast* Agent=Cast<AActOneCast>(Director->Cue(TEXT("Agent")));
     USplineComponent* Route=Director->PursuitRoute;
-    if (!Agent || !Route || Route->GetNumberOfSplinePoints()<3 || !Player()->GetPawn()) return;
-    const FVector Position=Player()->GetPawn()->GetActorLocation();
-    const float At=Route->GetDistanceAlongSplineAtSplineInputKey(Route->FindInputKeyClosestToWorldLocation(Position));
+    const APawn* Pawn=Player() ? Player()->GetPawn() : nullptr;
+    if (!Agent || !Route || Route->GetNumberOfSplinePoints()<3 || !Pawn || DeltaSeconds<=UE_SMALL_NUMBER) return;
+    const auto AlongRoute=[Route](const FVector& Position)
+    {
+        return Route->GetDistanceAlongSplineAtSplineInputKey(Route->FindInputKeyClosestToWorldLocation(Position));
+    };
+    const float At=AlongRoute(Pawn->GetActorLocation());
     const float Length=Route->GetSplineLength();
-    const float FinalBend=Route->GetDistanceAlongSplineAtSplinePoint(Route->GetNumberOfSplinePoints()-2);
-    const float TripAt=FinalBend-186.f;
+    const AActor* Stumble=Director->Cue(TEXT("PursuitTripStart"));
+    const float TripAt=Stumble ? AlongRoute(Stumble->GetActorLocation())
+        : Route->GetDistanceAlongSplineAtSplinePoint(Route->GetNumberOfSplinePoints()-2)-186.f;
     const float Lead=bAlarm ? 1000.f : 820.f;
-    if (ChasePosition<=0) {ChasePosition=530; Hint(Text(TEXT("Агент Aegis уходит в переулок. Бегите за ним.")),4.f);}
+    if (ChasePosition<=0)
+    {
+        ChasePosition=530.f;
+        ChaseSpeed=460.f;
+        Hint(Text(TEXT("Агент Aegis уходит в переулок. Бегите за ним.")),4.f);
+    }
     if (!bTripStarted && At>=TripAt)
     {
         bTripStarted=true;
@@ -803,13 +818,18 @@ void UActOneSubsystem::UpdatePursuit(float DeltaSeconds)
             RefreshScene();
         }));
     }
-    if (bTripStarted)
-        ChasePosition=FMath::Min(Length,ChasePosition+DeltaSeconds*1050.f);
-    else
-        ChasePosition=FMath::Max(ChasePosition,FMath::Min3(FinalBend-86.f,ChasePosition+DeltaSeconds*(bAlarm ? 570.f : 505.f),At+Lead));
-    const FTransform Pose=Route->GetTransformAtDistanceAlongSpline(ChasePosition,ESplineCoordinateSpace::World);
-    Agent->SetActorLocationAndRotation(Pose.GetLocation(),Pose.GetRotation());
-    Agent->Pose(EActOnePose::Running);
+    if (bAgentEscaped) return;
+
+    // A lead changes the pace, but never leaves the agent waiting in view before the stumble.
+    constexpr auto WorldSpace=ESplineCoordinateSpace::World;
+    const float StrideBlend=FMath::Clamp((ChasePosition-At-Lead)/720.f,0.f,1.f);
+    const float DesiredSpeed=bTripStarted ? 745.f : FMath::Lerp(bAlarm ? 555.f : 505.f,390.f,StrideBlend);
+    ChaseSpeed=FMath::FInterpConstantTo(ChaseSpeed,DesiredSpeed,DeltaSeconds,920.f);
+    ChasePosition=FMath::Min(Length,ChasePosition+ChaseSpeed*DeltaSeconds);
+    const FVector Next=Route->GetLocationAtDistanceAlongSpline(ChasePosition,WorldSpace);
+    const FVector Heading=Route->GetLocationAtDistanceAlongSpline(FMath::Min(Length,ChasePosition+38.f),WorldSpace)-
+        Route->GetLocationAtDistanceAlongSpline(FMath::Max(0.f,ChasePosition-38.f),WorldSpace);
+    Agent->FollowPursuitPath(Next,Heading,ChaseSpeed,DeltaSeconds);
     if (ChasePosition>=Length-1)
     {
         bAgentEscaped=true;
@@ -821,13 +841,14 @@ void UActOneSubsystem::UpdatePursuit(float DeltaSeconds)
 
 void UActOneSubsystem::Finale()
 {
-    bClosingStarted=true;
     APlayerController* PC=Player();
+    if (!PC) return;
+    bClosingStarted=true;
     if (Director->FinaleCamera) PC->SetViewTarget(Director->FinaleCamera);
-    if (PC->PlayerCameraManager) PC->PlayerCameraManager->StartCameraFade(1,0,.68f,FLinearColor::Black,false,false);
-    Director->PressRecorder();
-    Timed(.78f,FSimpleDelegate::CreateWeakLambda(this,[this]()
+    if (PC->PlayerCameraManager) PC->PlayerCameraManager->StartCameraFade(1,0,.55f,FLinearColor::Black,false,false);
+    Timed(Director->PlayRecorder(),FSimpleDelegate::CreateWeakLambda(this,[this]()
     {
+        Director->FinishRecorder();
         const UInteractionDocument* Recording=Doc(TEXT("FedorRecording"));
         const float Duration=Recording && Recording->Voice ? Recording->Voice->GetDuration() : 7.f;
         Director->GetWorldTimerManager().SetTimer(SceneTimer,this,&ThisClass::Credits,Duration+.38f,false);

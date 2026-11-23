@@ -37,6 +37,7 @@ public:
     void Nod();
     void WalkAway(const FVector& Destination,float Speed);
     void WalkTo(const FVector& Destination,float Speed);
+    void FollowPursuitPath(const FVector& Position,const FVector& Direction,float Speed,float DeltaSeconds);
     bool IsWalkingToMark() const { return WalkSpeed>0; }
     void SetSpeaking(bool bIsSpeaking);
 protected:
@@ -91,7 +92,8 @@ public:
     void StartPursuitTrip(const FVector& Direction);
     void EndPursuitTrip();
     UFUNCTION(BlueprintPure,Category="Pursuit") bool IsPursuitTripPlaying() const { return TripCamera != nullptr; }
-    void PressRecorder();
+    float PlayRecorder();
+    void FinishRecorder();
     void OpenDoor(FName Hinge,float Yaw);
     UFUNCTION(BlueprintCallable,Category="Weather") void SetRain(bool bOn);
     UFUNCTION(BlueprintPure,Category="Weather") bool IsRaining() const { return bRain; }
@@ -116,6 +118,7 @@ private:
     UPROPERTY() TObjectPtr<USceneComponent> SmokeRig;
     UPROPERTY(Transient) TObjectPtr<UCigaretteSmokeComponent> SmokeTrail;
     UPROPERTY(Transient) TObjectPtr<USkeletalMeshComponent> SmokingArms;
+    UPROPERTY(Transient) TObjectPtr<USkeletalMeshComponent> RecorderArms;
     UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> HeldCigarette;
     TWeakObjectPtr<AActor> PreviousBarView;
     TWeakObjectPtr<AActor> PreviousTripView;
@@ -132,8 +135,10 @@ private:
     float FlashRemaining = 0;
     FRandomStream Random{1994};
     float WeatherTime = 0;
-    float SmokeTime = 0;
     float TapeTime = -1;
+    float RainFrameTime = 0;
+    FVector RecorderKeyRest = FVector::ZeroVector;
+    bool bRecorderPressed = false;
     float DoorProgress = 1;
     float DoorFrom = 0;
     float DoorTo = 0;
@@ -144,7 +149,9 @@ private:
     void StatusKey();
     void UpdateRain(const FVector& Around,float DeltaSeconds);
     void SampleRainGround(const FVector& Around);
-    void UpdateSmoke(APlayerController* Player,float DeltaSeconds);
-    void UpdateRecorder(APlayerController* Player,float DeltaSeconds);
+    void UpdateSmoke(APlayerController* Player);
+    void UpdateRecorder(float DeltaSeconds);
+    void ClickRecorder();
+    void RefreshTickInterval();
     void UpdatePursuitTrip(float DeltaSeconds);
 };

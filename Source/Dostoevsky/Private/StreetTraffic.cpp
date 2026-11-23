@@ -29,11 +29,15 @@ constexpr float SafetyMargin=7.f;
 constexpr float FollowingGap=155.f;
 constexpr float Acceleration=440.f;
 constexpr float Braking=630.f;
+constexpr float TurnPreview=645.f;
+constexpr float TightTurnSpeed=440.f;
+constexpr int32 WheelCount=4;
 constexpr float MaxSimulationStep=1.f/30.f;
 FTransform RoadTransform(const USplineComponent& Lane,float Distance,float CenterHeight)
 {
     using Coordinate=ESplineCoordinateSpace::Type;
     const float Length=Lane.GetSplineLength();
+    Distance=FMath::Clamp(Distance,0.f,Length);
     const FVector Location=Lane.GetLocationAtDistanceAlongSpline(Distance,Coordinate::World);
     const FVector Before=Lane.GetLocationAtDistanceAlongSpline(FMath::Max(0.f,Distance-SteeringLookahead),Coordinate::World);
     const FVector After=Lane.GetLocationAtDistanceAlongSpline(FMath::Min(Length,Distance+SteeringLookahead),Coordinate::World);
@@ -81,6 +85,16 @@ AStreetTrafficCar::AStreetTrafficCar()
     BodyMesh->SetGenerateOverlapEvents(false);
     BodyMesh->SetCanEverAffectNavigation(false);
     BodyMesh->bAffectDistanceFieldLighting=false;
+    for (int32 Index=0;Index<WheelCount;++Index)
+    {
+        UStaticMeshComponent* Wheel=CreateDefaultSubobject<UStaticMeshComponent>(*FString::Printf(TEXT("RoadWheel%d"),Index));
+        Wheel->SetupAttachment(BodyMesh);
+        Wheel->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        Wheel->SetGenerateOverlapEvents(false);
+        Wheel->SetCanEverAffectNavigation(false);
+        Wheel->bAffectDistanceFieldLighting=false;
+        Wheels.Add(Wheel);
+    }
     DriveByAudio=CreateDefaultSubobject<UAudioComponent>(TEXT("DriveByAudio"));
     HornAudio=CreateDefaultSubobject<UAudioComponent>(TEXT("HornAudio"));
     for (UAudioComponent* Audio : {DriveByAudio.Get(),HornAudio.Get()})
@@ -112,13 +126,30 @@ FVector AStreetTrafficCar::CollisionExtent(const UStaticMesh* Model)
     }
     return Extent;
 }
-void AStreetTrafficCar::Configure(UStaticMesh* Model,int32 Slot,UMaterialInterface* Paint)
+void AStreetTrafficCar::Configure(UStaticMesh* Model,int32 Slot,UMaterialInterface* Paint,const FStreetTrafficModel* Appearance)
 {
+    const bool bSeparateWheels=Appearance && Appearance->Chassis && Appearance->Wheels.Num()==WheelCount &&
+        !Appearance->Wheels.ContainsByPredicate([](const auto& Wheel){return !Wheel;});
     BodyMesh->EmptyOverrideMaterials();
-    BodyMesh->SetStaticMesh(Model);
+    BodyMesh->SetStaticMesh(bSeparateWheels ? Appearance->Chassis.Get() : Model);
     RoadBody->SetBoxExtent(CollisionExtent(Model),false);
     BodyMesh->SetRelativeLocation(FVector(0,0,-RoadCenterHeight()));
     if (Slot!=INDEX_NONE && Paint) BodyMesh->SetMaterial(Slot,Paint);
+    double Front=-TNumericLimits<double>::Max();
+    double Rear=TNumericLimits<double>::Max();
+    for (int32 Index=0;Index<Wheels.Num();++Index)
+    {
+        UStaticMesh* Mesh=bSeparateWheels ? Appearance->Wheels[Index].Get() : nullptr;
+        Wheels[Index]->SetStaticMesh(Mesh);
+        Wheels[Index]->SetRelativeTransform(FTransform::Identity);
+        if (Mesh)
+        {
+            const double Axle=Mesh->GetBounds().Origin.X;
+            Front=FMath::Max(Front,Axle);
+            Rear=FMath::Min(Rear,Axle);
+        }
+    }
+    Wheelbase=bSeparateWheels ? Front-Rear : 0;
 }
 float AStreetTrafficCar::RoadCenterHeight() const { return RoadBody->GetUnscaledBoxExtent().Z+RoadGroundClearance; }
 void AStreetTrafficCar::ConfigureAudio(USoundBase* DriveBy,USoundBase* Horn,USoundConcurrency* DriveLimit,USoundConcurrency* HornLimit)
@@ -137,6 +168,34 @@ void AStreetTrafficCar::SetOnRoad(bool bActive)
     HornAudio->Stop();
     SetActorEnableCollision(bActive);
     SetActorHiddenInGame(!bActive);
+    PreviousWheelLocation=GetActorLocation();
+    PreviousWheelHeading=GetActorRotation().Yaw;
+    WheelTravel=0;
+    SteeringAngle=0;
+}
+void AStreetTrafficCar::UpdateWheels(float DeltaSeconds)
+{
+    if (Wheelbase<=0) return;
+    const FVector Location=GetActorLocation();
+    const double Heading=GetActorRotation().Yaw;
+    const double Distance=FVector::Dist2D(Location,PreviousWheelLocation);
+    const double YawDelta=FMath::DegreesToRadians(FMath::FindDeltaAngleDegrees(PreviousWheelHeading,Heading));
+    PreviousWheelLocation=Location;
+    PreviousWheelHeading=Heading;
+    WheelTravel+=Distance;
+    const float Desired=Distance>.15
+        ? FMath::Clamp(static_cast<float>(FMath::RadiansToDegrees(FMath::Atan(Wheelbase*YawDelta/Distance))),-34.f,34.f)
+        : 0.f;
+    SteeringAngle=FMath::FInterpTo(SteeringAngle,Desired,DeltaSeconds,10.f);
+    for (UStaticMeshComponent* Wheel:Wheels)
+    {
+        const FBoxSphereBounds Bounds=Wheel->GetStaticMesh()->GetBounds();
+        const double Spin=FMath::Fmod(WheelTravel/FMath::Max(1.,Bounds.BoxExtent.Z),2.*UE_DOUBLE_PI);
+        const FQuat Rolling(FVector::RightVector,Spin);
+        const FQuat Turn(FVector::UpVector,Bounds.Origin.X>0 ? FMath::DegreesToRadians(SteeringAngle) : 0);
+        const FQuat Rotation=Turn*Rolling;
+        Wheel->SetRelativeLocationAndRotation(Bounds.Origin-Rotation.RotateVector(Bounds.Origin),Rotation);
+    }
 }
 void AStreetTrafficCar::UpdateRoadAudio(float Speed,const FVector& Listener)
 {
@@ -402,7 +461,8 @@ void AStreetTrafficFlow::SpawnNext()
     const int32 Variant=!bUseLegacyPaint || Paints.IsEmpty() ? INDEX_NONE :
         (TotalSpawned<Paints.Num() ? TotalSpawned : DrivingRandom.RandRange(0,Paints.Num()-1));
     AStreetTrafficCar* Car=Slot->Car.Get();
-    Car->Configure(Model,PaintSlot,Paints.IsValidIndex(Variant) ? Paints[Variant].Get() : nullptr);
+    Car->Configure(Model,PaintSlot,Paints.IsValidIndex(Variant) ? Paints[Variant].Get() : nullptr,
+        FleetAppearance ? FleetAppearance->Models.Find(Model) : nullptr);
     Car->SetActorTransform(Pose,false,nullptr,ETeleportType::TeleportPhysics);
     Slot->Lane=LaneIndex;
     Slot->Distance=0;
@@ -419,7 +479,11 @@ void AStreetTrafficFlow::Advance(FVehicle& V,float DeltaSeconds,float Clearance)
     if (!Car) {Release(V);return;}
     if (V.BrakeRemaining>0) {V.BrakeRemaining-=DeltaSeconds;return;}
     const USplineComponent& Lane=*GetLane(V.Lane);
-    const float Target=FMath::Min(V.Cruise,FMath::Sqrt(2.f*Braking*FMath::Max(0.f,Clearance)));
+    const double Ahead=RoadTransform(Lane,V.Distance+TurnPreview,0).Rotator().Yaw;
+    const double Bend=FMath::Abs(FMath::FindDeltaAngleDegrees(Car->GetActorRotation().Yaw,Ahead));
+    const double TurnAmount=FMath::GetMappedRangeValueClamped(FVector2D(6,56),FVector2D(0,1),Bend);
+    const float CurveSpeed=FMath::Lerp(V.Cruise,TightTurnSpeed,static_cast<float>(TurnAmount));
+    const float Target=FMath::Min(CurveSpeed,FMath::Sqrt(2.f*Braking*FMath::Max(0.f,Clearance)));
     V.Speed=FMath::FInterpConstantTo(V.Speed,Target,DeltaSeconds,V.Speed>Target ? Braking : Acceleration);
     const float Step=FMath::Min(V.Speed*DeltaSeconds,FMath::Max(0.f,Clearance));
     if (Step<=UE_KINDA_SMALL_NUMBER)
@@ -466,9 +530,12 @@ void AStreetTrafficFlow::Tick(float DeltaSeconds)
     }
     const APlayerController* Player=UGameplayStatics::GetPlayerController(this,0);
     const APawn* Listener=Player ? Player->GetPawn() : nullptr;
-    if (Listener)
-        for (const FVehicle& V : Fleet)
-            if (V.Lane!=INDEX_NONE && V.Car.IsValid()) V.Car->UpdateRoadAudio(V.Speed,Listener->GetActorLocation());
+    for (const FVehicle& V : Fleet)
+        if (V.Lane!=INDEX_NONE && V.Car.IsValid())
+        {
+            V.Car->UpdateWheels(SimulationTime);
+            if (Listener) V.Car->UpdateRoadAudio(V.Speed,Listener->GetActorLocation());
+        }
 }
 void AStreetTrafficFlow::EndPlay(const EEndPlayReason::Type Reason)
 {

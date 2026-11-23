@@ -133,10 +133,13 @@ void APrologueTimeOfDay::ApplyTime()
         A.Yaw + FMath::FindDeltaAngleDegrees(A.Yaw, B.Yaw) * Weight, 0.f);
     if (Sun)
     {
-        Sun->SetActorRotation(Rotation);
+        // Minute-to-minute drift should not invalidate virtual shadow maps on every clock update.
+        if (!Sun->GetActorRotation().Equals(Rotation,.12f)) Sun->SetActorRotation(Rotation);
         ULightComponent* Light = Sun->GetLightComponent();
-        Light->SetIntensity(FMath::Lerp(A.Illuminance, B.Illuminance, Weight));
-        Light->SetLightColor(FMath::Lerp(A.Direct, B.Direct, Weight));
+        const float Intensity=FMath::Lerp(A.Illuminance,B.Illuminance,Weight);
+        if (!FMath::IsNearlyEqual(Light->Intensity,Intensity,.008f)) Light->SetIntensity(Intensity);
+        const FLinearColor Tint=FMath::Lerp(A.Direct,B.Direct,Weight);
+        if (!Light->GetLightColor().Equals(Tint,.006f)) Light->SetLightColor(Tint);
     }
     if (SkyMaterial)
     {
@@ -149,13 +152,21 @@ void APrologueTimeOfDay::ApplyTime()
     if (AmbientSky)
     {
         USkyLightComponent* Light = AmbientSky->GetLightComponent();
-        Light->SetLightColor(FMath::Lerp(A.Ambient, B.Ambient, Weight));
-        Light->SetIntensity(FMath::Lerp(A.SkyIntensity, B.SkyIntensity, Weight));
+        const float Intensity=FMath::Lerp(A.SkyIntensity,B.SkyIntensity,Weight);
+        if (!FMath::IsNearlyEqual(Light->Intensity,Intensity,.004f)) Light->SetIntensity(Intensity);
+        const FLinearColor Tint=FMath::Lerp(A.Ambient,B.Ambient,Weight);
+        if (!Light->GetLightColor().Equals(Tint,.006f)) Light->SetLightColor(Tint);
     }
     const float WindowGlow = FMath::Lerp(A.WindowGlow, B.WindowGlow, Weight);
     for (int32 Index = 0; Index < StreetLights.Num(); ++Index)
         if (ALight* Light = StreetLights[Index])
-            Light->GetLightComponent()->SetIntensity(StreetLightIntensity[Index] * WindowGlow);
+        {
+            ULightComponent* Component=Light->GetLightComponent();
+            const float Intensity=StreetLightIntensity[Index]*WindowGlow;
+            if ((Intensity==0.f && Component->Intensity!=0.f)
+                || !FMath::IsNearlyEqual(Component->Intensity,Intensity,.005f))
+                Component->SetIntensity(Intensity);
+        }
     if (StreetLightParameters)
     {
         UMaterialParameterCollectionInstance* Parameters = GetWorld()->GetParameterCollectionInstance(StreetLightParameters);

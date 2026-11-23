@@ -38,7 +38,7 @@ struct FCityClipProxy : FAnimSingleNodeInstanceProxy
     using FAnimSingleNodeInstanceProxy::FAnimSingleNodeInstanceProxy;
     TArray<FTransform> PreviousPose;
     float Elapsed = 0;
-    static constexpr float BlendSeconds = .18f;
+    float BlendSeconds = .21f;
 
     void PreUpdate(UAnimInstance* Instance,float Delta) override
     {
@@ -82,6 +82,7 @@ void UCityClipInstance::TransitionTo(UAnimSequence* Clip,bool bLoop,float Rate,b
         FCityClipProxy& Proxy=GetProxyOnGameThread<FCityClipProxy>();
         Proxy.PreviousPose=GetSkelMeshComponent()->GetBoneSpaceTransforms();
         Proxy.Elapsed=0;
+        Proxy.BlendSeconds=bMatchStride ? .16f : .21f;
         if (bMatchStride && GetLength()>UE_SMALL_NUMBER)
             Start=FMath::Fmod(GetCurrentTime()/GetLength(),1.f)*Clip->GetPlayLength();
     }
@@ -125,12 +126,14 @@ float UCityCharacterProfile::Play(USkeletalMeshComponent& Component, FName Motio
 #if WITH_EDITOR
 namespace
 {
-int32 CityRigBone(const FReferenceSkeleton& Skeleton, const TCHAR* First, const TCHAR* Fallback=nullptr)
+int32 CityRigBone(const FReferenceSkeleton& Skeleton, const TCHAR* First,
+    const TCHAR* Fallback=nullptr, const TCHAR* Alternate=nullptr)
 {
     int32 Index=Skeleton.FindBoneIndex(First);
     if (Index!=INDEX_NONE) return Index;
     Index=Skeleton.FindBoneIndex(FName(FString(First).Replace(TEXT("."),TEXT("_"))));
-    return Index==INDEX_NONE && Fallback ? Skeleton.FindBoneIndex(Fallback) : Index;
+    if (Index==INDEX_NONE && Fallback) Index=Skeleton.FindBoneIndex(Fallback);
+    return Index==INDEX_NONE && Alternate ? Skeleton.FindBoneIndex(Alternate) : Index;
 }
 
 void CitySamplePose(const FReferenceSkeleton& Skeleton, const IAnimationDataModel& Model, float Time,
@@ -291,6 +294,24 @@ void CloseCigaretteGrip(const FReferenceSkeleton& Ref,TArray<FTransform>& Local,
     ComponentPose(Ref,Local,Pose);
 }
 
+void CloseBottleGrip(const FReferenceSkeleton& Ref,TArray<FTransform>& Local,TArray<FTransform>& Pose)
+{
+    const int32 Index=CityRigBone(Ref,TEXT("index_01_r"));
+    const int32 Little=CityRigBone(Ref,TEXT("pinky_01_r"));
+    if (Index<0 || Little<0) return;
+    const FVector Across=(Pose[Little].GetLocation()-Pose[Index].GetLocation()).GetSafeNormal();
+    const double Angles[]={-28.,-43.,-27.};
+    for (const TCHAR* Finger:{TEXT("index"),TEXT("middle"),TEXT("ring"),TEXT("pinky")})
+    {
+        for (int32 Joint=0;Joint<3;++Joint)
+        {
+            const FString Name=FString::Printf(TEXT("%s_0%d_r"),Finger,Joint+1);
+            TurnBone(Ref,Local,Pose,CityRigBone(Ref,*Name),FQuat(Across,FMath::DegreesToRadians(Angles[Joint])));
+            ComponentPose(Ref,Local,Pose);
+        }
+    }
+}
+
 struct FGestureKeys
 {
     TArray<FVector> Positions;
@@ -350,6 +371,86 @@ FVector UCityCharacterAuthoring::PoseBonePosition(const USkeletalMesh* Mesh,cons
     return FVector::ZeroVector;
 }
 
+bool UCityCharacterAuthoring::FixRetargetedBoneUnits(const USkeletalMesh* Mesh,UAnimSequence* Animation,FName PelvisBone)
+{
+#if WITH_EDITOR
+    if (!Mesh || !Animation || Mesh->GetSkeleton()!=Animation->GetSkeleton() || !Animation->GetDataModel()) return false;
+    const FReferenceSkeleton& Skeleton=Mesh->GetRefSkeleton();
+    const IAnimationDataModel& Model=*Animation->GetDataModel();
+    IAnimationDataController& Controller=Animation->GetController();
+    TArray<FName> Names;
+    Model.GetBoneTrackNames(Names);
+    Controller.OpenBracket(NSLOCTEXT("CityLife","RetargetScale","Keep the target rig's bone scale"),false);
+    bool bSuccess=!Names.IsEmpty();
+    for (const FName Name:Names)
+    {
+        const int32 Index=Skeleton.FindBoneIndex(Name);
+        if (Index==INDEX_NONE) continue;
+        TArray<FTransform> Keys;
+        Model.GetBoneTrackTransforms(Name,Keys);
+        const FTransform& Reference=Skeleton.GetRefBonePose()[Index];
+        const int32 ParentIndex=Skeleton.GetParentIndex(Index);
+        // A metre-based FBX can keep its conversion on the root. The IK bake writes the pelvis in cm.
+        const bool bConvertPelvis=Name==PelvisBone && ParentIndex>=0 && !Keys.IsEmpty() &&
+            Keys[0].GetTranslation().Size()>Reference.GetTranslation().Size()*10.0;
+        const FVector Units=bConvertPelvis ? Skeleton.GetRefBonePose()[ParentIndex].GetScale3D() : FVector::OneVector;
+        TArray<FVector> Positions,Scales;
+        TArray<FQuat> Rotations;
+        Positions.Reserve(Keys.Num());
+        Rotations.Reserve(Keys.Num());
+        for (const FTransform& Key:Keys)
+        {
+            Positions.Add(Key.GetTranslation()/Units);
+            Rotations.Add(Key.GetRotation());
+        }
+        Scales.Init(Reference.GetScale3D(),Keys.Num());
+        bSuccess&=Controller.SetBoneTrackKeys(Name,Positions,Rotations,Scales,false);
+    }
+    Controller.CloseBracket(false);
+    Animation->MarkPackageDirty();
+    return bSuccess;
+#else
+    return false;
+#endif
+}
+
+bool UCityCharacterAuthoring::RemoveLocomotionTravel(const USkeletalMesh* Mesh,UAnimSequence* Animation,FName PelvisBone)
+{
+#if WITH_EDITOR
+    if (!Mesh || !Animation || Mesh->GetSkeleton()!=Animation->GetSkeleton()) return false;
+    const FReferenceSkeleton& Skeleton=Mesh->GetRefSkeleton();
+    const int32 PelvisIndex=Skeleton.FindBoneIndex(PelvisBone);
+    const IAnimationDataModel* Model=Animation->GetDataModel();
+    if (PelvisIndex==INDEX_NONE || Skeleton.GetParentIndex(PelvisIndex)!=0 ||
+        !Model || !Model->IsValidBoneTrackName(PelvisBone)) return false;
+
+    TArray<FTransform> Keys;
+    Model->GetBoneTrackTransforms(PelvisBone,Keys);
+    if (Keys.Num()<2) return false;
+    const FTransform& Root=Skeleton.GetRefBonePose()[0];
+    FVector Travel=Root.TransformVector(Keys.Last().GetTranslation()-Keys[0].GetTranslation());
+    Travel.Z=0;
+    if (Travel.IsNearlyZero(.01)) return true;
+    const FVector LocalTravel=Root.InverseTransformVector(Travel);
+
+    FGestureKeys InPlace;
+    for (int32 Index=0;Index<Keys.Num();++Index)
+    {
+        const double Progress=double(Index)/(Keys.Num()-1);
+        InPlace.Positions.Add(Keys[Index].GetTranslation()-LocalTravel*Progress);
+        InPlace.Rotations.Add(Keys[Index].GetRotation());
+        InPlace.Scales.Add(Keys[Index].GetScale3D());
+    }
+    IAnimationDataController& Controller=Animation->GetController();
+    const bool bChanged=Controller.SetBoneTrackKeys(
+        PelvisBone,InPlace.Positions,InPlace.Rotations,InPlace.Scales,false);
+    if (bChanged) Animation->MarkPackageDirty();
+    return bChanged;
+#else
+    return false;
+#endif
+}
+
 bool UCityCharacterAuthoring::AuthorGesture(USkeletalMesh* Mesh,UAnimSequence* Idle,UCityGestureSequence* Destination,FName Gesture)
 {
 #if WITH_EDITOR
@@ -359,10 +460,10 @@ bool UCityCharacterAuthoring::AuthorGesture(USkeletalMesh* Mesh,UAnimSequence* I
     const int32 Head=CityRigBone(Ref,TEXT("Head"));
     const int32 RightUpper=CityRigBone(Ref,TEXT("UpperArm.R"),TEXT("RightArm"));
     const int32 RightElbow=CityRigBone(Ref,TEXT("LowerArm.R"),TEXT("RightForeArm"));
-    const int32 RightHand=CityRigBone(Ref,TEXT("MiddleHand.R"),TEXT("RightHand"));
+    const int32 RightHand=CityRigBone(Ref,TEXT("MiddleHand.R"),TEXT("RightHand"),TEXT("hand_r"));
     const int32 LeftUpper=CityRigBone(Ref,TEXT("UpperArm.L"),TEXT("LeftArm"));
     const int32 LeftElbow=CityRigBone(Ref,TEXT("LowerArm.L"),TEXT("LeftForeArm"));
-    const int32 LeftHand=CityRigBone(Ref,TEXT("MiddleHand.L"),TEXT("LeftHand"));
+    const int32 LeftHand=CityRigBone(Ref,TEXT("MiddleHand.L"),TEXT("LeftHand"),TEXT("hand_l"));
     if (Head<0 || RightUpper<0 || LeftUpper<0 || RightElbow<0 || RightHand<0 || LeftElbow<0 || LeftHand<0)
         return false;
 
@@ -380,21 +481,23 @@ bool UCityCharacterAuthoring::AuthorGesture(USkeletalMesh* Mesh,UAnimSequence* I
     TArray<FGestureKeys> Tracks;
     Tracks.SetNum(Ref.GetNum());
     TArray<FTransform> Local,Pose;
-    const int32 Palm=CityRigBone(Ref,TEXT("Palm_R"));
-    const int32 LeftPalm=CityRigBone(Ref,TEXT("Palm_L"),TEXT("LeftHand"));
-    const int32 Fingers=CityRigBone(Ref,TEXT("Fingers_R"));
-    const int32 Thumb=CityRigBone(Ref,TEXT("Thumb2_R"));
-    const int32 ThumbBase=CityRigBone(Ref,TEXT("Thumb1_R"));
-    const int32 Chest=CityRigBone(Ref,TEXT("Torso"),TEXT("Spine2"));
-    const int32 Shoulder=CityRigBone(Ref,TEXT("Shoulder_R"));
+    const int32 Palm=CityRigBone(Ref,TEXT("Palm_R"),TEXT("hand_r"));
+    const int32 LeftPalm=CityRigBone(Ref,TEXT("Palm_L"),TEXT("LeftHand"),TEXT("hand_l"));
+    const int32 Knuckles=Palm==RightHand ? CityRigBone(Ref,TEXT("middle_01_r")) : RightHand;
+    const int32 Fingers=CityRigBone(Ref,TEXT("Fingers_R"),TEXT("middle_03_r"));
+    const int32 Thumb=CityRigBone(Ref,TEXT("Thumb2_R"),TEXT("thumb_03_r"));
+    const int32 ThumbBase=CityRigBone(Ref,TEXT("Thumb1_R"),TEXT("thumb_01_r"));
+    const int32 Chest=CityRigBone(Ref,TEXT("Torso"),TEXT("Spine2"),TEXT("spine_03"));
+    const int32 Shoulder=CityRigBone(Ref,TEXT("Shoulder_R"),TEXT("clavicle_r"));
     FTransform Grip,Mouth;
     if (bSmoke || bBottle)
     {
-        if (Palm<0 || Fingers<0 || Thumb<0) return false;
+        if (Palm<0 || Knuckles<0 || Fingers<0 || Thumb<0) return false;
         Local=Ref.GetRefBonePose();
         ComponentPose(Ref,Local,Pose);
-        if (bSmoke) CloseCigaretteGrip(Ref,Local,Pose,Palm,RightHand,Fingers,ThumbBase,Thumb);
-        Grip=bSmoke ? CigarettePinch(Pose,Palm,RightHand,Fingers,Thumb) : CityGrip(Pose,Palm,Fingers,Thumb);
+        if (bSmoke) CloseCigaretteGrip(Ref,Local,Pose,Palm,Knuckles,Fingers,ThumbBase,Thumb);
+        else CloseBottleGrip(Ref,Local,Pose);
+        Grip=bSmoke ? CigarettePinch(Pose,Palm,Knuckles,Fingers,Thumb) : CityGrip(Pose,Palm,Fingers,Thumb);
         SetMeshSocket(*Mesh,bSmoke ? TEXT("CigaretteGrip") : TEXT("BottleGrip"),Ref.GetBoneName(Palm),Grip);
     }
     if (bSmoke)
@@ -414,7 +517,8 @@ bool UCityCharacterAuthoring::AuthorGesture(USkeletalMesh* Mesh,UAnimSequence* I
         else if (bNod) T=0;
         else if (bTalk || bSmoke || bBottle) T=Idle->GetPlayLength()*(.24+.36*Breath);
         CitySamplePose(Ref,Model,T,Local,Pose);
-        if (bSmoke) CloseCigaretteGrip(Ref,Local,Pose,Palm,RightHand,Fingers,ThumbBase,Thumb);
+        if (bSmoke) CloseCigaretteGrip(Ref,Local,Pose,Palm,Knuckles,Fingers,ThumbBase,Thumb);
+        if (bBottle) CloseBottleGrip(Ref,Local,Pose);
         const FVector Up=FVector::UpVector;
         const FVector Right=(Pose[RightUpper].GetLocation()-Pose[LeftUpper].GetLocation()).GetSafeNormal2D();
         const FVector Forward=FVector::CrossProduct(Right,Up).GetSafeNormal();
@@ -507,6 +611,79 @@ bool UCityCharacterAuthoring::AuthorGesture(USkeletalMesh* Mesh,UAnimSequence* I
 #endif
 }
 
+bool UCityCharacterAuthoring::AuthorBarPistolPose(USkeletalMesh* Mesh,UAnimSequence* Idle,UCityGestureSequence* Destination)
+{
+#if WITH_EDITOR
+    if (!Mesh || !Idle || !Destination || !Idle->GetDataModel()) return false;
+    const FReferenceSkeleton& Ref=Mesh->GetRefSkeleton();
+    const auto Bone=[&Ref](const TCHAR* Name) { return Ref.FindBoneIndex(Name); };
+    const int32 RightUpper=Bone(TEXT("UpperArm_R")), RightElbow=Bone(TEXT("LowerArm_R")), RightHand=Bone(TEXT("Hand_R"));
+    const int32 LeftUpper=Bone(TEXT("UpperArm_L")), LeftElbow=Bone(TEXT("LowerArm_L")), LeftHand=Bone(TEXT("Hand_L"));
+    const int32 Index=Bone(TEXT("Index1_R")), Middle=Bone(TEXT("Middle1_R")), Little=Bone(TEXT("Little1_R"));
+    const int32 Thumb=Bone(TEXT("Thumb2_R"));
+    if (FMath::Min3(RightUpper,RightElbow,RightHand)<0 || FMath::Min3(LeftUpper,LeftElbow,LeftHand)<0 ||
+        FMath::Min3(Index,Middle,Little)<0 || Thumb<0) return false;
+
+    TArray<FTransform> Local,Pose;
+    const IAnimationDataModel& Model=*Idle->GetDataModel();
+    CitySamplePose(Ref,Model,0,Local,Pose);
+    const FVector Along=(Pose[Middle].GetLocation()-Pose[RightHand].GetLocation()).GetSafeNormal();
+    const FVector Across=(Pose[Index].GetLocation()-Pose[Little].GetLocation()).GetSafeNormal();
+    const FVector HandCenter=FMath::Lerp(Pose[RightHand].GetLocation(),Pose[Middle].GetLocation(),.72);
+    const FVector CurlNormal=FVector::CrossProduct(Across,Along).GetSafeNormal();
+    const double CurlSign=CurlNormal.Dot(Pose[Thumb].GetLocation()-HandCenter)<0 ? -1. : 1.;
+    const FVector Center=HandCenter+CurlNormal*(CurlSign*.9);
+    const FTransform Grip=FTransform(FRotationMatrix::MakeFromXZ(Along,Across).ToQuat(),Center)
+        .GetRelativeTransform(Pose[RightHand]);
+    SetMeshSocket(*Mesh,TEXT("BarPistolGrip"),Ref.GetBoneName(RightHand),Grip);
+
+    constexpr int32 Frames=45;
+    TArray<FGestureKeys> Tracks;
+    Tracks.SetNum(Ref.GetNum());
+    for (int32 Frame=0;Frame<=Frames;++Frame)
+    {
+        const double T=Frame/30.;
+        CitySamplePose(Ref,Model,T*.36,Local,Pose);
+        const double Lift=FMath::SmoothStep(.02,.31,T)*(1.-FMath::SmoothStep(.91,1.50,T));
+        const double Recoil=FMath::SmoothStep(.47,.51,T)*(1.-FMath::SmoothStep(.52,.78,T));
+        const FVector Up=FVector::UpVector;
+        const FVector Right=(Pose[RightUpper].GetLocation()-Pose[LeftUpper].GetLocation()).GetSafeNormal2D();
+        const FVector Forward=FVector::CrossProduct(Right,Up);
+        const FVector Shoulders=(Pose[LeftUpper].GetLocation()+Pose[RightUpper].GetLocation())*.5;
+        const double Width=FVector::Dist(Pose[LeftUpper].GetLocation(),Pose[RightUpper].GetLocation());
+        const FVector Aim=(Forward+Up*(.025+.19*Recoil)).GetSafeNormal();
+        const FQuat PropRotation=FRotationMatrix::MakeFromXZ(Aim,Up).ToQuat();
+        const FQuat AimWrist=PropRotation*Grip.GetRotation().Inverse();
+        const FQuat Wrist=FQuat::Slerp(Pose[RightHand].GetRotation(),AimWrist,Lift);
+        const FVector GripPoint=Shoulders+Forward*Width*(1.25-.13*Recoil)+Right*Width*.055-Up*Width*.22;
+        const FVector Hand=GripPoint-AimWrist.RotateVector(Grip.GetLocation()*Pose[RightHand].GetScale3D());
+        CityReach(Ref,Local,Pose,RightUpper,RightElbow,RightHand,Hand,Shoulders+Right*Width-Up*Width*.93,Lift);
+        RotateWrist(Ref,Local,Pose,RightHand,Wrist);
+        ComponentPose(Ref,Local,Pose);
+        const FTransform PropSocket=Grip*Pose[RightHand];
+        const FVector Support=PropSocket.GetLocation()-Forward*5.5-Right*5.2-Up*3.2;
+        CityReach(Ref,Local,Pose,LeftUpper,LeftElbow,LeftHand,Support,Shoulders-Right*Width-Up*Width*.93,Lift);
+        ComponentPose(Ref,Local,Pose);
+
+        for (const TCHAR* Finger:{TEXT("Middle"),TEXT("Ring"),TEXT("Little")})
+        {
+            constexpr double Bend[]={19.,42.,24.};
+            for (int32 Joint=0;Joint<UE_ARRAY_COUNT(Bend);++Joint)
+            {
+                const FString Name=FString::Printf(TEXT("%s%d_R"),Finger,Joint+1);
+                TurnBone(Ref,Local,Pose,Bone(*Name),FQuat(PropSocket.GetUnitAxis(EAxis::Z),
+                    FMath::DegreesToRadians(Bend[Joint]*Lift*CurlSign)));
+                ComponentPose(Ref,Local,Pose);
+            }
+        }
+        AppendGesturePose(Local,Tracks);
+    }
+    return WriteGesture(*Mesh,*Destination,Tracks,Frames);
+#else
+    return false;
+#endif
+}
+
 bool UCityCharacterAuthoring::AuthorFirstPersonSmoke(USkeletalMesh* Mesh,USkeleton* Skeleton,UCityGestureSequence* Destination)
 {
 #if WITH_EDITOR
@@ -534,8 +711,12 @@ bool UCityCharacterAuthoring::AuthorFirstPersonSmoke(USkeletalMesh* Mesh,USkelet
             Reference[Joint].SetRotation(FQuat(Axis,FMath::DegreesToRadians(Degrees))*Reference[Joint].GetRotation());
         }
     };
-    for (const TCHAR* Name : {TEXT("f_ring_01_R"),TEXT("f_ring_02_R"),TEXT("f_pinky_01_R"),TEXT("f_pinky_02_R")})
-        Curl(Name,29.);
+    Curl(TEXT("f_ring_01_R"),38.);
+    Curl(TEXT("f_ring_02_R"),51.);
+    Curl(TEXT("f_ring_03_R"),17.);
+    Curl(TEXT("f_pinky_01_R"),44.);
+    Curl(TEXT("f_pinky_02_R"),54.);
+    Curl(TEXT("f_pinky_03_R"),19.);
     for (const TCHAR* Name : {TEXT("f_index_02_R"),TEXT("f_middle_02_R")})
         Curl(Name,14.);
     ComponentPose(Ref,Reference,Pose);
@@ -601,6 +782,73 @@ bool UCityCharacterAuthoring::AuthorFirstPersonTrip(USkeletalMesh* Mesh,UCityGes
         ComponentPose(Ref,Local,Pose);
         CityReach(Ref,Local,Pose,UpperL,ElbowL,HandL,Left,FVector(54,24,112),1.);
         CityReach(Ref,Local,Pose,UpperR,ElbowR,HandR,Right,FVector(-56,22,114),1.);
+        AppendGesturePose(Local,Tracks);
+    }
+    return WriteGesture(*Mesh,*Destination,Tracks,Frames);
+#else
+    return false;
+#endif
+}
+
+bool UCityCharacterAuthoring::AuthorFirstPersonRecorder(USkeletalMesh* Mesh,UCityGestureSequence* Destination,FVector& ContactPoint)
+{
+#if WITH_EDITOR
+    if (!Mesh || !Mesh->GetSkeleton() || !Destination) return false;
+    const FReferenceSkeleton& Ref=Mesh->GetRefSkeleton();
+    const int32 Upper=CityRigBone(Ref,TEXT("upper_arm_R"));
+    const int32 Elbow=CityRigBone(Ref,TEXT("forearm_R"));
+    const int32 Hand=CityRigBone(Ref,TEXT("hand_R"));
+    const int32 Index=CityRigBone(Ref,TEXT("f_index_03_R"));
+    const int32 IndexBase=CityRigBone(Ref,TEXT("f_index_01_R"));
+    const int32 Middle=CityRigBone(Ref,TEXT("f_middle_01_R"));
+    if (FMath::Min3(Upper,Elbow,Hand)<0 || FMath::Min3(Index,IndexBase,Middle)<0) return false;
+
+    TArray<FTransform> Fingers=Ref.GetRefBonePose();
+    TArray<FTransform> Pose;
+    ComponentPose(Ref,Fingers,Pose);
+    const FVector Along=(Pose[Index].GetLocation()-Pose[IndexBase].GetLocation()).GetSafeNormal();
+    const FVector Across=(Pose[Middle].GetLocation()-Pose[IndexBase].GetLocation()).GetSafeNormal();
+    const FQuat GripToWrist=Pose[Hand].GetRotation().Inverse()*FRotationMatrix::MakeFromXY(Along,Across).ToQuat();
+    const FVector FingerTip=Pose[Index].GetLocation()+Along*1.15;
+    const FVector TipOnHand=Pose[Hand].InverseTransformPosition(FingerTip);
+    const FVector TipOnIndex=Pose[Index].InverseTransformPosition(FingerTip);
+    SetMeshSocket(*Mesh,TEXT("RecorderIndexTip"),Ref.GetBoneName(Index),FTransform(TipOnIndex));
+
+    for (const TCHAR* Finger:{TEXT("middle"),TEXT("ring"),TEXT("pinky")})
+    {
+        const double Flexion[]={23.,68.,42.};
+        for (int32 Joint=1;Joint<=3;++Joint)
+        {
+            const FString Name=FString::Printf(TEXT("f_%s_0%d_R"),Finger,Joint);
+            TurnBone(Ref,Fingers,Pose,CityRigBone(Ref,*Name),FQuat(Across,FMath::DegreesToRadians(Flexion[Joint-1])));
+            ComponentPose(Ref,Fingers,Pose);
+        }
+    }
+
+    constexpr int32 Frames=48;
+    constexpr int32 TouchFrame=26;
+    TArray<FGestureKeys> Tracks;
+    Tracks.SetNum(Ref.GetNum());
+    for (int32 Frame=0;Frame<=Frames;++Frame)
+    {
+        const double Time=Frame/30.;
+        const double Approach=FMath::SmoothStep(.16,.74,Time);
+        const double Retract=FMath::SmoothStep(1.04,1.55,Time);
+        const double Reach=Approach*(1.-Retract);
+        const double Down=FMath::SmoothStep(.73,.89,Time)*(1.-FMath::SmoothStep(.97,1.08,Time));
+        FVector Point=FMath::Lerp(FVector(-34,30,123),FVector(-15,54,153),Reach);
+        Point.Z+=4.*FMath::Sin(PI*Reach)-1.35*Down;
+        const FVector Direction=FMath::Lerp(FVector(-.18,.96,.10),FVector(-.12,.92,-.32),Reach);
+        const FQuat Wrist=FRotationMatrix::MakeFromXY(Direction,FVector(-1.,.04,.10)).ToQuat()*GripToWrist.Inverse();
+        TArray<FTransform> Local=Fingers;
+        ComponentPose(Ref,Local,Pose);
+        CityReach(Ref,Local,Pose,Upper,Elbow,Hand,Point-Wrist.RotateVector(TipOnHand),FVector(-49,10,115),1.);
+        RotateWrist(Ref,Local,Pose,Hand,Wrist);
+        if (Frame==TouchFrame)
+        {
+            ComponentPose(Ref,Local,Pose);
+            ContactPoint=Pose[Index].TransformPosition(TipOnIndex);
+        }
         AppendGesturePose(Local,Tracks);
     }
     return WriteGesture(*Mesh,*Destination,Tracks,Frames);

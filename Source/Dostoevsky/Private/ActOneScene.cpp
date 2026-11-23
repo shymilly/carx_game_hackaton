@@ -39,6 +39,24 @@ constexpr int32 SplashCount=112;
 constexpr int32 RainGridRadius=4;
 constexpr int32 RainGridWidth=RainGridRadius*2+1;
 constexpr float RainGridStep=185.f;
+constexpr float RainStep=1.f/33.f;
+const FRotator FirstPersonArmsRotation(0,-90,0);
+
+USkeletalMeshComponent* CreateStoryArms(AActor& Owner, USceneComponent& Anchor, USkeletalMesh* Mesh,
+    FName Name, const FVector& Offset, const FRotator& Rotation=FirstPersonArmsRotation)
+{
+    auto* Arms=NewObject<USkeletalMeshComponent>(&Owner,Name);
+    Arms->SetSkeletalMeshAsset(Mesh);
+    Arms->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    Arms->SetCanEverAffectNavigation(false);
+    Arms->SetCastShadow(false);
+    Arms->bAffectDistanceFieldLighting=false;
+    Arms->VisibilityBasedAnimTickOption=EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
+    Arms->SetupAttachment(&Anchor);
+    Arms->SetRelativeLocationAndRotation(Offset,Rotation);
+    Arms->RegisterComponent();
+    return Arms;
+}
 
 UStaticMeshComponent* AttachCigarette(USkeletalMeshComponent& Hand,UStaticMesh* Model)
 {
@@ -181,6 +199,25 @@ void AActOneCast::WalkTo(const FVector& Destination,float Speed)
     WalkSpeed=Speed;
     Pose(Speed>=330.f ? EActOnePose::Running : EActOnePose::Walking);
     UpdateActorTick();
+}
+
+void AActOneCast::FollowPursuitPath(const FVector& Position,const FVector& Direction,float Speed,float DeltaSeconds)
+{
+    const float Heading=Direction.IsNearlyZero() ? GetActorRotation().Yaw : Direction.Rotation().Yaw;
+    const float Yaw=FMath::FixedTurn(GetActorRotation().Yaw,Heading,620.f*DeltaSeconds);
+    SetActorLocationAndRotation(Position,FRotator(0,Yaw,0));
+
+    const bool bRun=Speed>320.f;
+    const bool bMoving=Speed>18.f;
+    Pose(bRun ? EActOnePose::Running : bMoving ? EActOnePose::Walking : EActOnePose::Idle);
+    if (bMoving)
+    {
+        if (UAnimSingleNodeInstance* Clip=CharacterMesh->GetSingleNodeInstance())
+        {
+            const float StrideSpeed=bRun ? 530.f : 275.f;
+            Clip->SetPlayRate(FMath::Clamp(Speed/StrideSpeed,.18f,1.5f));
+        }
+    }
 }
 
 void AActOneCast::Nod()
@@ -348,6 +385,7 @@ void AActOneDirector::BeginPlay()
 void AActOneDirector::EndPlay(const EEndPlayReason::Type Reason)
 {
     if (RainLoop) RainLoop->Stop();
+    if (RecorderArms) RecorderArms->DestroyComponent();
     if (UActOneSubsystem* Act=UActOneSubsystem::Find(this)) Act->Leave(this);
     Super::EndPlay(Reason);
 }
@@ -459,16 +497,8 @@ void AActOneDirector::StartPursuitTrip(const FVector& Direction)
     TripElapsed=0;
     if (Data && Data->SmokingArms && Data->TripArms)
     {
-        USkeletalMeshComponent* Arms=NewObject<USkeletalMeshComponent>(TripCamera,TEXT("FirstPersonTripArms"));
-        Arms->SetSkeletalMeshAsset(Data->SmokingArms);
-        Arms->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-        Arms->SetCanEverAffectNavigation(false);
-        Arms->SetCastShadow(false);
-        Arms->bAffectDistanceFieldLighting=false;
-        Arms->VisibilityBasedAnimTickOption=EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
-        Arms->SetupAttachment(Camera);
-        Arms->SetRelativeLocationAndRotation(FVector(0,0,-174.32),FRotator(0,-90,0));
-        Arms->RegisterComponent();
+        USkeletalMeshComponent* Arms=CreateStoryArms(*TripCamera,*Camera,Data->SmokingArms,
+            TEXT("FirstPersonTripArms"),FVector(0,0,-174.32));
         Arms->PlayAnimation(Data->TripArms,false);
     }
     PC->SetViewTarget(TripCamera);
@@ -523,17 +553,9 @@ void AActOneDirector::StartSmoke()
     APawn* Pawn=UGameplayStatics::GetPlayerPawn(this,0);
     if (!Pawn || !Data || !Data->SmokingArms || !Data->SmokingAnimClass || !Data->SmokingMontage) return;
     if (SmokingArms) StopSmoke();
-    SmokingArms=NewObject<USkeletalMeshComponent>(Pawn,TEXT("FirstPersonSmokingArms"));
-    SmokingArms->SetSkeletalMeshAsset(Data->SmokingArms);
-    SmokingArms->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-    SmokingArms->SetCanEverAffectNavigation(false);
-    SmokingArms->SetCastShadow(false);
-    SmokingArms->bAffectDistanceFieldLighting=false;
-    SmokingArms->VisibilityBasedAnimTickOption=EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
     USceneComponent* Anchor=Pawn->FindComponentByClass<UCameraComponent>();
-    SmokingArms->SetupAttachment(Anchor ? Anchor : Pawn->GetRootComponent());
-    SmokingArms->SetRelativeLocationAndRotation(FVector(0,0,-174.32),FRotator(0,-90,0));
-    SmokingArms->RegisterComponent();
+    SmokingArms=CreateStoryArms(*Pawn,*(Anchor ? Anchor : Pawn->GetRootComponent()),Data->SmokingArms,
+        TEXT("FirstPersonSmokingArms"),FVector(0,0,-174.32));
     SmokingArms->SetAnimInstanceClass(Data->SmokingAnimClass);
     UAnimInstance* Animation=SmokingArms->GetAnimInstance();
     if (!Animation || Animation->Montage_Play(Data->SmokingMontage)<=0)
@@ -544,7 +566,7 @@ void AActOneDirector::StartSmoke()
     HeldCigarette=AttachCigarette(*SmokingArms,Data->CigaretteMesh);
     bSmoking=true;
     if (!SmokeTrail) SmokeTrail=UCigaretteSmokeComponent::CreateTrail(this);
-    SmokeTime=0;
+    RefreshTickInterval();
 }
 
 void AActOneDirector::StopSmoke()
@@ -558,13 +580,55 @@ void AActOneDirector::StopSmoke()
     SmokeRig->SetHiddenInGame(true,true);
 }
 
-void AActOneDirector::PressRecorder()
+float AActOneDirector::PlayRecorder()
 {
-    if (!Cue(TEXT("FinaleTapeButton"))) return;
-    TapeTime=0;
-    SmokeRig->SetHiddenInGame(false,true);
-    Cigarette->SetHiddenInGame(true);
-    Ember->SetHiddenInGame(true);
+    const AActor* Contact=Cue(TEXT("FinaleTapeButton"));
+    if (const AActor* Key=Cue(TEXT("FinalePlaybackKey"))) RecorderKeyRest=Key->GetActorLocation();
+    constexpr float FallbackDuration=.72f;
+    TapeTime=0.f;
+    bRecorderPressed=false;
+    RefreshTickInterval();
+    if (!Contact || !FinaleCamera || !Data || !Data->SmokingArms || !Data->SmokingAnimClass || !Data->RecorderMontage)
+        return FallbackDuration;
+
+    UCameraComponent* Camera=FinaleCamera->GetCameraComponent();
+    const FTransform CameraTransform=Camera->GetComponentTransform();
+    const FQuat Upright=FRotator(0,CameraTransform.Rotator().Yaw-90,0).Quaternion();
+    const FQuat ArmsInCamera=CameraTransform.GetRotation().Inverse()*Upright;
+    const FVector ContactInCamera=CameraTransform.InverseTransformPosition(Contact->GetActorLocation());
+    const FVector Offset=ContactInCamera-ArmsInCamera.RotateVector(Data->RecorderContactPoint);
+    RecorderArms=CreateStoryArms(*FinaleCamera,*Camera,Data->SmokingArms,TEXT("FirstPersonRecorderArms"),Offset,
+        ArmsInCamera.Rotator());
+    RecorderArms->HideBoneByName(TEXT("upper_arm_L"),PBO_None);
+    RecorderArms->SetCastShadow(true);
+    RecorderArms->SetAnimInstanceClass(Data->SmokingAnimClass);
+    if (UAnimInstance* Animation=RecorderArms->GetAnimInstance())
+    {
+        const float Duration=Animation->Montage_Play(Data->RecorderMontage);
+        if (Duration>0) return Duration;
+    }
+    RecorderArms->DestroyComponent();
+    RecorderArms=nullptr;
+    return FallbackDuration;
+}
+
+void AActOneDirector::ClickRecorder()
+{
+    if (bRecorderPressed) return;
+    bRecorderPressed=true;
+    const AActor* Contact=Cue(TEXT("FinaleTapeButton"));
+    if (Contact && Data)
+        if (const TObjectPtr<USoundBase>* Click=Data->Sounds.Find(TEXT("TapeClick")); Click && *Click)
+            UGameplayStatics::PlaySoundAtLocation(this,Click->Get(),Contact->GetActorLocation(),.78f);
+}
+
+void AActOneDirector::FinishRecorder()
+{
+    ClickRecorder();
+    if (AActor* Key=Cue(TEXT("FinalePlaybackKey"))) Key->SetActorLocation(RecorderKeyRest);
+    if (RecorderArms) RecorderArms->DestroyComponent();
+    RecorderArms=nullptr;
+    TapeTime=-1.f;
 }
 
 void AActOneDirector::OpenDoor(FName Hinge,float Yaw)
@@ -576,6 +640,7 @@ void AActOneDirector::OpenDoor(FName Hinge,float Yaw)
         DoorTo=DoorFrom+FMath::FindDeltaAngleDegrees(DoorFrom,Yaw);
         DoorProgress=0;
         MovingDoor=Actor;
+        RefreshTickInterval();
         const bool bEntry=Hinge==TEXT("SealedLeaf") || Hinge==TEXT("FedorBuildingLeaf");
         DoorOpeningAudio::Play(Actor,bEntry ? EDoorOpeningSound::Entry : EDoorOpeningSound::Wood);
     }
@@ -601,9 +666,11 @@ void AActOneDirector::SetRain(bool bOn)
         SplashTransforms.Reset();
         GroundGrid.Reset();
         GroundGridCenter=FVector(1.e9,1.e9,1.e9);
+        RainFrameTime=0;
         if (RainLoop) RainLoop->FadeOut(.6f,0);
         RainLoop=nullptr;
     }
+    RefreshTickInterval();
 }
 
 void AActOneDirector::StatusKey()
@@ -613,6 +680,7 @@ void AActOneDirector::StatusKey()
 
 void AActOneDirector::UpdateRain(const FVector& Around,float DeltaSeconds)
 {
+    CSV_SCOPED_TIMING_STAT(Brighton,RainInstances);
     if (!Rain->GetStaticMesh()) return;
     SampleRainGround(Around);
     if (Drops.IsEmpty())
@@ -697,10 +765,11 @@ void AActOneDirector::SampleRainGround(const FVector& Around)
     }
 }
 
-void AActOneDirector::UpdateSmoke(APlayerController* Player,float DeltaSeconds)
+void AActOneDirector::UpdateSmoke(APlayerController* Player)
 {
     if (!Player->PlayerCameraManager || !SmokingArms) return;
-    SmokeTime+=DeltaSeconds;
+    const UAnimInstance* Animation=SmokingArms->GetAnimInstance();
+    const float SmokeTime=Animation && Data ? Animation->Montage_GetPosition(Data->SmokingMontage) : 0.f;
     const FRotator View=Player->PlayerCameraManager->GetCameraRotation();
     const FVector Eye=Player->PlayerCameraManager->GetCameraLocation();
     if (!Cast<UCameraComponent>(SmokingArms->GetAttachParent()))
@@ -711,22 +780,29 @@ void AActOneDirector::UpdateSmoke(APlayerController* Player,float DeltaSeconds)
             Eye+View.RotateVector(FVector(14,0,-9)),View.Vector(),SmokeTime>1.50f && SmokeTime<2.10f);
 }
 
-void AActOneDirector::UpdateRecorder(APlayerController* Player,float DeltaSeconds)
+void AActOneDirector::UpdateRecorder(float DeltaSeconds)
 {
-    const AActor* Button=Cue(TEXT("FinaleTapeButton"));
-    const APlayerCameraManager* Camera=Player->PlayerCameraManager;
-    if (!Button || !Camera) return;
     TapeTime+=DeltaSeconds;
-    const FRotator Rotation=Camera->GetCameraRotation();
-    const FVector Start=Camera->GetCameraLocation()+Rotation.RotateVector(FVector(32,21,-31));
-    const FVector End=Button->GetActorLocation()+FVector(0,-3,4);
-    const float Reach=FMath::SmoothStep(.16f,.78f,TapeTime)-FMath::SmoothStep(.83f,1.35f,TapeTime);
-    SmokeRig->SetWorldLocationAndRotation(FMath::Lerp(Start,End,Reach),Rotation+FRotator(-12,-20,0));
-    if (TapeTime>=1.35f)
+    const UAnimInstance* Animation=RecorderArms ? RecorderArms->GetAnimInstance() : nullptr;
+    const float Time=Animation && Data ? Animation->Montage_GetPosition(Data->RecorderMontage) : TapeTime;
+    const float Contact=RecorderArms && Data ? Data->RecorderPressTime : .56f;
+    if (Time>=Contact) ClickRecorder();
+    if (AActor* Key=Cue(TEXT("FinalePlaybackKey")); Key && Time>=Contact-.03f)
     {
-        TapeTime=-1;
-        StopSmoke();
+        const float Depression=FMath::SmoothStep(Contact-.03f,Contact+.035f,Time)
+            * (1.f-FMath::SmoothStep(Contact+.09f,Contact+.165f,Time));
+        const FVector Position=RecorderKeyRest-FVector(0,0,.65f*Depression);
+        if (!Key->GetActorLocation().Equals(Position,.002f)) Key->SetActorLocation(Position);
     }
+}
+
+void AActOneDirector::RefreshTickInterval()
+{
+    const bool bCinematic=TripCamera || bSmoking || TapeTime>=0 || MovingDoor.IsValid()
+        || FallingBarWeapon.IsValid() || FlashRemaining>0;
+    const float Interval=bCinematic ? 0.f : bRain ? RainStep : Location==EActOneLocation::Alley ? .025f
+        : Location==EActOneLocation::Entrance ? .04f : .10f;
+    if (PrimaryActorTick.TickInterval!=Interval) SetActorTickInterval(Interval);
 }
 
 void AActOneDirector::Tick(float DeltaSeconds)
@@ -741,9 +817,17 @@ void AActOneDirector::Tick(float DeltaSeconds)
         bInputBound=true;
     }
     if (UActOneSubsystem* Act=UActOneSubsystem::Find(this)) Act->Update(DeltaSeconds);
-    if (bRain) UpdateRain(Player->GetPawn()->GetActorLocation(),DeltaSeconds);
+    if (bRain)
+    {
+        RainFrameTime+=DeltaSeconds;
+        if (RainFrameTime+KINDA_SMALL_NUMBER>=RainStep)
+        {
+            UpdateRain(Player->GetPawn()->GetActorLocation(),RainFrameTime);
+            RainFrameTime=0;
+        }
+    }
     if (TripCamera) UpdatePursuitTrip(DeltaSeconds);
-    if (bSmoking) UpdateSmoke(Player,DeltaSeconds);
+    if (bSmoking) UpdateSmoke(Player);
     if (AActor* Prop=FallingBarWeapon.Get())
     {
         DropElapsed+=DeltaSeconds;
@@ -758,7 +842,7 @@ void AActOneDirector::Tick(float DeltaSeconds)
     }
     if (FlashRemaining>0 && (FlashRemaining-=DeltaSeconds)<=0)
         if (auto* Light=Cast<APointLight>(Cue(TEXT("BarFlash")))) Light->GetLightComponent()->SetVisibility(false);
-    if (TapeTime>=0) UpdateRecorder(Player,DeltaSeconds);
+    if (TapeTime>=0) UpdateRecorder(DeltaSeconds);
     if (MovingDoor.IsValid())
     {
         DoorProgress=FMath::Min(1.f,DoorProgress+DeltaSeconds/.52f);
@@ -782,4 +866,5 @@ void AActOneDirector::Tick(float DeltaSeconds)
             }
         }
     }
+    RefreshTickInterval();
 }
