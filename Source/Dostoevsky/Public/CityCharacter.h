@@ -65,6 +65,15 @@ public:
     static bool RemoveLocomotionTravel(const USkeletalMesh* Mesh, UAnimSequence* Animation, FName PelvisBone);
 
     UFUNCTION(BlueprintCallable, Category="City|Authoring")
+    static bool RetargetCastMotion(const USkeletalMesh* SourceMesh, const UAnimSequence* Source,
+        USkeletalMesh* TargetMesh, UCityGestureSequence* Destination,
+        const TMap<FName,FName>& TargetToSource, float SourceToTargetYaw, bool bGrounded);
+
+    UFUNCTION(BlueprintCallable, Category="City|Authoring")
+    static bool AuthorAlignedCastMotion(USkeletalMesh* Mesh, UCityGestureSequence* Destination, FName Motion,
+        const UAnimSequence* SeatedReference);
+
+    UFUNCTION(BlueprintCallable, Category="City|Authoring")
     static bool AuthorGesture(USkeletalMesh* Mesh,UAnimSequence* Idle,UCityGestureSequence* Destination,FName Gesture);
     UFUNCTION(BlueprintCallable, Category="City|Authoring")
     static bool AuthorBarPistolPose(USkeletalMesh* Mesh,UAnimSequence* Idle,UCityGestureSequence* Destination);

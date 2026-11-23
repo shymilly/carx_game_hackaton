@@ -5,7 +5,7 @@ from typing import NamedTuple
 
 import unreal as ue
 
-from BrightonUpgrade import LIB, P, color, connect, constant, factory_asset, node, output, save
+from BrightonUpgrade import LIB, P, color, constant, factory_asset, node, output, save
 
 
 class Cabin(NamedTuple):
@@ -124,13 +124,10 @@ def material(folder,name,tint,roughness,metallic=0):
 
 @cache
 def cabin_finishes(folder):
-    glass = material(folder,'AutomotiveGlazing',(.065,.10,.125),.14)
-    glass.set_editor_properties(dict(blend_mode=ue.BlendMode.BLEND_TRANSLUCENT,two_sided=True,
-        shading_model=ue.MaterialShadingModel.MSM_THIN_TRANSLUCENT,
-        translucency_lighting_mode=ue.TranslucencyLightingMode.TLM_SURFACE_PER_PIXEL_LIGHTING))
-    tint_node = node(glass,ue.MaterialExpressionThinTranslucentMaterialOutput)
-    connect(color(glass,(.875,.93,.956)),tint_node)
-    output(constant(glass,.65),glass,P.MP_OPACITY)
+    glass = material(folder,'AutomotiveGlazing',(.027,.042,.061),.19,.12)
+    glass.set_editor_properties(dict(blend_mode=ue.BlendMode.BLEND_OPAQUE,two_sided=True,
+        shading_model=ue.MaterialShadingModel.MSM_DEFAULT_LIT))
+    output(constant(glass,.64),glass,P.MP_SPECULAR)
     materials = {'glass':glass}
     for key,tint,roughness in (('trim',(.027,.032,.038),.60),
                               ('interior',(.064,.063,.055),.83),('seat',(.123,.104,.080),.91)):

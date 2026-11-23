@@ -42,6 +42,30 @@ def pave_segment(b, label, lo, hi, width):
             (hypot(dx,dy), width, 10), "asphalt", rotation=(0,0,degrees(atan2(dy,dx))))
 
 
+def curb_layout():
+    width = 13
+    inset = .1
+    depth = width / 2 + inset
+    corner_joint = CROSS_NEAR - width - inset
+    stem_centers = range(-6640, 1925, 180)
+    cross_centers = range(-6280, 6210, 181)
+    for x in stem_centers:
+        start = x - 89
+        end = corner_joint if x == stem_centers[-1] else x + 89
+        for y in (STEM_LEFT - depth, STEM_RIGHT + depth):
+            yield ((start + end) / 2, y, -18), (end - start, width, 13)
+    for y in cross_centers:
+        yield (CROSS_FAR + depth, y, -18), (width, 178, 13)
+        if STEM_LEFT < y < STEM_RIGHT:
+            continue
+        start, end = y - 89, y + 89
+        if y <= STEM_LEFT < y + cross_centers.step:
+            end = STEM_LEFT - inset
+        if y - cross_centers.step < STEM_RIGHT <= y:
+            start = STEM_RIGHT + inset
+        yield (CROSS_NEAR - depth, (start + end) / 2, -18), (width, end - start, 13)
+
+
 def roads(b):
     b.folder = "Street/01 Pavement"
     b.slab("Block foundation", -9310, 7100, -6920, 6850, -36, 96, "asphalt")
@@ -72,13 +96,8 @@ def roads(b):
     for y in (-1885,-635):
         for x in range(CROSS_NEAR+54,CROSS_FAR-25,73):
             b.detail((x,y,ROAD_Z+.27), (34,158,.25), "white_line")
-    for x in range(-6640, 1925, 180):
-        for y in (STEM_LEFT+1, STEM_RIGHT-1):
-            b.detail((x,y,-18), (178,13,13), "stone")
-    for y in range(-6280, 6210, 181):
-        b.detail((CROSS_FAR-2,y,-18), (13,178,13), "stone")
-        if not STEM_LEFT < y < STEM_RIGHT:
-            b.detail((CROSS_NEAR+2,y,-18), (13,178,13), "stone")
+    for location, dimensions in curb_layout():
+        b.detail(location, dimensions, "stone")
     for x,y in ((-3003,-1532), (-842,-940), (534,-1416), (2200,-3010), (2520,1040)):
         b.detail((x,y,ROAD_Z+.31), (62,62,.28), "steel", shape="Cylinder")
         for slot in (-12,0,12):

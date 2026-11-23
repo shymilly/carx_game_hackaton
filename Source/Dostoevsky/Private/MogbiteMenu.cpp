@@ -29,6 +29,9 @@
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/SOverlay.h"
 #include "Widgets/Text/STextBlock.h"
+#if WITH_EDITOR
+#include "Editor.h"
+#endif
 
 #define LOCTEXT_NAMESPACE "MogbiteMenu"
 
@@ -54,16 +57,22 @@ FSlateFontInfo MenuFont(const TCHAR* Filename, float Size)
 class SMogbiteMenu final : public SCompoundWidget
 {
 public:
-    SLATE_BEGIN_ARGS(SMogbiteMenu) {}
+    SLATE_BEGIN_ARGS(SMogbiteMenu)
+        : _Controller(nullptr), _Player(nullptr), _Video(nullptr), _Still(nullptr), _PausePlayer(nullptr) {}
         SLATE_ARGUMENT(AMogbiteMenuController*, Controller)
         SLATE_ARGUMENT(UMediaPlayer*, Player)
         SLATE_ARGUMENT(UMediaTexture*, Video)
         SLATE_ARGUMENT(UTexture2D*, Still)
+        SLATE_ARGUMENT(APlayerController*, PausePlayer)
+        SLATE_EVENT(FSimpleDelegate, OnResume)
     SLATE_END_ARGS()
 
     void Construct(const FArguments& Args)
     {
         Controller = Args._Controller;
+        bPauseMenu = Args._PausePlayer != nullptr;
+        OwningPlayer = bPauseMenu ? Args._PausePlayer : Args._Controller;
+        Resume = Args._OnResume;
         Player = Args._Player;
         const auto* DialogueStyle = GetDefault<UDocumentWindow>();
         Paper = DialogueStyle->PanelColor;
@@ -72,6 +81,11 @@ public:
         TitleFont = MenuFont(TEXT("Zeitmax.ttf"), 68);
         ButtonFont = MenuFont(TEXT("Jimbi-Regular.ttf"), 27);
         SettingsFont = MenuFont(TEXT("Jimbi-Regular.ttf"), 21);
+        if (bPauseMenu)
+        {
+            BuildPause();
+            return;
+        }
         SetBrush(StillBrush, Args._Still);
         SetBrush(VideoBrush, Args._Video);
 
@@ -146,13 +160,72 @@ public:
 
     TSharedPtr<SWidget> GetInitialFocus() const { return PlayButton; }
 
+    virtual FReply OnPreviewKeyDown(const FGeometry& Geometry, const FKeyEvent& Event) override
+    {
+        const FKey Key = Event.GetKey();
+        if (bPauseMenu && Pages->GetActiveWidgetIndex() == 0 && (Key == EKeys::Down || Key == EKeys::Up || Key == EKeys::Tab))
+        {
+            const TSharedPtr<SButton> Buttons[] = { PlayButton, SettingsButton, PauseQuitButton };
+            const int32 Focused = PauseQuitButton->HasAnyUserFocus() ? 2 : SettingsButton->HasAnyUserFocus() ? 1 : 0;
+            const int32 Step = Key == EKeys::Up || (Key == EKeys::Tab && Event.IsShiftDown()) ? 2 : 1;
+            return FReply::Handled().SetUserFocus(Buttons[(Focused+Step)%3].ToSharedRef(), EFocusCause::Navigation);
+        }
+        return SCompoundWidget::OnPreviewKeyDown(Geometry, Event);
+    }
+
     virtual FReply OnKeyDown(const FGeometry& Geometry, const FKeyEvent& Event) override
     {
-        if (Pages->GetActiveWidgetIndex() == 1 && Event.GetKey() == EKeys::Escape) return OnBack();
+        if (Event.GetKey() == EKeys::Escape && !Event.IsRepeat())
+        {
+            if (Pages->GetActiveWidgetIndex() == 1) return OnBack();
+            if (bPauseMenu) return OnResumeGame();
+        }
         return SCompoundWidget::OnKeyDown(Geometry, Event);
     }
 
 private:
+    void BuildPause()
+    {
+        ChildSlot
+        [
+            SNew(SBorder).Padding(20)
+            .BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
+            .BorderBackgroundColor(FLinearColor(0.012f, 0.010f, 0.007f, .72f))
+            .HAlign(HAlign_Center).VAlign(VAlign_Center)
+            [
+                SNew(SScaleBox).Stretch(EStretch::ScaleToFit).StretchDirection(EStretchDirection::DownOnly)
+                [
+                    SAssignNew(Pages, SWidgetSwitcher)
+                    + SWidgetSwitcher::Slot()
+                    [
+                        SNew(SBox).WidthOverride(325)
+                        [
+                            SNew(SDialoguePanel).Fill(Paper).Outline(Accent).Radius(20).Padding(FMargin(26, 21))
+                            [
+                                SNew(SVerticalBox)
+                                + SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(0, 0, 0, 14)
+                                [ SNew(STextBlock).Text(LOCTEXT("Pause", "ПАУЗА")).Font(ButtonFont).ColorAndOpacity(Ink) ]
+                                + SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 9)
+                                [ PaperButton(LOCTEXT("Resume", "ПРОДОЛЖИТЬ"), FOnClicked::CreateSP(this, &SMogbiteMenu::OnResumeGame), &PlayButton, true) ]
+                                + SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 9)
+                                [ PaperButton(LOCTEXT("Settings", "НАСТРОЙКИ"), FOnClicked::CreateSP(this, &SMogbiteMenu::OnSettings), &SettingsButton, true) ]
+                                + SVerticalBox::Slot().AutoHeight()
+                                [ PaperButton(LOCTEXT("Quit", "ВЫХОД"), FOnClicked::CreateSP(this, &SMogbiteMenu::OnQuit), &PauseQuitButton, true) ]
+                            ]
+                        ]
+                    ]
+                    + SWidgetSwitcher::Slot()[ BuildSettings() ]
+                ]
+            ]
+        ];
+    }
+
+    FReply OnResumeGame()
+    {
+        Resume.ExecuteIfBound();
+        return FReply::Handled();
+    }
+
     static void SetBrush(FSlateBrush& Brush, UTexture* Texture)
     {
         Brush.SetResourceObject(Texture);
@@ -204,7 +277,10 @@ private:
                 + SVerticalBox::Slot().AutoHeight().Padding(3, 0, 3, 7)
                   [ SettingsSlider(LOCTEXT("Brightness", "Яркость"), &SMogbiteMenu::PendingBrightness) ]
                 + SVerticalBox::Slot().AutoHeight().Padding(3, 0, 3, 11)
-                  [ SettingsSlider(LOCTEXT("RainVolume", "Дождь в меню"), &SMogbiteMenu::PendingRain) ]
+                  [
+                      SNew(SBox).Visibility(bPauseMenu ? EVisibility::Collapsed : EVisibility::Visible)
+                      [ SettingsSlider(LOCTEXT("RainVolume", "Дождь в меню"), &SMogbiteMenu::PendingRain) ]
+                  ]
                 + SVerticalBox::Slot().AutoHeight()
                 [
                     SNew(SHorizontalBox)
@@ -230,6 +306,10 @@ private:
                 .OnValueChanged_Lambda([this, Value](float NewValue)
                 {
                     this->*Value = NewValue;
+                    if (Value == &SMogbiteMenu::PendingVolume)
+                    {
+                        if (const auto* Settings = UDostoevskyGameSettings::Get()) Settings->PreviewMasterVolume(NewValue);
+                    }
                     if (Value == &SMogbiteMenu::PendingRain && Controller.IsValid()) Controller->SetRainVolume(NewValue);
                 })
             ];
@@ -281,14 +361,14 @@ private:
     {
         if (auto* Settings = UDostoevskyGameSettings::Get())
         {
-            Settings->SetMasterVolume(PendingVolume, Controller.IsValid() ? Controller->GetWorld() : nullptr);
+            Settings->SetMasterVolume(PendingVolume);
             Settings->SetSceneBrightness(PendingBrightness);
         }
         if (auto* Settings = GEngine->GetGameUserSettings())
         {
             if (Quality != INDEX_NONE && Quality != Settings->GetOverallScalabilityLevel()) Settings->SetOverallScalabilityLevel(Quality);
             // The editor owns the PIE window. Only standalone and packaged games can change its mode.
-            if (Controller.IsValid() && Controller->GetWorld()->WorldType != EWorldType::PIE)
+            if (OwningPlayer.IsValid() && OwningPlayer->GetWorld()->WorldType != EWorldType::PIE)
                 Settings->SetFullscreenMode(static_cast<EWindowMode::Type>(Window));
             Settings->ApplySettings(false);
         }
@@ -299,6 +379,7 @@ private:
 
     FReply OnBack()
     {
+        if (const auto* Settings = UDostoevskyGameSettings::Get()) Settings->PreviewMasterVolume(Settings->GetMasterVolume());
         if (Controller.IsValid()) Controller->SetRainVolume(OriginalRain);
         Pages->SetActiveWidgetIndex(0);
         return FReply::Handled().SetUserFocus(SettingsButton.ToSharedRef());
@@ -306,16 +387,30 @@ private:
 
     FReply OnQuit()
     {
-        if (Controller.IsValid()) UKismetSystemLibrary::QuitGame(Controller.Get(), Controller.Get(), EQuitPreference::Quit, false);
+        APlayerController* LocalPlayer = OwningPlayer.Get();
+        if (!LocalPlayer) return FReply::Handled();
+#if WITH_EDITOR
+        if (bPauseMenu && GEditor && LocalPlayer->GetWorld()->WorldType == EWorldType::PIE)
+        {
+            UE_LOG(LogTemp, Verbose, TEXT("Pause menu requests the end of Play in Editor"));
+            GEditor->RequestEndPlayMap();
+            return FReply::Handled();
+        }
+#endif
+        UKismetSystemLibrary::QuitGame(LocalPlayer, LocalPlayer, EQuitPreference::Quit, false);
         return FReply::Handled();
     }
 
     TWeakObjectPtr<AMogbiteMenuController> Controller;
+    TWeakObjectPtr<APlayerController> OwningPlayer;
+    FSimpleDelegate Resume;
+    bool bPauseMenu = false;
     TWeakObjectPtr<UMediaPlayer> Player;
     TSharedPtr<SWidgetSwitcher> Pages;
     TSharedPtr<SButton> PlayButton;
     TSharedPtr<SButton> SettingsButton;
     TSharedPtr<SButton> GraphicsButton;
+    TSharedPtr<SButton> PauseQuitButton;
     FSlateBrush StillBrush;
     FSlateBrush VideoBrush;
     FSlateFontInfo TitleFont;
@@ -333,6 +428,14 @@ private:
 };
 }
 
+TSharedRef<SWidget> CreateMogbitePauseMenu(APlayerController* Player, FSimpleDelegate Resume,
+    TSharedPtr<SWidget>& InitialFocus)
+{
+    const auto Widget = SNew(SMogbiteMenu).PausePlayer(Player).OnResume(MoveTemp(Resume));
+    InitialFocus = Widget->GetInitialFocus();
+    return Widget;
+}
+
 AMogbiteMenuMode::AMogbiteMenuMode()
 {
     DefaultPawnClass = nullptr;
@@ -344,6 +447,7 @@ void AMogbiteMenuController::BeginPlay()
     Super::BeginPlay();
     UGameViewportClient* Viewport = GetWorld()->GetGameViewport();
     if (!IsLocalController() || !Viewport) return;
+    if (const auto* Settings = UDostoevskyGameSettings::Get()) Settings->ApplyPresentationSettings();
 
     GConfig->GetFloat(RainSection, RainKey, RainVolume, GGameUserSettingsIni);
     RainVolume = FMath::Clamp(RainVolume, 0.f, 1.f);

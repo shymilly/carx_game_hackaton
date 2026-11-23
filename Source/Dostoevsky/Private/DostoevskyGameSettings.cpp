@@ -1,8 +1,8 @@
 #include "DostoevskyGameSettings.h"
 
 #include "AudioDevice.h"
+#include "AudioDeviceManager.h"
 #include "Engine/Engine.h"
-#include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
 
 namespace
@@ -18,11 +18,13 @@ void ApplyBrightness(float Value)
         Mid->Set(FMath::Lerp(.31f,.69f,Value),ECVF_SetByGameSetting);
 }
 
-void ApplyVolume(float Value,UWorld* World)
+void ApplyVolume(float Value)
 {
-    if (!GEngine) return;
-    FAudioDeviceHandle Device=World ? World->GetAudioDevice() : GEngine->GetMainAudioDevice();
-    if (Device) Device->SetTransientPrimaryVolume(Value);
+    if (FAudioDeviceManager* Devices=GEngine ? GEngine->GetAudioDeviceManager() : nullptr)
+        Devices->IterateOverAllDevices([Value](Audio::FDeviceId, FAudioDevice* Device)
+        {
+            Device->SetSubmixOutputVolume(&Device->GetMainSubmixObject(), Value);
+        });
 }
 }
 
@@ -44,13 +46,18 @@ float UDostoevskyGameSettings::GetSceneBrightness() const
 void UDostoevskyGameSettings::ApplyNonResolutionSettings()
 {
     Super::ApplyNonResolutionSettings();
-    ApplyToWorld(nullptr);
+    ApplyPresentationSettings();
 }
 
-void UDostoevskyGameSettings::SetMasterVolume(float Value,UWorld* World)
+void UDostoevskyGameSettings::SetMasterVolume(float Value)
 {
     MasterVolume=Normalized(Value,1.f);
-    ApplyVolume(MasterVolume,World);
+    PreviewMasterVolume(MasterVolume);
+}
+
+void UDostoevskyGameSettings::PreviewMasterVolume(float Value) const
+{
+    ApplyVolume(Normalized(Value,GetMasterVolume()));
 }
 
 void UDostoevskyGameSettings::SetSceneBrightness(float Value)
@@ -59,8 +66,8 @@ void UDostoevskyGameSettings::SetSceneBrightness(float Value)
     ApplyBrightness(SceneBrightness);
 }
 
-void UDostoevskyGameSettings::ApplyToWorld(UWorld* World) const
+void UDostoevskyGameSettings::ApplyPresentationSettings() const
 {
     ApplyBrightness(GetSceneBrightness());
-    ApplyVolume(GetMasterVolume(),World);
+    PreviewMasterVolume(GetMasterVolume());
 }

@@ -96,7 +96,7 @@ void ADostoevskyMenuGameMode::StartPlay()
     APlayerController* Player=UGameplayStatics::GetPlayerController(this,0);
     if (!Player || !Player->IsLocalController()) return;
     if (const UDostoevskyGameSettings* Settings=UDostoevskyGameSettings::Get())
-        Settings->ApplyToWorld(GetWorld());
+        Settings->ApplyPresentationSettings();
     if (UDostoevskyMainMenu* Menu=CreateWidget<UDostoevskyMainMenu>(Player,UDostoevskyMainMenu::StaticClass()))
     {
         Menu->AddToViewport(80);
@@ -123,7 +123,7 @@ TSharedRef<SWidget> UDostoevskyMainMenu::Slider(const FText& Label,bool bVolume)
         {
             UDostoevskyGameSettings* Settings=UDostoevskyGameSettings::Get();
             if (!Settings) return;
-            if (bVolume) Settings->SetMasterVolume(Value,GetWorld());
+            if (bVolume) Settings->SetMasterVolume(Value);
             else Settings->SetSceneBrightness(Value);
             bChangedSettings=true;
         })

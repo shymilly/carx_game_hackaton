@@ -31,11 +31,14 @@ public:
     UPROPERTY(EditInstanceOnly,BlueprintReadWrite,Category="Character") TObjectPtr<UCityCharacterProfile> CharacterProfile;
     UPROPERTY(EditInstanceOnly,BlueprintReadWrite,Category="Character") float AnimationPhase = 0;
     UPROPERTY(EditInstanceOnly,BlueprintReadWrite) EActOnePose DefaultPose = EActOnePose::Idle;
+    UPROPERTY(EditInstanceOnly,BlueprintReadWrite,Category="Character") bool bFreezePose = false;
     UPROPERTY(EditInstanceOnly,BlueprintReadWrite) TMap<FName,TObjectPtr<AActor>> Parts;
     void Pose(EActOnePose NewPose);
+    float GetPoseDuration() const;
     void Face(const FVector& Target);
     void Nod();
     void WalkAway(const FVector& Destination,float Speed);
+    void WalkAway(TArray<FVector> Route,float Speed);
     void WalkTo(const FVector& Destination,float Speed);
     void FollowPursuitPath(const FVector& Position,const FVector& Direction,float Speed,float DeltaSeconds);
     bool IsWalkingToMark() const { return WalkSpeed>0; }
@@ -57,6 +60,8 @@ private:
     bool bLegacySeat = false;
     bool bHideAtWalkEnd = false;
     FVector WalkTarget = FVector::ZeroVector;
+    TArray<FVector> WalkRoute;
+    int32 NextRoutePoint = 0;
     void Part(FName Name,float Pitch,float Roll=0);
     void PlayCharacterPose();
     void UpdateActorTick();

@@ -48,3 +48,6 @@ class DOSTOEVSKY_API AMogbiteMenuMode : public AGameModeBase
 public:
     AMogbiteMenuMode();
 };
+
+TSharedRef<SWidget> CreateMogbitePauseMenu(APlayerController* Player, FSimpleDelegate Resume,
+    TSharedPtr<SWidget>& InitialFocus);

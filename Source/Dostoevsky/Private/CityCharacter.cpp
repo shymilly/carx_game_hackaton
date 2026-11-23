@@ -258,7 +258,8 @@ void RotateWrist(const FReferenceSkeleton& Ref, TArray<FTransform>& Local,
                  TArray<FTransform>& Pose,int32 Wrist,const FQuat& Rotation)
 {
     ComponentPose(Ref,Local,Pose);
-    Local[Wrist].SetRotation(Pose[Ref.GetParentIndex(Wrist)].GetRotation().Inverse()*Rotation);
+    const int32 Parent=Ref.GetParentIndex(Wrist);
+    Local[Wrist].SetRotation(Parent>=0 ? Pose[Parent].GetRotation().Inverse()*Rotation : Rotation);
 }
 
 double GestureWindow(double Start,double End,double Phase)
@@ -358,13 +359,14 @@ bool WriteGesture(USkeletalMesh& Mesh,UCityGestureSequence& Destination,const TA
 FVector UCityCharacterAuthoring::PoseBonePosition(const USkeletalMesh* Mesh,const UAnimSequence* Animation,FName Bone,float Time)
 {
 #if WITH_EDITOR
-    if (!Mesh || !Animation || !Animation->GetDataModel()) return FVector::ZeroVector;
+    if (!Mesh) return FVector::ZeroVector;
     const FReferenceSkeleton& Ref=Mesh->GetRefSkeleton();
     const int32 Index=CityRigBone(Ref,*Bone.ToString());
     if (Index!=INDEX_NONE)
     {
         TArray<FTransform> Local,Global;
-        CitySamplePose(Ref,*Animation->GetDataModel(),Time,Local,Global);
+        if (Animation && Animation->GetDataModel()) CitySamplePose(Ref,*Animation->GetDataModel(),Time,Local,Global);
+        else ComponentPose(Ref,Ref.GetRefBonePose(),Global);
         return Global[Index].GetLocation();
     }
 #endif
@@ -446,6 +448,285 @@ bool UCityCharacterAuthoring::RemoveLocomotionTravel(const USkeletalMesh* Mesh,U
         PelvisBone,InPlace.Positions,InPlace.Rotations,InPlace.Scales,false);
     if (bChanged) Animation->MarkPackageDirty();
     return bChanged;
+#else
+    return false;
+#endif
+}
+
+bool UCityCharacterAuthoring::RetargetCastMotion(const USkeletalMesh* SourceMesh, const UAnimSequence* Source,
+    USkeletalMesh* TargetMesh, UCityGestureSequence* Destination,
+    const TMap<FName,FName>& TargetToSource, float SourceToTargetYaw, bool bGrounded)
+{
+#if WITH_EDITOR
+    if (!SourceMesh || !Source || !TargetMesh || !Destination || !Source->GetDataModel()) return false;
+
+    const FReferenceSkeleton& From = SourceMesh->GetRefSkeleton();
+    const FReferenceSkeleton& To = TargetMesh->GetRefSkeleton();
+    const int32 ToHips = To.FindBoneIndex(TEXT("Hips"));
+    const int32 FromHips = From.FindBoneIndex(TargetToSource.FindRef(TEXT("Hips")));
+    if (ToHips == INDEX_NONE || FromHips == INDEX_NONE) return false;
+
+    TArray<int32> Joints;
+    Joints.Init(INDEX_NONE, To.GetNum());
+    for (const auto& Pair : TargetToSource)
+    {
+        const int32 Joint = To.FindBoneIndex(Pair.Key);
+        if (Joint != INDEX_NONE) Joints[Joint] = From.FindBoneIndex(Pair.Value);
+    }
+
+    TArray<FTransform> FromBind, ToBind;
+    ComponentPose(From, From.GetRefBonePose(), FromBind);
+    ComponentPose(To, To.GetRefBonePose(), ToBind);
+    const FQuat Basis = FRotator(0, SourceToTargetYaw, 0).Quaternion();
+    const double HeightRatio = ToBind[ToHips].GetLocation().Z / FMath::Max(1., FromBind[FromHips].GetLocation().Z);
+
+    TArray<FQuat> BindAlignment;
+    BindAlignment.Init(FQuat::Identity, To.GetNum());
+    for (int32 Child = 0; Child < To.GetNum(); ++Child)
+    {
+        const int32 Parent = To.GetParentIndex(Child);
+        if (Parent == INDEX_NONE || Joints[Child] == INDEX_NONE || Joints[Parent] == INDEX_NONE) continue;
+        const FString Name = To.GetBoneName(Child).ToString();
+        // Match the source's neutral joint directions before applying its measured rotations.
+        if (!Name.EndsWith(TEXT("ForeArm")) && !Name.EndsWith(TEXT("Hand")) &&
+            !Name.EndsWith(TEXT("Leg")) && !Name.EndsWith(TEXT("Foot")) &&
+            !Name.EndsWith(TEXT("ToeBase"))) continue;
+        const FVector FromAxis = Basis.RotateVector(
+            FromBind[Joints[Child]].GetLocation() - FromBind[Joints[Parent]].GetLocation());
+        const FVector ToAxis = ToBind[Child].GetLocation() - ToBind[Parent].GetLocation();
+        if (!FromAxis.IsNearlyZero() && !ToAxis.IsNearlyZero())
+            BindAlignment[Parent] = FQuat::FindBetweenVectors(ToAxis, FromAxis);
+    }
+
+    TArray<int32> Feet;
+    for (const TCHAR* Name : {TEXT("LeftFoot"), TEXT("RightFoot"), TEXT("LeftToeBase"), TEXT("RightToeBase")})
+    {
+        const int32 Joint = To.FindBoneIndex(Name);
+        if (Joint != INDEX_NONE && Joints[Joint] != INDEX_NONE) Feet.Add(Joint);
+    }
+    const auto Ground = [&Feet, &Joints](const TArray<FTransform>& Pose, bool bSource)
+    {
+        double Z = TNumericLimits<double>::Max();
+        for (const int32 Foot : Feet) Z = FMath::Min(Z, Pose[bSource ? Joints[Foot] : Foot].GetLocation().Z);
+        return Z;
+    };
+    const double SourceGround = Feet.IsEmpty() ? 0. : Ground(FromBind, true);
+    const double TargetGround = Feet.IsEmpty() ? 0. : Ground(ToBind, false);
+
+    const IAnimationDataModel& Model = *Source->GetDataModel();
+    const int32 FrameCount = FMath::Max(1, FMath::RoundToInt(static_cast<float>(Model.GetPlayLength()) * 30.f));
+    TArray<FGestureKeys> Tracks;
+    Tracks.SetNum(To.GetNum());
+    TArray<FTransform> FromLocal, FromPose, ToLocal, ToPose;
+    ToPose.SetNum(To.GetNum());
+    for (int32 Frame = 0; Frame <= FrameCount; ++Frame)
+    {
+        CitySamplePose(From, Model, Frame * static_cast<float>(Model.GetPlayLength()) / FrameCount, FromLocal, FromPose);
+        ToLocal = To.GetRefBonePose();
+        for (int32 Index = 0; Index < To.GetNum(); ++Index)
+        {
+            const int32 Parent = To.GetParentIndex(Index);
+            const FTransform ParentPose = Parent == INDEX_NONE ? FTransform::Identity : ToPose[Parent];
+            const int32 SourceIndex = Joints[Index];
+            if (SourceIndex != INDEX_NONE)
+            {
+                const FQuat Motion = FromPose[SourceIndex].GetRotation() * FromBind[SourceIndex].GetRotation().Inverse();
+                const FQuat Rotation = Basis * Motion * Basis.Inverse() *
+                    BindAlignment[Index] * ToBind[Index].GetRotation();
+                ToLocal[Index].SetRotation((ParentPose.GetRotation().Inverse() * Rotation).GetNormalized());
+            }
+            if (Index == ToHips)
+            {
+                const FVector Delta = FromPose[FromHips].GetLocation() - FromBind[FromHips].GetLocation();
+                ToLocal[Index].SetLocation(ParentPose.InverseTransformPosition(
+                    ToBind[Index].GetLocation() + Basis.RotateVector(Delta * HeightRatio)));
+            }
+            ToPose[Index] = ToLocal[Index] * ParentPose;
+        }
+        if (bGrounded && !Feet.IsEmpty())
+        {
+            const double Shift = (Ground(FromPose, true) - SourceGround) * HeightRatio - (Ground(ToPose, false) - TargetGround);
+            const int32 Parent = To.GetParentIndex(ToHips);
+            const FVector Correction(0, 0, FMath::Clamp(Shift, -16., 16.));
+            ToLocal[ToHips].AddToTranslation(Parent == INDEX_NONE ? Correction : ToPose[Parent].InverseTransformVector(Correction));
+        }
+        AppendGesturePose(ToLocal, Tracks);
+    }
+    return WriteGesture(*TargetMesh, *Destination, Tracks, FrameCount);
+#else
+    return false;
+#endif
+}
+
+bool UCityCharacterAuthoring::AuthorAlignedCastMotion(USkeletalMesh* Mesh, UCityGestureSequence* Destination,
+    FName Motion, const UAnimSequence* SeatedReference)
+{
+#if WITH_EDITOR
+    if (!Mesh || !Destination) return false;
+    const bool bSeated = Motion.ToString().StartsWith(TEXT("Seated"));
+    const bool bTalk = Motion == TEXT("Talk") || Motion == TEXT("SeatedTalk");
+    const bool bNod = Motion == TEXT("Nod") || Motion == TEXT("SeatedNod");
+    if (bSeated && (!SeatedReference || !SeatedReference->GetDataModel())) return false;
+
+    const FReferenceSkeleton& Ref = Mesh->GetRefSkeleton();
+    struct FLimb
+    {
+        int32 Arm, Elbow, Hand;
+        int32 Thigh, Knee, Foot, Toe;
+        double Side;
+    };
+    const FLimb Left{CityRigBone(Ref,TEXT("LeftArm")),CityRigBone(Ref,TEXT("LeftForeArm")),CityRigBone(Ref,TEXT("LeftHand")),
+        CityRigBone(Ref,TEXT("LeftUpLeg")),CityRigBone(Ref,TEXT("LeftLeg")),CityRigBone(Ref,TEXT("LeftFoot")),
+        CityRigBone(Ref,TEXT("LeftToeBase")), -1.};
+    const FLimb Right{CityRigBone(Ref,TEXT("RightArm")),CityRigBone(Ref,TEXT("RightForeArm")),CityRigBone(Ref,TEXT("RightHand")),
+        CityRigBone(Ref,TEXT("RightUpLeg")),CityRigBone(Ref,TEXT("RightLeg")),CityRigBone(Ref,TEXT("RightFoot")),
+        CityRigBone(Ref,TEXT("RightToeBase")), 1.};
+    const int32 Hips = CityRigBone(Ref,TEXT("Hips"),TEXT("Pelvis"));
+    const int32 Chest = CityRigBone(Ref,TEXT("Spine2"),TEXT("Spine1"),TEXT("Spine"));
+    const int32 Head = CityRigBone(Ref,TEXT("Head"));
+    if (Hips<0 || Head<0 || Left.Hand<0 || Right.Hand<0 || Left.Elbow<0 || Right.Elbow<0 ||
+        Left.Arm<0 || Right.Arm<0 || Left.Thigh<0 || Right.Thigh<0 || Left.Knee<0 || Right.Knee<0 ||
+        Left.Foot<0 || Right.Foot<0) return false;
+
+    const auto& BindLocal = Ref.GetRefBonePose();
+    TArray<FTransform> Bind, Base = BindLocal, Pose;
+    ComponentPose(Ref, BindLocal, Bind);
+    const auto Joint = [](const TArray<FTransform>& Transforms,int32 Index) { return Transforms[Index].GetLocation(); };
+    const FVector Up = FVector::UpVector;
+    const FVector Side = (Joint(Bind,Right.Arm)-Joint(Bind,Left.Arm)).GetSafeNormal2D();
+    const FVector Forward = FVector::CrossProduct(Side,Up);
+    const FVector HipCenter = Joint(Bind,Hips);
+    const FVector ShoeCenter = (Joint(Bind,Left.Foot)+Joint(Bind,Right.Foot))*.5;
+    const double Height = Joint(Bind,Head).Z-ShoeCenter.Z;
+    if (Height < 50. || Side.IsNearlyZero()) return false;
+    const double HalfStance = FMath::Clamp(
+        FMath::Abs((Joint(Bind,Right.Thigh)-Joint(Bind,Left.Thigh)).Dot(Side))*.69, Height*.075, Height*.10);
+
+    if (bSeated)
+    {
+        const IAnimationDataModel& Seated = *SeatedReference->GetDataModel();
+        CitySamplePose(Ref,Seated,FMath::Min(.4,Seated.GetPlayLength()), Base,Pose);
+        // Retain the established lower-body contacts. Align only the spine
+        // and arms so correction of the torso cannot lift the feet.
+        for (int32 Bone=Hips+1; Bone<Ref.GetNum(); ++Bone)
+        {
+            if (Bone==Left.Thigh || Bone==Right.Thigh || Ref.BoneIsChildOf(Bone,Left.Thigh) ||
+                Ref.BoneIsChildOf(Bone,Right.Thigh)) continue;
+            Base[Bone]=BindLocal[Bone];
+        }
+        const int32 Lumbar=CityRigBone(Ref,TEXT("Spine"),TEXT("Spine1"));
+        if (Lumbar>=0)
+            RotateWrist(Ref,Base,Pose,Lumbar,FQuat(Side,FMath::DegreesToRadians(7.))*Bind[Lumbar].GetRotation());
+    }
+    else
+    {
+        ComponentPose(Ref,Base,Pose);
+        const int32 Parent=Ref.GetParentIndex(Hips);
+        const FVector Drop(0,0,-Height*.014);
+        Base[Hips].AddToTranslation(Parent>=0 ? Pose[Parent].InverseTransformVector(Drop) : Drop);
+        ComponentPose(Ref,Base,Pose);
+        for (const FLimb& Limb : {Left,Right})
+        {
+            const FVector Thigh = Joint(Pose,Limb.Thigh);
+            const FVector Target = ShoeCenter + Side*(HalfStance*Limb.Side);
+            CityReach(Ref,Base,Pose,Limb.Thigh,Limb.Knee,Limb.Foot,Target,Thigh+Forward*Height,1.);
+            ComponentPose(Ref,Base,Pose);
+            FQuat FootRotation = Bind[Limb.Foot].GetRotation();
+            if (Limb.Toe>=0)
+            {
+                const FVector Toe = (Joint(Bind,Limb.Toe)-Joint(Bind,Limb.Foot)).GetSafeNormal2D();
+                if (!Toe.IsNearlyZero())
+                {
+                    const FVector Angle=(Forward+Side*(.13*Limb.Side)).GetSafeNormal();
+                    FootRotation = FQuat::FindBetweenNormals(Toe,Angle)*FootRotation;
+                }
+            }
+            RotateWrist(Ref,Base,Pose,Limb.Foot,FootRotation);
+            ComponentPose(Ref,Base,Pose);
+        }
+    }
+
+    if (!bSeated)
+    {
+        if (const FSkeletalMeshModel* Imported=Mesh->GetImportedModel(); Imported && !Imported->LODModels.IsEmpty())
+        {
+            ComponentPose(Ref,Base,Pose);
+            const FBoxSphereBounds Bounds=Mesh->GetBounds();
+            const double AuthoredFloor=Bounds.Origin.Z-Bounds.BoxExtent.Z;
+            double BindMin=TNumericLimits<double>::Max();
+            double PoseMin=TNumericLimits<double>::Max();
+            for (const FSkelMeshSection& Section : Imported->LODModels[0].Sections)
+            {
+                for (const FSoftSkinVertex& Vertex : Section.SoftVertices)
+                {
+                    const FVector Point(Vertex.Position);
+                    if (Point.Z>AuthoredFloor+Height*.22) continue;
+                    double HeightSum=0.;
+                    double TotalWeight=0.;
+                    for (int32 Influence=0; Influence<UE_ARRAY_COUNT(Vertex.InfluenceBones); ++Influence)
+                    {
+                        const double Weight=Vertex.InfluenceWeights[Influence];
+                        if (Weight<=0. || !Section.BoneMap.IsValidIndex(Vertex.InfluenceBones[Influence])) continue;
+                        const int32 JointIndex=Section.BoneMap[Vertex.InfluenceBones[Influence]];
+                        if (!Bind.IsValidIndex(JointIndex)) continue;
+                        HeightSum+=Weight*Pose[JointIndex].TransformPosition(Bind[JointIndex].InverseTransformPosition(Point)).Z;
+                        TotalWeight+=Weight;
+                    }
+                    if (TotalWeight>0.)
+                    {
+                        BindMin=FMath::Min(BindMin,Point.Z);
+                        PoseMin=FMath::Min(PoseMin,HeightSum/TotalWeight);
+                    }
+                }
+            }
+            if (PoseMin<TNumericLimits<double>::Max())
+                Base[0].AddToTranslation(FVector(0,0,BindMin-PoseMin));
+        }
+    }
+
+    const int32 Frames=bNod ? 34 : 120;
+    TArray<FGestureKeys> Tracks;
+    Tracks.SetNum(Ref.GetNum());
+    TArray<FTransform> Local;
+    for (int32 Frame=0; Frame<=Frames; ++Frame)
+    {
+        const double Phase=double(Frame)/Frames;
+        const double Breath=FMath::Sin(2*PI*Phase);
+        const double Accent=bTalk ? GestureWindow(.13,.45,Phase)+.55*GestureWindow(.58,.86,Phase) : 0.;
+        const double Acknowledge=bNod ? GestureWindow(.10,.90,Phase) : .42*Accent;
+        const double SeatedEmphasis=bSeated && bTalk ? Accent : 0.;
+        Local=Base;
+        ComponentPose(Ref,Local,Pose);
+        TurnBone(Ref,Local,Pose,Chest,FQuat(Up,FMath::DegreesToRadians(1.3*Accent+2.6*SeatedEmphasis))
+            *FQuat(Side,FMath::DegreesToRadians(.6*Breath)));
+        ComponentPose(Ref,Local,Pose);
+        TurnBone(Ref,Local,Pose,Head,FQuat(Side,FMath::DegreesToRadians(8.*Acknowledge))
+            *FQuat(Up,FMath::DegreesToRadians(1.2*Accent)));
+        ComponentPose(Ref,Local,Pose);
+        for (const FLimb& Limb : {Left,Right})
+        {
+            const FVector Shoulder=Joint(Pose,Limb.Arm);
+            const double Reach = FVector::Dist(Joint(Bind,Limb.Arm),Joint(Bind,Limb.Elbow))+
+                FVector::Dist(Joint(Bind,Limb.Elbow),Joint(Bind,Limb.Hand));
+            const double Gesture = Limb.Side>0. ? Accent : Accent*.28;
+            const FVector Target=bSeated
+                ? FMath::Lerp(Joint(Pose,Limb.Thigh),Joint(Pose,Limb.Knee),.57)
+                    + Up*(Height*.058+Height*.115*Gesture)+Forward*(Height*.068*Gesture)
+                    + Side*(Limb.Side*Height*.023*Gesture)
+                : Shoulder - Up*(Reach*.95-Height*.092*Gesture) + Forward*(Reach*.11+Height*.085*Gesture)
+                    + Side*(Limb.Side*(Height*.026+Height*.026*Gesture));
+            const FVector Pole=Shoulder-Forward*Height*.43+Side*(Limb.Side*Height*.42)-Up*Height*.28;
+            CityReach(Ref,Local,Pose,Limb.Arm,Limb.Elbow,Limb.Hand,Target,Pole,1.);
+            ComponentPose(Ref,Local,Pose);
+            const FVector From=(Joint(Bind,Limb.Hand)-Joint(Bind,Limb.Elbow)).GetSafeNormal();
+            const FVector To=bSeated ? (Forward+Up*(.38*Gesture-.12)).GetSafeNormal()
+                : (Joint(Pose,Limb.Hand)-Joint(Pose,Limb.Elbow)).GetSafeNormal();
+            RotateWrist(Ref,Local,Pose,Limb.Hand,FQuat::FindBetweenNormals(From,To)*Bind[Limb.Hand].GetRotation());
+            ComponentPose(Ref,Local,Pose);
+        }
+        AppendGesturePose(Local,Tracks);
+    }
+    return WriteGesture(*Mesh,*Destination,Tracks,Frames);
 #else
     return false;
 #endif

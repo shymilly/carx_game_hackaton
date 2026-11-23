@@ -379,7 +379,6 @@ def neptune(s, portrait):
     s.use("Street payphone","PAY_PHONE","Позвонить с таксофона",(x,y-18,137),(28,8,42))
 
     s.person("Veteran outside the flea market","Veteran",(3297,-2684,-9),185,"olive","cloth","grey",detail="veteran")
-    s.target("Corner where the veteran disappears",(3308,-3110,-9),cue="VeteranExit")
     s.use("Talk to the veteran","VETERAN","Поговорить со стариком",(3267,-2684,120),(14,28,61))
 
     x,y=-1430,-2168

@@ -105,7 +105,7 @@ def stairs(scene,base,inner,iron):
             x=(660+(number+.5)*28) if direction==1 else (884-(number+.5)*28)
             top=level+(number+1)*16.875
             scene.box('Concrete stair tread and riser',(x,y,top-11),(28.16,126,22),inner,collision=False)
-            scene.box('Worn anti-slip nosing',(x-direction*12.7,y,top-.7),(3.1,126,1.4),iron,collision=False)
+            scene.box('Worn anti-slip nosing',(x-direction*12.7,y,top+.2),(3.1,126,1.4),iron,collision=False)
             if number%2==0:
                 scene.box('Iron baluster',(x,rail_y,top+42),(4.5,4.5,86),iron)
         bar=scene.mesh('Sloping iron handrail',(772,rail_y,level+157),(ramp_length+4,7,6),iron,
@@ -204,8 +204,12 @@ def entrance():
             stairs(scene,h,concrete,iron)
         if floor==3:
             scene.box('Retaining rail at the landing',(658,-125,h+46),(7,117,92),iron,collision=True)
-        scene.lamp('Tungsten landing lamp',(552,-24,h+207),36,353,(1,.78,.56))
-        scene.box('Ribbed glass landing fixture',(518,-24,h+205),(9,31,27),'light',collision=False)
+        lamp_y=-106 if floor==0 else -24
+        fixture_x=509.3 if floor==0 else 518
+        if floor==0:
+            scene.box('Ground-floor lamp mounting plate',(505.8,lamp_y,h+205),(2.2,34,30),iron,collision=False)
+        scene.lamp('Tungsten landing lamp',(552,lamp_y,h+207),36,353,(1,.78,.56))
+        scene.box('Ribbed glass landing fixture',(fixture_x,lamp_y,h+205),(9,31,27),'light',collision=False)
         scene.label(str(floor+1),(519,112,h+160),0,25)
         if floor<3:
             scene.lamp('Stair turn fill',(1014,-31,h+294),26,311,(.77,.84,1))

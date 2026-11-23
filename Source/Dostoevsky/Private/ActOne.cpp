@@ -5,7 +5,9 @@
 #include "Camera/PlayerCameraManager.h"
 #include "Components/BoxComponent.h"
 #include "Components/SplineComponent.h"
+#include "DisarmPrompt.h"
 #include "Engine/GameInstance.h"
+#include "Engine/GameViewportClient.h"
 #include "Engine/World.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -22,8 +24,7 @@
 namespace
 {
 const FName Clues[]={TEXT("FedorFolder"),TEXT("FedorTape"),TEXT("FedorPhoto"),TEXT("FedorBadge")};
-const FKey DisarmKeys[]={EKeys::Q,EKeys::E,EKeys::F};
-const TCHAR* DisarmLabels[]={TEXT("Q"),TEXT("E"),TEXT("F")};
+const FKey DisarmKeys[]={EKeys::Q,EKeys::E,EKeys::W,EKeys::A,EKeys::F};
 constexpr float LockTargets[]={.31f,.68f,.47f};
 constexpr float LockWindow=.075f;
 constexpr float LockCycle=1.55f;
@@ -91,6 +92,7 @@ void UActOneSubsystem::Leave(AActOneDirector* Scene)
     if (Director.Get()!=Scene) return;
     Scene->GetWorldTimerManager().ClearTimer(SceneTimer);
     Scene->GetWorldTimerManager().ClearTimer(ChallengeTimer);
+    CloseDisarmPrompt();
     if (bCinematic)
     {
         if (APlayerController* PC=Player())
@@ -113,7 +115,7 @@ void UActOneSubsystem::Reset()
     Phase=EActOnePhase::Apartment;
     Stats={};
     Evidence.Reset();
-    bPressOpen=bVeteranDone=bVeteranFled=bPistol=bOldManFled=bGuardResolved=bArchives=bLockpickTraining=false;
+    bPressOpen=bVeteranDone=bPistol=bOldManFled=bGuardResolved=bArchives=bLockpickTraining=false;
     bGuardKilled=false;
     bIvanKey=bAlarm=bFloorboardOpen=bDrawerOpen=bBankKey=bAgentEscaped=bIvanSpoken=bClosingStarted=false;
     bLobbyOpened=bIvanEntered=bIvanArrived=bTripStarted=bTripRecovered=false;
@@ -199,7 +201,6 @@ void UActOneSubsystem::RefreshScene()
         {
         case EActOneAction::Pistol: bAvailable=!bPistol && Phase<=EActOnePhase::BarCall; break;
         case EActOneAction::Newspaper: bAvailable=bPressOpen; break;
-        case EActOneAction::Veteran: bAvailable=!bVeteranFled; break;
         case EActOneAction::Cigarettes: bAvailable=Phase==EActOnePhase::Cigarettes; break;
         case EActOneAction::Guard: bAvailable=Phase==EActOnePhase::Bar && !bGuardResolved; break;
         case EActOneAction::Archives: bAvailable=bArchives; break;
@@ -218,8 +219,8 @@ void UActOneSubsystem::RefreshScene()
     }
     if (Place()==EActOneLocation::Street)
     {
-        Director->Show(TEXT("IvanStreet"),Phase==EActOnePhase::MeetIvan);
-        if (bVeteranFled) Director->Show(TEXT("Veteran"),false);
+        const AActOneCast* Ivan=Cast<AActOneCast>(Director->Cue(TEXT("IvanStreet")));
+        Director->Show(TEXT("IvanStreet"),Phase==EActOnePhase::MeetIvan || (Ivan && Ivan->IsWalkingToMark()));
     }
     if (Place()==EActOneLocation::Apartment) Director->Show(TEXT("Pistol"),!bPistol && Phase<=EActOnePhase::BarCall);
     if (Place()==EActOneLocation::Bar && bGuardResolved && !bCinematic)
@@ -516,21 +517,12 @@ void UActOneSubsystem::CallFromPayphone(bool bMother)
 
 void UActOneSubsystem::AskVeteran()
 {
-    Ask(TEXT("VeteranAsk"),{Text(TEXT("Дать 5 долларов")),Text(TEXT("Отказать")),Text(TEXT("Наорать"))},
+    Ask(TEXT("VeteranAsk"),{Text(TEXT("Дать 5 долларов")),Text(TEXT("Отказать"))},
         FDocumentChoice::CreateWeakLambda(this,[this](int32 Answer)
         {
             bVeteranDone=true;
             if (Answer==0) {Cash-=5; ++Stats.Heritage; Notice(TEXT("VeteranThanks"));}
             else if (Answer==1) Notice(TEXT("VeteranCurse"));
-            else
-            {
-                Stats.Anger+=5;
-                bVeteranFled=true;
-                for (const auto& Target:Director->Interactions())
-                    if (Target.IsValid() && Target->Action==EActOneAction::Veteran) Target->SetAvailable(false);
-                if (AActOneCast* Person=Cast<AActOneCast>(Director->Cue(TEXT("Veteran"))))
-                    if (AActor* Exit=Director->Cue(TEXT("VeteranExit"))) Person->WalkAway(Exit->GetActorLocation(),340);
-            }
         }));
 }
 
@@ -591,8 +583,13 @@ void UActOneSubsystem::ResolveGuard(bool bShot)
     }
     Director->Pose(TEXT("BarGuard"),EActOnePose::Fallen);
     Director->DropBarWeapon();
-    PlayAudio(TEXT("Impact"),.85f);
-    Timed(1.05f,FSimpleDelegate::CreateUObject(this,&ThisClass::EndBarConflict));
+    const AActOneCast* Guard=Cast<AActOneCast>(Director->Cue(TEXT("BarGuard")));
+    const float FallDuration=Guard ? Guard->GetPoseDuration() : 0.f;
+    Timed(FMath::Max(FallDuration,.85f),FSimpleDelegate::CreateWeakLambda(this,[this]()
+    {
+        PlayAudio(TEXT("Impact"),.85f);
+        EndBarConflict();
+    }));
 }
 
 void UActOneSubsystem::EndBarConflict()
@@ -679,8 +676,9 @@ void UActOneSubsystem::MeetIvan()
                 bIvanKey=Answer==0;
                 if (bIvanKey) AddEvidence(TEXT("IvanKey"),false);
                 Phase=EActOnePhase::FedorEntrance;
+                WalkOff(TEXT("IvanStreet"),{TEXT("IvanStreetTurn"),TEXT("IvanStreetCorner"),
+                    TEXT("IvanStreetRear"),TEXT("IvanStreetExit")});
                 RefreshScene();
-                WalkOff(TEXT("IvanStreet"),TEXT("IvanStreetExit"));
             }));
     }));
 }
@@ -776,13 +774,16 @@ void UActOneSubsystem::MeetFedorIvan()
     }));
 }
 
-void UActOneSubsystem::WalkOff(FName Actor,FName Exit)
+void UActOneSubsystem::WalkOff(FName Actor,TArray<FName> Route)
 {
     AActOneCast* Character=Cast<AActOneCast>(Director->Cue(Actor));
-    const AActor* Mark=Director->Cue(Exit);
-    if (!Character || !Mark) return;
+    if (!Character) return;
+    TArray<FVector> Points;
+    for (FName Key : Route)
+        if (const AActor* Mark=Director->Cue(Key)) Points.Add(Mark->GetActorLocation());
+    if (Points.IsEmpty()) return;
     Director->Show(Actor,true);
-    Character->WalkAway(Mark->GetActorLocation(),225.f);
+    Character->WalkAway(MoveTemp(Points),225.f);
 }
 
 void UActOneSubsystem::UpdatePursuit(float DeltaSeconds)
@@ -892,50 +893,128 @@ void UActOneSubsystem::StartChallenge(EChallenge Mode)
     Challenge=Mode;
     Step=0;
     StepStarted=Director->GetWorld()->GetTimeSeconds();
+    if (Mode==EChallenge::Disarm)
+    {
+        if (OpenDisarmPrompt()) StartDisarmStep();
+        else FinishChallenge(false);
+        return;
+    }
     LiveDocument=NewObject<UInteractionDocument>(this);
-    LiveDocument->Title=Mode==EChallenge::Disarm ? Text(TEXT("Обезоружить")) : Text(TEXT("Замок"));
+    LiveDocument->Title=Text(TEXT("Замок"));
     LiveDocument->CloseLabel=Text(TEXT("Прервать · Esc"));
-    RefreshChallenge();
+    RefreshLockChallenge();
     if (!UI()->ShowChallenge(Player(),LiveDocument,FDocumentKeyInput::CreateUObject(this,&ThisClass::ChallengeKey),
         FSimpleDelegate::CreateUObject(this,&ThisClass::FinishChallenge,false)))
-    {Challenge=EChallenge::None;return;}
-    Director->GetWorldTimerManager().SetTimer(ChallengeTimer,this,&ThisClass::RefreshChallenge,.045f,true);
+    {
+        Challenge=EChallenge::None;
+        LiveDocument=nullptr;
+        return;
+    }
+    Director->GetWorldTimerManager().SetTimer(ChallengeTimer,this,&ThisClass::RefreshLockChallenge,.045f,true);
 }
 
-void UActOneSubsystem::RefreshChallenge()
+bool UActOneSubsystem::OpenDisarmPrompt()
 {
-    if (!Director.IsValid() || !LiveDocument || Challenge==EChallenge::None) return;
-    const float Elapsed=Director->GetWorld()->GetTimeSeconds()-StepStarted;
-    if (Challenge==EChallenge::Disarm)
+    APlayerController* PC=Player();
+    UGameViewportClient* Viewport=PC ? PC->GetWorld()->GetGameViewport() : nullptr;
+    if (!Viewport) return false;
+    TArray<FText> Labels;
+    for (const FKey& Key : DisarmKeys) Labels.Add(FText::FromName(Key.GetFName()));
+    DisarmPrompt=SNew(SDisarmPrompt)
+        .Keys(MoveTemp(Labels))
+        .Step_UObject(this,&ThisClass::GetChallengeStep)
+        .Remaining_UObject(this,&ThisClass::DisarmRemaining)
+        .OnKey(FDocumentKeyInput::CreateUObject(this,&ThisClass::ChallengeKey));
+    DisarmPlayer=PC;
+    DisarmViewport=Viewport;
+    Viewport->AddViewportWidgetContent(DisarmPrompt.ToSharedRef(),100);
+    PC->SetIgnoreMoveInput(true);
+    PC->SetIgnoreLookInput(true);
+    if (ACharacter* Character=Cast<ACharacter>(PC->GetPawn()))
+        Character->GetCharacterMovement()->StopMovementImmediately();
+    PC->FlushPressedKeys();
+    FInputModeUIOnly Input;
+    Input.SetWidgetToFocus(DisarmPrompt);
+    PC->SetInputMode(Input);
+    return true;
+}
+
+void UActOneSubsystem::CloseDisarmPrompt()
+{
+    if (!DisarmPrompt) return;
+    if (UGameViewportClient* Viewport=DisarmViewport.Get()) Viewport->RemoveViewportWidgetContent(DisarmPrompt.ToSharedRef());
+    DisarmPrompt.Reset();
+    DisarmViewport.Reset();
+    if (APlayerController* PC=DisarmPlayer.Get())
     {
-        const float Window=FMath::Clamp(1.55f+.09f*Stats.Calm-.012f*Stats.Anger,1.15f,1.9f);
-        if (Elapsed>Window) { FinishChallenge(false); return; }
-        LiveDocument->Body=FText::FromString(FString::Printf(
-            TEXT("Последовательность  Q  →  E  →  F\nСейчас  [%s]     %d / 3     %.1f с"),
-            DisarmLabels[Step],Step,Window-Elapsed));
+        PC->SetIgnoreMoveInput(false);
+        PC->SetIgnoreLookInput(false);
+        PC->FlushPressedKeys();
+        PC->SetInputMode(FInputModeGameOnly());
     }
-    else
-    {
-        const int32 Mark=FMath::RoundToInt(GetChallengePosition()*24);
-        FString Track;
-        for (int32 Index=0; Index<=24; ++Index)
-            Track.AppendChar(Index==Mark ? TCHAR(0x25CF) :
-                (FMath::Abs(Index/24.f-GetChallengeTarget())<=LockWindow ? TCHAR(0x2588) : TCHAR(0x2500)));
-        LiveDocument->Body=FText::FromString(FString::Printf(TEXT("Нажмите Пробел, когда точка войдёт в светлый участок.\n[%s]    %d / 3"),*Track,Step));
-    }
+    DisarmPlayer.Reset();
+}
+
+float UActOneSubsystem::DisarmWindow() const
+{
+    return FMath::Clamp(1.55f+.09f*Stats.Calm-.012f*Stats.Anger,1.15f,1.9f);
+}
+
+float UActOneSubsystem::DisarmRemaining() const
+{
+    if (!Director.IsValid() || Challenge!=EChallenge::Disarm) return 0.f;
+    const double Elapsed=Director->GetWorld()->GetTimeSeconds()-StepStarted;
+    return FMath::Clamp(1.f-float(Elapsed)/DisarmWindow(),0.f,1.f);
+}
+
+void UActOneSubsystem::StartDisarmStep()
+{
+    StepStarted=Director->GetWorld()->GetTimeSeconds();
+    Director->GetWorldTimerManager().SetTimer(ChallengeTimer,
+        FTimerDelegate::CreateUObject(this,&ThisClass::FinishChallenge,false),DisarmWindow(),false);
+}
+
+void UActOneSubsystem::RefreshLockChallenge()
+{
+    if (!Director.IsValid() || !LiveDocument || Challenge!=EChallenge::Lock) return;
+    const int32 Mark=FMath::RoundToInt(GetChallengePosition()*24);
+    FString Track;
+    for (int32 Index=0; Index<=24; ++Index)
+        Track.AppendChar(Index==Mark ? TCHAR(0x25CF) :
+            (FMath::Abs(Index/24.f-GetChallengeTarget())<=LockWindow ? TCHAR(0x2588) : TCHAR(0x2500)));
+    LiveDocument->Body=FText::FromString(FString::Printf(TEXT("Нажмите Пробел, когда точка войдёт в светлый участок.\n[%s]    %d / 3"),*Track,Step));
 }
 
 bool UActOneSubsystem::ChallengeKey(const FKey& Key,bool bRepeat)
 {
-    if (Challenge==EChallenge::None || Key==EKeys::Escape) return false;
+    if (Challenge==EChallenge::None) return false;
     if (bRepeat) return true;
-    if (Challenge==EChallenge::Lock && Key!=EKeys::SpaceBar) return true;
-    const bool bCorrect=Challenge==EChallenge::Disarm ? Key==DisarmKeys[Step] :
-        FMath::Abs(GetChallengePosition()-GetChallengeTarget())<=LockWindow;
-    if (!bCorrect) {FinishChallenge(false);return true;}
-    PlayAudio(TEXT("StepClick"),.58f);
-    if (++Step>=3) FinishChallenge(true);
-    else {StepStarted=Director->GetWorld()->GetTimeSeconds();RefreshChallenge();}
+    if (Challenge==EChallenge::Disarm)
+    {
+        if (Step>=UE_ARRAY_COUNT(DisarmKeys) || Key!=DisarmKeys[Step] || DisarmRemaining()<=0.f)
+            FinishChallenge(false);
+        else
+        {
+            PlayAudio(TEXT("StepClick"),.58f);
+            if (++Step==UE_ARRAY_COUNT(DisarmKeys)) FinishChallenge(true);
+            else StartDisarmStep();
+        }
+        return true;
+    }
+    if (Key==EKeys::Escape) return false;
+    if (Key!=EKeys::SpaceBar) return true;
+    if (FMath::Abs(GetChallengePosition()-GetChallengeTarget())>LockWindow)
+        FinishChallenge(false);
+    else
+    {
+        PlayAudio(TEXT("StepClick"),.58f);
+        if (++Step>=UE_ARRAY_COUNT(LockTargets)) FinishChallenge(true);
+        else
+        {
+            StepStarted=Director->GetWorld()->GetTimeSeconds();
+            RefreshLockChallenge();
+        }
+    }
     return true;
 }
 
@@ -945,7 +1024,12 @@ void UActOneSubsystem::FinishChallenge(bool bSuccess)
     const EChallenge Mode=Challenge;
     Challenge=EChallenge::None;
     Director->GetWorldTimerManager().ClearTimer(ChallengeTimer);
-    UI()->CloseDocument();
+    if (Mode==EChallenge::Disarm) CloseDisarmPrompt();
+    else
+    {
+        UI()->CloseDocument();
+        LiveDocument=nullptr;
+    }
     if (bSuccess)
     {
         if (Mode==EChallenge::Disarm) ResolveGuard(false);

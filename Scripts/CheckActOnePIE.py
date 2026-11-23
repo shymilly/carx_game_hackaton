@@ -260,9 +260,9 @@ def brighton(alt,tear_seal):
     yield from page('NoConnection')
     assert act().has_evidence('MotherCall' if alt else 'LizaCall')
     use(action.VETERAN)
-    yield from page('VeteranAsk',2 if alt else 1 if tear_seal else 0,3)
-    if not alt:
-        yield from page('VeteranCurse' if tear_seal else 'VeteranThanks')
+    decline_veteran = alt or tear_seal
+    yield from page('VeteranAsk',1 if decline_veteran else 0,2)
+    yield from page('VeteranCurse' if decline_veteran else 'VeteranThanks')
     assert act().get_statistics().get_editor_property('heritage') == (0 if alt or tear_seal else 1)
     use(action.BAR)
     assert not ui().is_location_transition_active()
@@ -321,7 +321,8 @@ def conflict(alt):
         assert ue.ActOneBlueprintLibrary.send_editor_key('F')
         yield from page('DisarmRetry')
         yield from page('BarGun',0,1)
-        for expected, key in enumerate(('Q','E','F'),1):
+        assert not windows(), 'Disarm should use the circular HUD'
+        for expected, key in enumerate(('Q','E','W','A','F'),1):
             assert ue.ActOneBlueprintLibrary.send_editor_key(key), key
             assert act().get_challenge_step() == expected
         yield from page('OldManThanks')
@@ -330,7 +331,7 @@ def conflict(alt):
     assert act().was_guard_killed() == alt
     assert not pawn().get_editor_property('hidden')
     stats = act().get_statistics()
-    assert stats.get_editor_property('anger') == (35 if alt else 0)
+    assert stats.get_editor_property('anger') == (30 if alt else 0)
     assert stats.get_editor_property('neighborhood') == (-1 if alt else 0)
     use(action.LEAVE_BAR,(95,0))
     yield from travel(street,'FromBar')

@@ -114,6 +114,11 @@ void AActOneCast::BeginPlay()
         const float Offset=AnimationPhase>0 ? AnimationPhase : (GetTypeHash(GetFName())%1000)*.001f*Clip->GetLength();
         if (bLegacySeat) Clip->SetPosition(FMath::Min(2.3f,Clip->GetLength()),false);
         else if (Clip->GetLength()>0) Clip->SetPosition(FMath::Fmod(Offset,Clip->GetLength()),false);
+        if (bFreezePose)
+        {
+            Clip->SetPlaying(false);
+            bLegacySeat=false;
+        }
     }
     if (DefaultPose==EActOnePose::Smoking)
     {
@@ -141,6 +146,12 @@ void AActOneCast::Pose(EActOnePose NewPose)
     UpdateActorTick();
 }
 
+float AActOneCast::GetPoseDuration() const
+{
+    if (UAnimSingleNodeInstance* Clip=CharacterMesh->GetSingleNodeInstance()) return Clip->GetLength();
+    return 0.f;
+}
+
 void AActOneCast::PlayCharacterPose()
 {
     if (!CharacterProfile || !CharacterProfile->Mesh) return;
@@ -158,12 +169,38 @@ void AActOneCast::PlayCharacterPose()
     case EActOnePose::Conversing: Motion=TEXT("Talk"); break;
     case EActOnePose::Firing: Motion=TEXT("Shot"); break;
     case EActOnePose::Dead: Motion=TEXT("Fall"); break;
-    case EActOnePose::Subdued: Motion=Seat; break;
+    case EActOnePose::Subdued: Motion=TEXT("Fall"); break;
     default: break;
     }
-    const bool bLoop=CurrentPose!=EActOnePose::Fallen && CurrentPose!=EActOnePose::Dead && CurrentPose!=EActOnePose::Firing;
+    const bool bLoop=CurrentPose!=EActOnePose::Fallen && CurrentPose!=EActOnePose::Dead &&
+        CurrentPose!=EActOnePose::Subdued && CurrentPose!=EActOnePose::Firing;
     const float Rate=CurrentPose==EActOnePose::Walking && WalkSpeed<1 ? .72f : 1.f;
-    CharacterProfile->Play(*CharacterMesh,Motion,bLoop,Rate);
+    UAnimSequence* SeatedClip=CurrentPose==EActOnePose::Seated ? CharacterProfile->Motions.FindRef(Motion).Get() : nullptr;
+    if (SeatedClip)
+    {
+        // Both seated clips share the same chair contacts. Play them directly
+        // so switching dialogue pages does not carry the previous pose.
+        CharacterMesh->PlayAnimation(SeatedClip,bLoop);
+        UE_LOG(LogTemp, Verbose, TEXT("Seated cast clip %s for %s"), *SeatedClip->GetName(), *GetName());
+    }
+    else if (CurrentPose==EActOnePose::Subdued)
+    {
+        if (UAnimSequence* Fall=CharacterProfile->Motions.FindRef(Motion).Get())
+        {
+            UAnimSingleNodeInstance* Clip=CharacterMesh->GetSingleNodeInstance();
+            if (!Clip || Clip->GetCurrentAsset()!=Fall)
+            {
+                CharacterProfile->Play(*CharacterMesh,Motion,false,Rate);
+                Clip=CharacterMesh->GetSingleNodeInstance();
+            }
+            if (Clip)
+            {
+                Clip->SetPosition(Fall->GetPlayLength(),false);
+                Clip->SetPlaying(false);
+            }
+        }
+    }
+    else CharacterProfile->Play(*CharacterMesh,Motion,bLoop,Rate);
     bLegacySeat=Motion==TEXT("Sit");
     if (UAnimSingleNodeInstance* Clip=CharacterMesh->GetSingleNodeInstance(); Clip && bLegacySeat)
         Clip->SetPosition(FMath::Min(2.3f,Clip->GetLength()),false);
@@ -171,7 +208,9 @@ void AActOneCast::PlayCharacterPose()
 
 void AActOneCast::SetSpeaking(bool bIsSpeaking)
 {
-    if (bSpeaking==bIsSpeaking) return;
+    UE_LOG(LogTemp, Verbose, TEXT("Entering cast speech %s: speaking=%d, previous=%d, static=%d, posture=%d"),
+        *GetName(), bIsSpeaking, bSpeaking, bFreezePose, int32(CurrentPose));
+    if (bFreezePose || bSpeaking==bIsSpeaking) return;
     bSpeaking=bIsSpeaking;
     if (CurrentPose==EActOnePose::Idle || CurrentPose==EActOnePose::Seated)
     {
@@ -192,8 +231,19 @@ void AActOneCast::WalkAway(const FVector& Destination,float Speed)
     bHideAtWalkEnd=true;
 }
 
+void AActOneCast::WalkAway(TArray<FVector> Route,float Speed)
+{
+    if (Route.IsEmpty()) return;
+    WalkTo(Route[0],Speed);
+    WalkRoute=MoveTemp(Route);
+    NextRoutePoint=1;
+    bHideAtWalkEnd=true;
+}
+
 void AActOneCast::WalkTo(const FVector& Destination,float Speed)
 {
+    WalkRoute.Reset();
+    NextRoutePoint=0;
     bHideAtWalkEnd=false;
     WalkTarget=Destination;
     WalkSpeed=Speed;
@@ -222,6 +272,7 @@ void AActOneCast::FollowPursuitPath(const FVector& Position,const FVector& Direc
 
 void AActOneCast::Nod()
 {
+    if (bFreezePose) return;
     const FName Motion=CurrentPose==EActOnePose::Seated ? TEXT("SeatedNod") : TEXT("Nod");
     if (CharacterProfile && CharacterProfile->Motions.Contains(Motion))
     {
@@ -274,7 +325,11 @@ void AActOneCast::Tick(float DeltaSeconds)
             const float NominalSpeed=CurrentPose==EActOnePose::Running ? 530.f : 275.f;
             Clip->SetPlayRate(FMath::Clamp(CurrentWalkSpeed/NominalSpeed,.25f,1.55f));
         }
-        if (FVector::DistSquared(Next,WalkTarget)<4)
+        if (FVector::DistSquared(Next,WalkTarget)<4 && WalkRoute.IsValidIndex(NextRoutePoint))
+        {
+            WalkTarget=WalkRoute[NextRoutePoint++];
+        }
+        else if (FVector::DistSquared(Next,WalkTarget)<4)
         {
             WalkSpeed=0;
             CurrentWalkSpeed=0;
@@ -369,7 +424,7 @@ void AActOneDirector::BeginPlay()
 {
     Super::BeginPlay();
     if (const UDostoevskyGameSettings* Settings=UDostoevskyGameSettings::Get())
-        Settings->ApplyToWorld(GetWorld());
+        Settings->ApplyPresentationSettings();
     for (TActorIterator<AActor> It(GetWorld()); It; ++It)
     {
         for (FName Tag:It->Tags)
@@ -416,6 +471,7 @@ void AActOneDirector::Pose(FName Key,EActOnePose InPose) const
 void AActOneDirector::SetSpeaker(FName CueName)
 {
     AActOneCast* Next=Cast<AActOneCast>(Cue(CueName));
+    UE_LOG(LogTemp, Verbose, TEXT("Story speaker %s resolves to %s"), *CueName.ToString(), *GetNameSafe(Next));
     if (Speaker.Get()==Next) return;
     if (Speaker.IsValid()) Speaker->SetSpeaking(false);
     Speaker=Next;

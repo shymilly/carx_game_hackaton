@@ -1,8 +1,10 @@
 #include "NarrativeSubsystem.h"
+#include "ActOne.h"
 #include "CharacterNotebook.h"
 #include "DoorOpeningAudio.h"
 #include "DimaApartmentStory.h"
 #include "LocationTravel.h"
+#include "MogbiteMenu.h"
 #include "HAL/PlatformTime.h"
 #include "DocumentWindow.h"
 #include "InteractionDocument.h"
@@ -13,6 +15,8 @@
 #include "Engine/TargetPoint.h"
 #include "Engine/Texture2D.h"
 #include "Engine/World.h"
+#include "Framework/Application/IInputProcessor.h"
+#include "Framework/Application/SlateApplication.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PawnMovementComponent.h"
 #include "GameFramework/PlayerController.h"
@@ -28,11 +32,33 @@
 #include "Widgets/Layout/SScaleBox.h"
 #include "Widgets/SCompoundWidget.h"
 #include "Widgets/SOverlay.h"
+#include "Widgets/SViewport.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
 
 namespace
 {
+class FGameplayEscapeInput final : public IInputProcessor
+{
+public:
+    explicit FGameplayEscapeInput(UNarrativeSubsystem* InOwner) : Owner(InOwner) {}
+
+    virtual void Tick(float DeltaTime, FSlateApplication& Slate, TSharedRef<ICursor> Cursor) override {}
+
+    virtual bool HandleKeyDownEvent(FSlateApplication& Slate, const FKeyEvent& Event) override
+    {
+        if (Event.GetKey() != EKeys::Escape || Event.IsRepeat() || !Owner.IsValid()) return false;
+        UWorld* World = Owner->GetWorld();
+        UGameViewportClient* Viewport = World ? World->GetGameViewport() : nullptr;
+        const TSharedPtr<SViewport> GameWidget = Viewport ? Viewport->GetGameViewportWidget() : nullptr;
+        if (!GameWidget || !(GameWidget->HasAnyUserFocus() || GameWidget->HasFocusedDescendants())) return false;
+        return Owner->TryOpenPauseMenu(UGameplayStatics::GetPlayerController(World, 0));
+    }
+
+private:
+    TWeakObjectPtr<UNarrativeSubsystem> Owner;
+};
+
 class SLocationCard final : public SCompoundWidget
 {
 public:
@@ -88,12 +114,21 @@ private:
 void UNarrativeSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
     Super::Initialize(Collection);
+    if (FSlateApplication::IsInitialized())
+    {
+        EscapeInput = MakeShared<FGameplayEscapeInput>(this);
+        FSlateApplication::Get().RegisterInputPreProcessor(EscapeInput, 0);
+    }
     MapLoadedHandle = FCoreUObjectDelegates::PostLoadMapWithWorld.AddUObject(this, &ThisClass::MapLoaded);
     if (GEngine) TravelFailureHandle = GEngine->OnTravelFailure().AddUObject(this, &ThisClass::TravelFailed);
 }
 
 void UNarrativeSubsystem::Deinitialize()
 {
+    if (EscapeInput && FSlateApplication::IsInitialized())
+        FSlateApplication::Get().UnregisterInputPreProcessor(EscapeInput);
+    EscapeInput.Reset();
+    ClosePauseMenu(false);
     if (UWorld* World = GetWorld()) World->GetTimerManager().ClearTimer(TravelBegin);
     FinishLocationCard();
     CloseDocument();
@@ -101,6 +136,51 @@ void UNarrativeSubsystem::Deinitialize()
     FCoreUObjectDelegates::PostLoadMapWithWorld.Remove(MapLoadedHandle);
     if (GEngine) GEngine->OnTravelFailure().Remove(TravelFailureHandle);
     Super::Deinitialize();
+}
+
+bool UNarrativeSubsystem::TryOpenPauseMenu(APlayerController* Player)
+{
+    if (PauseMenu || !IsValid(Player) || !Player->IsLocalController() || !Player->GetPawn() ||
+        Player->bShowMouseCursor || IsDocumentOpen() || IsLocationTransitionActive()) return false;
+    const UActOneSubsystem* Act = UActOneSubsystem::Find(Player);
+    if (Act && Act->IsDisarming()) return false;
+    UWorld* World = Player->GetWorld();
+    UGameViewportClient* Viewport = World ? World->GetGameViewport() : nullptr;
+    if (!Viewport || World->GetGameInstance() != GetGameInstance()) return false;
+    const bool bPauseNow = !UGameplayStatics::IsGamePaused(World);
+    if (bPauseNow && !UGameplayStatics::SetGamePaused(World, true)) return false;
+
+    PausePlayer = Player;
+    PauseViewport = Viewport;
+    bPauseOwnedByMenu = bPauseNow;
+    TSharedPtr<SWidget> Focus;
+    const TSharedRef<SWidget> Widget = CreateMogbitePauseMenu(Player,
+        FSimpleDelegate::CreateUObject(this, &ThisClass::ClosePauseMenu, true), Focus);
+    PauseMenu = Widget;
+    Viewport->AddViewportWidgetContent(Widget, 150);
+    Player->FlushPressedKeys();
+    Player->bShowMouseCursor = true;
+    FInputModeUIOnly Input;
+    Input.SetWidgetToFocus(Focus);
+    Player->SetInputMode(Input);
+    return true;
+}
+
+void UNarrativeSubsystem::ClosePauseMenu(bool bResume)
+{
+    if (!PauseMenu) return;
+    if (UGameViewportClient* Viewport = PauseViewport.Get()) Viewport->RemoveViewportWidgetContent(PauseMenu.ToSharedRef());
+    PauseMenu.Reset();
+    if (APlayerController* Player = PausePlayer.Get(); bResume && Player)
+    {
+        Player->bShowMouseCursor = false;
+        Player->SetInputMode(FInputModeGameOnly());
+        Player->FlushPressedKeys();
+        if (bPauseOwnedByMenu) UGameplayStatics::SetGamePaused(Player, false);
+    }
+    PausePlayer.Reset();
+    PauseViewport.Reset();
+    bPauseOwnedByMenu = false;
 }
 
 bool UNarrativeSubsystem::ShowDocument(APlayerController* Player, UInteractionDocument* Document, TSubclassOf<UDocumentWindow> WindowClass)
@@ -352,6 +432,7 @@ void UNarrativeSubsystem::BeginMapTravel()
 void UNarrativeSubsystem::MapLoaded(UWorld* World)
 {
     if (!World || World->GetGameInstance() != GetGameInstance()) return;
+    ClosePauseMenu(false);
     if (!bTravelling) { FinishLocationCard(); CloseDocument(); return; }
     LocationWorld = World;
     LockLocationPlayer(UGameplayStatics::GetPlayerController(World,0));

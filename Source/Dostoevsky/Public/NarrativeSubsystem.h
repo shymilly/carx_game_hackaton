@@ -14,6 +14,7 @@ class AActor;
 class APlayerController;
 class ATargetPoint;
 class SWidget;
+class IInputProcessor;
 class UGameViewportClient;
 class UTexture2D;
 
@@ -24,6 +25,7 @@ class DOSTOEVSKY_API UNarrativeSubsystem : public UGameInstanceSubsystem
 public:
     virtual void Initialize(FSubsystemCollectionBase& Collection) override;
     virtual void Deinitialize() override;
+    bool TryOpenPauseMenu(APlayerController* Player);
     UFUNCTION(BlueprintCallable, Category="Narrative")
     bool ShowDocument(APlayerController* Player, UInteractionDocument* Document, TSubclassOf<UDocumentWindow> WindowClass);
     bool ShowChoices(APlayerController* Player, UInteractionDocument* Document, TArray<FText> Choices, FDocumentChoice Selection);
@@ -54,6 +56,12 @@ private:
     UPROPERTY(Transient) TObjectPtr<APlayerController> ModalPlayer;
     UPROPERTY(Transient) TObjectPtr<UTexture2D> LocationPhoto;
     TSharedPtr<SWidget> LocationCard;
+    TSharedPtr<SWidget> PauseMenu;
+    TSharedPtr<IInputProcessor> EscapeInput;
+    TWeakObjectPtr<APlayerController> PausePlayer;
+    TWeakObjectPtr<UGameViewportClient> PauseViewport;
+    bool bPauseOwnedByMenu = false;
+    void ClosePauseMenu(bool bResume);
     TWeakObjectPtr<APlayerController> LocationPlayer;
     TWeakObjectPtr<UGameViewportClient> LocationViewport;
     TWeakObjectPtr<UWorld> LocationWorld;

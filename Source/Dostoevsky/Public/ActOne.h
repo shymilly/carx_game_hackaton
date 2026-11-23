@@ -12,6 +12,8 @@
 class AActOneDirector;
 class AActOneInteraction;
 class AHUD;
+class SDisarmPrompt;
+class UGameViewportClient;
 class UNarrativeSubsystem;
 class USoundBase;
 class UAnimInstance;
@@ -92,7 +94,8 @@ public:
     bool HandlePortal(const AStreetPortal& Portal);
     void ShowStatus();
     bool IsActive() const { return Director.IsValid() && Data!=nullptr; }
-    bool IsCinematic() const { return bCinematic; }
+    bool IsCinematic() const { return bCinematic || IsDisarming(); }
+    bool IsDisarming() const { return DisarmPrompt.IsValid(); }
     bool IsRain() const;
     void RefreshScene();
     UFUNCTION(BlueprintPure, Category="Act One") EActOnePhase GetPhase() const { return Phase; }
@@ -126,7 +129,6 @@ private:
     bool bCinematic = false;
     bool bPressOpen = false;
     bool bVeteranDone = false;
-    bool bVeteranFled = false;
     bool bPistol = false;
     bool bOldManFled = false;
     bool bGuardResolved = false;
@@ -154,6 +156,9 @@ private:
     double StepStarted = 0;
     FTimerHandle SceneTimer;
     FTimerHandle ChallengeTimer;
+    TSharedPtr<SDisarmPrompt> DisarmPrompt;
+    TWeakObjectPtr<APlayerController> DisarmPlayer;
+    TWeakObjectPtr<UGameViewportClient> DisarmViewport;
 
     APlayerController* Player() const;
     UNarrativeSubsystem* UI() const;
@@ -186,13 +191,18 @@ private:
     void CheckClues();
     void UpdateFedorArrival();
     void MeetFedorIvan();
-    void WalkOff(FName Actor,FName Exit);
+    void WalkOff(FName Actor,TArray<FName> Route);
     void UpdatePursuit(float DeltaSeconds);
     void Finale();
     void Credits();
     void Restart();
     void StartChallenge(EChallenge Mode);
-    void RefreshChallenge();
+    bool OpenDisarmPrompt();
+    void CloseDisarmPrompt();
+    float DisarmWindow() const;
+    float DisarmRemaining() const;
+    void StartDisarmStep();
+    void RefreshLockChallenge();
     bool ChallengeKey(const FKey& Key,bool bRepeat);
     void FinishChallenge(bool bSuccess);
 };
