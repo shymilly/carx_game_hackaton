@@ -120,6 +120,7 @@ private:
     FVector GroundGridCenter=FVector(1.e9,1.e9,1.e9);
     int32 NextSplash=0;
     UPROPERTY(Transient) TObjectPtr<UAudioComponent> RainLoop;
+    UPROPERTY(Transient) TObjectPtr<UAudioComponent> SceneMusic;
     UPROPERTY() TObjectPtr<USceneComponent> SmokeRig;
     UPROPERTY(Transient) TObjectPtr<UCigaretteSmokeComponent> SmokeTrail;
     UPROPERTY(Transient) TObjectPtr<USkeletalMeshComponent> SmokingArms;
@@ -157,6 +158,7 @@ private:
     void UpdateSmoke(APlayerController* Player);
     void UpdateRecorder(float DeltaSeconds);
     void ClickRecorder();
+    void PlaySceneMusic(FName Track, float Volume);
     void RefreshTickInterval();
     void UpdatePursuitTrip(float DeltaSeconds);
 };

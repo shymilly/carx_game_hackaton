@@ -70,27 +70,21 @@ def run_check():
     assert vendor.get_name() == "D_Vendor" and vendor.get_editor_property("voice") is None
     yield from page("Vendor")
 
-    say_step("NPC hand grip and smoke")
+    say_step("Standing NPC by the newsstand")
     actors = ue.GameplayStatics.get_all_actors_of_class(world(), ue.ActOneCast)
-    smoker = next(actor for actor in actors if actor.get_editor_property("default_pose") == ue.ActOnePose.SMOKING
-                  and not actor.get_editor_property("hidden"))
-    body = smoker.get_editor_property("character_mesh")
-    cigarette = next(c for c in smoker.get_components_by_class(ue.StaticMeshComponent) if c.get_name() == "HeldCigarette")
-    head = body.get_socket_location("SmokeMouth")
-    assert str(cigarette.get_attach_socket_name()) == "CigaretteGrip"
-    at = smoker.get_actor_location()
-    facing = smoker.get_actor_forward_vector()
-    side = smoker.get_actor_right_vector()
+    bystander, = [actor for actor in actors if actor.actor_has_tag("KioskBystander")]
+    assert bystander.get_editor_property("default_pose") == ue.ActOnePose.IDLE
+    assert not bystander.get_editor_property("hidden")
+    assert not bystander.get_component_by_class(ue.CigaretteSmokeComponent)
+    assert not any(c.get_name() == "HeldCigarette" for c in bystander.get_components_by_class(ue.StaticMeshComponent))
+    at = bystander.get_actor_location()
+    facing = bystander.get_actor_forward_vector()
+    side = bystander.get_actor_right_vector()
     p = at + facing * 165 + side * 76
-    yield from set_view((p.x, p.y, at.z + 94), head.to_tuple())
-    call = smoker.get_component_by_class(ue.CigaretteSmokeComponent)
-    yield from wait(lambda: 2.45 < body.get_position() < 3.2 and call.is_visible(), "NPC raises cigarette", 12)
-    grip = cigarette.get_world_location()
-    mouth = body.get_socket_location("SmokeMouth")
-    assert grip.distance(mouth) < 7, (grip, mouth)
-    yield from capture("SmokerHand")
-    ue.log("QUALITY_NPC_SMOKE_OK hand_to_mouth_cm=%.2f" % grip.distance(mouth))
-    del actors, smoker, body, cigarette, call
+    yield from set_view((p.x, p.y, at.z + 94), (at.x, at.y, at.z + 122))
+    yield from capture("NewsstandBystander")
+    ue.log("QUALITY_KIOSK_BYSTANDER_OK")
+    del actors, bystander
 
     say_step("Buy cigarettes and play the first-person montage")
     yield from physical_use(action.GROCERY, (0, 133))

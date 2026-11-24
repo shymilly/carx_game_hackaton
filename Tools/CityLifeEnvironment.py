@@ -5,7 +5,7 @@ import unreal as ue
 
 from ApartmentScene import make_material
 from BrightonUpgrade import ACTORS, ASSETS, LIB, P, V, constant, media, output, save
-from CityLifeCharacters import ROOT, SOURCE, apply_profile, mtl_colors, move_prop
+from CityLifeCharacters import ROOT, SOURCE, apply_profile, mtl_colors
 
 TAG = ue.Name("CityLifeDressing")
 FOLDER = "Brighton/City life"
@@ -276,21 +276,14 @@ def add_pedestrians(layout, profiles):
     for label,profile,at,yaw,pose,phase in (
         ("Neighbor talking by the sidewalk","PedestrianMan",(698,-630,-12),10,ue.ActOnePose.CONVERSING,.27),
         ("Neighbor listening and replying","PedestrianWoman",(840,-605,-12),-170,ue.ActOnePose.CONVERSING,2.32),
-        ("Smoker near the newsstand","Smoker",(-1203,-481,-12),-90,ue.ActOnePose.SMOKING,3.18),
+        ("Man standing by the newsstand","Smoker",(-1203,-481,-12),-90,ue.ActOnePose.IDLE,.82),
     ):
         actor=layout.actor(ue.ActOneCast,label,at,ue.Rotator(yaw=yaw))
         actor.set_editor_properties(dict(default_pose=pose,animation_phase=phase))
-        actor.set_actor_enable_collision(False)
-        mesh=apply_profile(actor,profiles[profile])
         if profile=="Smoker":
-            model=ue.load_asset("/Engine/BasicShapes/Cylinder")
-            cigarette=layout.individual("Smoker's cigarette",model,at)
-            cigarette.set_actor_scale3d(V(.010,.010,.078))
-            cigarette.get_component_by_class(ue.StaticMeshComponent).set_material(0,
-                material("CigarettePaper",(.64,.58,.44)))
-            hand=next((key for key in ("MiddleHand_R","MiddleHand.R") if mesh.get_bone_index(ue.Name(key))>=0),"")
-            assert hand
-            move_prop(cigarette,actor,mesh,hand,(5,0,1))
+            actor.tags=list(actor.tags)+[ue.Name("KioskBystander")]
+        actor.set_actor_enable_collision(False)
+        apply_profile(actor,profiles[profile])
 
 
 def rebuild_city(models, profiles, interior=False):

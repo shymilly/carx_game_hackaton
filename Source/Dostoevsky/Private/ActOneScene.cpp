@@ -435,11 +435,13 @@ void AActOneDirector::BeginPlay()
         if (AActOneInteraction* Interaction=Cast<AActOneInteraction>(*It)) Targets.Add(Interaction);
     }
     if (UActOneSubsystem* Act=UActOneSubsystem::Find(this)) Act->Arrive(this);
+    if (Location==EActOneLocation::Fedor) PlaySceneMusic(TEXT("FedorMusic"), .08f);
 }
 
 void AActOneDirector::EndPlay(const EEndPlayReason::Type Reason)
 {
     if (RainLoop) RainLoop->Stop();
+    if (IsValid(SceneMusic)) SceneMusic->Stop();
     if (RecorderArms) RecorderArms->DestroyComponent();
     if (UActOneSubsystem* Act=UActOneSubsystem::Find(this)) Act->Leave(this);
     Super::EndPlay(Reason);
@@ -676,6 +678,20 @@ void AActOneDirector::ClickRecorder()
     if (Contact && Data)
         if (const TObjectPtr<USoundBase>* Click=Data->Sounds.Find(TEXT("TapeClick")); Click && *Click)
             UGameplayStatics::PlaySoundAtLocation(this,Click->Get(),Contact->GetActorLocation(),.78f);
+    PlaySceneMusic(TEXT("FinaleMusic"), .16f);
+}
+
+void AActOneDirector::PlaySceneMusic(FName Track, float Volume)
+{
+    USoundBase* Sound=Data ? Data->Sounds.FindRef(Track).Get() : nullptr;
+    if (!Sound) return;
+
+    SceneMusic=UGameplayStatics::CreateSound2D(this, Sound);
+    if (SceneMusic)
+    {
+        SceneMusic->bIsUISound=false;
+        SceneMusic->FadeIn(.55f, Volume);
+    }
 }
 
 void AActOneDirector::FinishRecorder()

@@ -18,7 +18,7 @@ $projectVersion = $versionLine.Substring('ProjectVersion='.Length).Trim()
 if ($projectVersion -notmatch '^\d+\.\d+\.\d+$') { throw "Invalid project version: $projectVersion" }
 $archivePath = Join-Path $projectRoot "Builds\$projectVersion"
 & $automationTool BuildCookRun "-project=$projectPath" -nop4 -unattended -installed `
-    -platform=Win64 "-clientconfig=$Configuration" -build -cook -stage -pak -nodebuginfo `
+    -platform=Win64 "-clientconfig=$Configuration" -build -cook -stage -pak -prereqs -nodebuginfo `
     -archive "-archivedirectory=$archivePath" '-ubtargs=-NoUBA' `
     '-additionalcookeroptions=-SkipZenStore -NoZenAutoLaunch -NoTrace -DDC=InstalledNoZenLocalFallback'
 if ($LASTEXITCODE -ne 0) { throw "Unreal packaging failed with exit code $LASTEXITCODE" }

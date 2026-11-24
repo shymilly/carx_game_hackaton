@@ -93,7 +93,7 @@ def run_life():
     yield from pause(.10)
     assert not guide.should_show_stamina()
 
-    say_step("City life: two talking neighbors and a smoker")
+    say_step("City life: two talking neighbors and a bystander by the newsstand")
     crowd=[a for a in ue.GameplayStatics.get_all_actors_of_class(world(),ue.ActOneCast)
            if a.actor_has_tag("CityLifeDressing")]
     assert len(crowd)==3
@@ -106,14 +106,17 @@ def run_life():
     assert all(abs(mesh.get_position()-at)>.05 for mesh,at in zip(walkers,first))
     yield from photograph("Neighbors")
     yield from look((-1400,-718,88),(-1203,-480,144))
-    smoker=next(a for a in crowd if a.get_editor_property("default_pose")==ue.ActOnePose.SMOKING)
-    smoker_mesh=smoker.get_editor_property("character_mesh")
-    assert smoker_mesh.get_editor_property("skeletal_mesh_asset")
-    yield from wait(lambda: 2.3<smoker_mesh.get_position()<2.95,"Smoker raised his hand",8)
-    trail=smoker.get_component_by_class(ue.CigaretteSmokeComponent)
-    assert trail and trail.is_visible() and trail.get_instance_count()==24
-    yield from photograph("NewsstandSmoker")
-    del walkers,smoker,crowd
+    bystander,=[a for a in crowd if a.actor_has_tag("KioskBystander")]
+    assert bystander.get_editor_property("default_pose")==ue.ActOnePose.IDLE
+    mesh=bystander.get_editor_property("character_mesh")
+    assert mesh.get_editor_property("skeletal_mesh_asset")
+    start=bystander.get_actor_location()
+    frame=mesh.get_position()
+    yield from pause(.48)
+    assert start.distance(bystander.get_actor_location())<.1 and abs(mesh.get_position()-frame)>.05
+    assert not bystander.get_component_by_class(ue.CigaretteSmokeComponent)
+    yield from photograph("NewsstandBystander")
+    del walkers,bystander,mesh,crowd
 
     say_step("City life: cloud motion, haze and the five-minute freight service")
     yield from look((-5960,-1877,89),(-9680,-1465,870))

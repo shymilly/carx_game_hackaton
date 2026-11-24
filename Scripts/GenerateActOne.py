@@ -61,6 +61,12 @@ def art_and_dialogue():
         save(sound)
         sounds[file.stem]=sound
     assert "Music90" in sounds and "Rain" in sounds
+    for key, filename in (("FedorMusic", "5395_newgrounds_creepy.mp3"),
+                          ("FinaleMusic", "531659_Depressing-Melodies.mp3")):
+        sound=import_media(directory/"Audio/ActOne/Music"/filename,ROOT+"/Audio",key)
+        sound.set_editor_property("looping",key=="FedorMusic")
+        save(sound)
+        sounds[key]=sound
     documents={}
     for key,row in spec["documents"].items():
         item=data_asset(ue.InteractionDocument,ROOT+"/Documents","D_"+key)

@@ -22,8 +22,11 @@ for key,source in spec['documents'].items():
         for index,article in enumerate(document.get_editor_property('articles')):
             for field,value in source['articles'][index].items():
                 assert str(article.get_editor_property(field))==value,(key,index,field)
-for name,sound in data.get_editor_property('sounds').items():
+sounds=data.get_editor_property('sounds')
+for name,sound in sounds.items():
     assert isinstance(sound,ue.SoundWave) and sound.get_editor_property('duration')>0,name
+assert sounds[ue.Name('FedorMusic')].get_editor_property('looping')
+assert not sounds[ue.Name('FinaleMusic')].get_editor_property('looping')
 registry=ue.AssetRegistryHelpers.get_asset_registry()
 assert not any(str(asset.asset_name).startswith('Voice_')
                for asset in registry.get_assets_by_path('/Game/Story/ActOne/Audio',recursive=True)), 'Legacy TTS packages'
